@@ -3,14 +3,17 @@
     "name": "budget-manager",
     "slug": "budget-manager",
     "version": "1.0.0",
+    "platforms": ["ios", "android"],
     "orientation": "portrait",
+    "backgroundColor": "#000000",
     "icon": "./assets/images/icon.png",
     "scheme": "budgetmanager",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "dark",
     "ios": {
       "icon": "./assets/expo.icon"
     },
     "android": {
+      "backgroundColor": "#000000",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -19,12 +22,16 @@
       },
       "predictiveBackGestureEnabled": false
     },
-    "web": {
-      "output": "static",
-      "favicon": "./assets/images/favicon.png"
-    },
     "plugins": [
       "expo-router",
+      [
+        "expo-navigation-bar",
+        {
+          "enforceContrast": false,
+          "hidden": false,
+          "style": "light"
+        }
+      ],
       [
         "expo-splash-screen",
         {
