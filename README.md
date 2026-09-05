@@ -54,3 +54,20 @@ Join our community of developers creating universal apps.
 
 - [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+
+## License
+
+Copyright 2026 Alexander Aluf. This project is source-available under the
+[PolyForm Noncommercial License 1.0.0](LICENSE).
+
+You may view, fork, use, modify, and redistribute this code for permitted
+noncommercial purposes. Every copy, fork, and redistribution must preserve the
+license and the attribution notices in [NOTICE](NOTICE), identifying Alexander
+Aluf as the original creator and copyright owner.
+
+Commercial use is not permitted without prior written permission from Alexander
+Aluf. To request a commercial license, contact the owner through
+[GitHub](https://github.com/alexanderaluf).
+
+This is a source-available license, not an OSI-approved open-source license.
+Third-party dependencies remain subject to their own licenses.
