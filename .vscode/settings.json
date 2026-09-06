@@ -3,5 +3,15 @@
     "source.fixAll": "explicit",
     "source.organizeImports": "explicit",
     "source.sortMembers": "explicit"
-  }
+  },
+  "tailwindCSS.experimental.configFile": {
+    "global.css": ["global.css", "src/**/*.{ts,tsx}"]
+  },
+  "tailwindCSS.files.exclude": [
+    "**/.agents/**",
+    "**/.expo/**",
+    "**/.expo-validation/**",
+    "**/.git/**",
+    "**/node_modules/**"
+  ]
 }
