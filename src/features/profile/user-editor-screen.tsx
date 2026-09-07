@@ -2,18 +2,20 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { Button, Input } from "heroui-native";
 import { useState } from "react";
 import {
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    ScrollView,
-    Text,
-    View,
+  Alert,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { FilledIcon } from "@/shared/ui/filled-icon";
 
-import { CurrencySelectorDialog } from "./components/currency-selector-dialog";
+import { CurrencySelectorSheet } from "./components/currency-selector-sheet";
 import { ProfilePhotoPicker } from "./components/profile-photo-picker";
 import { ProfileScreenHeader } from "./components/profile-screen-header";
 import { currencies } from "./data/currencies-data";
@@ -29,17 +31,26 @@ export function UserEditorScreen() {
   const { profiles, createProfile, updateProfile } = useProfiles();
   const profile = profiles.find((item) => item.id === profileId);
   const isEditing = mode !== "create" && Boolean(profile);
-  const defaultCurrency = currencies.find(
-    (currency) => currency.code === profile?.currencyCode,
-  );
+  const defaultCurrency =
+    currencies.find(
+      (currency) => currency.code === profile?.currencyCode.toUpperCase(),
+    ) ??
+    (profile
+      ? {
+          code: profile.currencyCode,
+          name: profile.currencyName,
+          symbol: profile.currencySymbol,
+        }
+      : undefined);
   const [name, setName] = useState(profile?.name ?? "");
   const [imageUri, setImageUri] = useState(profile?.imageUri);
   const [currency, setCurrency] = useState(defaultCurrency);
   const [isCurrencyOpen, setIsCurrencyOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const canSubmit = name.trim().length > 0 && currency != null;
 
   async function handleSubmit() {
-    if (!canSubmit || !currency) return;
+    if (!canSubmit || !currency || isSaving) return;
 
     const values = {
       name: name.trim(),
@@ -53,13 +64,22 @@ export function UserEditorScreen() {
       currencySymbol: currency.symbol,
     };
 
-    if (isEditing && profile) {
-      await updateProfile(profile.id, values);
-    } else {
-      await createProfile(values);
+    setIsSaving(true);
+    try {
+      if (isEditing && profile) {
+        await updateProfile(profile.id, values);
+      } else {
+        await createProfile(values);
+      }
+      router.back();
+    } catch {
+      Alert.alert(
+        "Unable to save profile",
+        "Your changes could not be saved. Please try again.",
+      );
+    } finally {
+      setIsSaving(false);
     }
-
-    router.back();
   }
 
   return (
@@ -113,12 +133,29 @@ export function UserEditorScreen() {
             </Text>
             <Pressable
               accessibilityRole="button"
+              accessibilityLabel={
+                currency
+                  ? `Main currency: ${currency.name}, ${currency.code}`
+                  : "Choose main currency"
+              }
+              accessibilityState={{
+                expanded: isCurrencyOpen,
+                disabled: isSaving,
+              }}
+              disabled={isSaving}
               className="min-h-[64px] flex-row items-center rounded-2xl border border-border px-4"
-              onPress={() => setIsCurrencyOpen(true)}
+              onPress={() => {
+                Keyboard.dismiss();
+                setIsCurrencyOpen(true);
+              }}
             >
               {currency ? (
                 <View className="size-9.5 items-center justify-center rounded-full bg-[#70d2eb]">
-                  <Text className="font-manrope-bold text-base text-[#073442]">
+                  <Text
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    className="px-1 font-manrope-bold text-base text-[#073442]"
+                  >
                     {currency.symbol}
                   </Text>
                 </View>
@@ -135,35 +172,32 @@ export function UserEditorScreen() {
               <FilledIcon color="#a3a3a3" name="chevron-right" size={24} />
             </Pressable>
             <Text className="font-sans text-sm leading-5 text-muted">
-              Your profile details are stored locally for this session and help
-              personalize your budget experience.
+              Your profile and main currency are saved on this device when you
+              {isEditing ? " update your profile." : " add your profile."}
             </Text>
           </View>
         </ScrollView>
 
         <View className="px-5 pb-2 pt-3">
           <Button
-            isDisabled={!canSubmit}
+            isDisabled={!canSubmit || isSaving}
             size="lg"
             className="h-[50px] rounded-full bg-[#70d2eb]"
             onPress={handleSubmit}
           >
             <Button.Label className="font-manrope-bold text-base text-[#073442]">
-              {isEditing ? "Update User" : "Add User"}
+              {isSaving ? "Saving..." : isEditing ? "Update User" : "Add User"}
             </Button.Label>
           </Button>
         </View>
       </KeyboardAvoidingView>
 
-      <CurrencySelectorDialog
+      <CurrencySelectorSheet
         currencies={currencies}
         isOpen={isCurrencyOpen}
         selectedCode={currency?.code ?? ""}
         onOpenChange={setIsCurrencyOpen}
-        onSelect={(selection) => {
-          setCurrency(selection);
-          setIsCurrencyOpen(false);
-        }}
+        onSelect={setCurrency}
       />
     </SafeAreaView>
   );

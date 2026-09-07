@@ -10,7 +10,6 @@ import {
     selectMonthlySummary,
     selectTransactions,
 } from "@/data/selectors/document-selectors";
-import { ProfileAvatar } from "@/features/profile/components/profile-avatar";
 import { useProfiles } from "@/features/profile/profile-provider";
 import { FilledIcon } from "@/shared/ui/filled-icon";
 import { TabPage } from "@/shared/ui/tab-page";
@@ -58,11 +57,12 @@ export function HomeScreen() {
           onPress={() => router.push("/profile")}
           style={({ pressed }) => ({ opacity: pressed ? 0.68 : 1 })}
         >
-          <ProfileAvatar
-            initials={activeProfile.initials}
-            color={activeProfile.color}
-            size="md"
-          />
+          <View
+            className="size-10 items-center justify-center rounded-full"
+            style={{ backgroundColor: activeProfile.color }}
+          >
+            <FilledIcon color="#073442" name="account" size={25} />
+          </View>
         </Pressable>
       </View>
 
