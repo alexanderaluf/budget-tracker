@@ -1,6 +1,5 @@
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
-import { CreditCardIcon, ListFilter, Plus, Search } from "lucide-react-native";
 import { useEffect, useRef, useState, type RefObject } from "react";
 import {
     Pressable,
@@ -19,6 +18,8 @@ import Animated, {
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { FilledIcon, type FilledIconName } from "@/shared/ui/filled-icon";
+
 import { navigationItems } from "./navigation-config";
 import type { TabId } from "./types";
 
@@ -32,11 +33,11 @@ type BottomNavigationProps = {
 type TabFrame = { width: number; x: number };
 
 const actionIcons = {
-  home: Plus,
-  accounts: CreditCardIcon,
-  reports: ListFilter,
-  search: Search,
-} satisfies Record<TabId, (typeof navigationItems)[number]["icon"]>;
+  home: "plus-thick",
+  accounts: "credit-card-plus",
+  reports: "filter",
+  search: "magnify",
+} satisfies Record<TabId, FilledIconName>;
 
 export function BottomNavigation({
   activeItem,
@@ -54,7 +55,7 @@ export function BottomNavigation({
     useState<TabId>(activeItem);
   const tabFrames = useRef<Partial<Record<TabId, TabFrame>>>({});
   const targetActionItem = useRef(activeItem);
-  const ActionIcon = actionIcons[displayedActionItem];
+  const actionIcon = actionIcons[displayedActionItem];
 
   useEffect(() => {
     const activeFrame = tabFrames.current[activeItem];
@@ -158,7 +159,6 @@ export function BottomNavigation({
             ) : null}
 
             {navigationItems.map((item) => {
-              const Icon = item.icon;
               const isActive = item.id === activeItem;
 
               return (
@@ -175,12 +175,13 @@ export function BottomNavigation({
                     pressed && styles.pressed,
                   ]}
                 >
-                  <Icon
+                  <FilledIcon
                     color={isActive ? "#70d2eb" : "#ededed"}
-                    size={22}
-                    strokeWidth={isActive ? 2.8 : 2.5}
+                    name={item.icon}
+                    size={24}
                   />
                   <Text
+                    allowFontScaling={false}
                     className="font-manrope-bold"
                     numberOfLines={1}
                     style={[styles.label, isActive && styles.activeLabel]}
@@ -211,7 +212,7 @@ export function BottomNavigation({
           ]}
         >
           <Animated.View style={[styles.actionIcon, actionIconStyle]}>
-            <ActionIcon color="#073442" size={25} strokeWidth={3} />
+            <FilledIcon color="#073442" name={actionIcon} size={29} />
           </Animated.View>
         </Pressable>
       </View>
@@ -273,6 +274,8 @@ const styles = StyleSheet.create({
     color: "#ededed",
     fontSize: 10.5,
     lineHeight: 14,
+    textAlign: "center",
+    width: "100%",
   },
   activeLabel: {
     color: "#70d2eb",

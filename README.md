@@ -48,6 +48,25 @@ To learn more about developing your project with Expo, look at the following res
 - [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
 - [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
 
+## Local data and backups
+
+Budget Manager is local-first and has no backend. The canonical application
+document is stored in an on-device SQLite database, while profile photos and
+other attachments are stored in the application's private documents directory.
+All writes are serialized and committed transactionally to SQLite.
+
+The Settings screen supports:
+
+- ZIP export and restore for the complete JSON document plus attachments.
+- JSON export and restore for all records without images or attachments.
+- CSV transaction export and re-import for spreadsheet workflows.
+- Import of Paisa-style version 3 JSON backup documents. Unknown collections
+  and fields are preserved for forward compatibility.
+
+Google Drive backup is intentionally not implemented yet. The local backup
+document includes reserved cloud-provider metadata so a remote destination can
+be added later without changing the persisted domain format.
+
 ## Join the community
 
 Join our community of developers creating universal apps.

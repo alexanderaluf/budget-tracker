@@ -1,8 +1,8 @@
 import { Card } from "heroui-native";
-import { SearchX } from "lucide-react-native";
 import { Text, View } from "react-native";
 
 import { formatSignedCurrency } from "@/shared/lib/currency";
+import { FilledIcon } from "@/shared/ui/filled-icon";
 
 import type { SearchResult } from "../types";
 
@@ -15,7 +15,7 @@ export function SearchResults({ query, results }: SearchResultsProps) {
   if (results.length === 0) {
     return (
       <Card className="items-center border border-border bg-surface px-6 py-10">
-        <SearchX color="#70d2eb" size={28} strokeWidth={2} />
+        <FilledIcon color="#70d2eb" name="magnify-close" size={30} />
         <Text className="mt-4 font-manrope-bold text-base text-foreground">
           No matching transactions
         </Text>
@@ -39,8 +39,6 @@ export function SearchResults({ query, results }: SearchResultsProps) {
 
       <Card.Body className="px-5 pb-3">
         {results.map((result, index) => {
-          const Icon = result.icon;
-
           return (
             <View
               key={result.id}
@@ -52,7 +50,7 @@ export function SearchResults({ query, results }: SearchResultsProps) {
                 className="size-11 items-center justify-center rounded-xl"
                 style={{ backgroundColor: result.iconBackground }}
               >
-                <Icon color={result.color} size={20} strokeWidth={2.2} />
+                <FilledIcon color={result.color} name={result.icon} size={21} />
               </View>
               <View className="ml-3 flex-1">
                 <Text className="font-manrope-bold text-sm text-foreground">

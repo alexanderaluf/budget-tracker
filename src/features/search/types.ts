@@ -1,4 +1,4 @@
-import type { LucideIcon } from "lucide-react-native";
+import type { FilledIconName } from "@/shared/ui/filled-icon";
 
 export type SearchResult = {
   id: string;
@@ -7,7 +7,7 @@ export type SearchResult = {
   account: string;
   date: string;
   amount: number;
-  icon: LucideIcon;
+  icon: FilledIconName;
   color: string;
   iconBackground: string;
 };

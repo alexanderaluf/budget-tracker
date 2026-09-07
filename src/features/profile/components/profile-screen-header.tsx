@@ -1,0 +1,30 @@
+import { useRouter } from "expo-router";
+import { Button } from "heroui-native";
+import { Text, View } from "react-native";
+
+import { FilledIcon } from "@/shared/ui/filled-icon";
+
+type ProfileScreenHeaderProps = {
+  title: string;
+};
+
+export function ProfileScreenHeader({ title }: ProfileScreenHeaderProps) {
+  const router = useRouter();
+
+  return (
+    <View className="flex-row items-center px-4 py-2">
+      <Button
+        accessibilityLabel="Go back"
+        isIconOnly
+        size="sm"
+        variant="ghost"
+        onPress={() => router.back()}
+      >
+        <FilledIcon color="#f2f2f2" name="arrow-left" size={24} />
+      </Button>
+      <Text className="ml-2 font-manrope-bold text-xl text-foreground">
+        {title}
+      </Text>
+    </View>
+  );
+}

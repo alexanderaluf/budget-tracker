@@ -1,8 +1,8 @@
 import { Card, Chip } from "heroui-native";
-import { ChevronRight } from "lucide-react-native";
 import { Pressable, Text, View } from "react-native";
 
 import { formatCurrency } from "@/shared/lib/currency";
+import { FilledIcon } from "@/shared/ui/filled-icon";
 
 import type { Account } from "../types";
 
@@ -25,8 +25,6 @@ export function AccountList({ accounts, onAccountPress }: AccountListProps) {
 
       <Card.Body className="px-5 pb-3">
         {accounts.map((account, index) => {
-          const Icon = account.icon;
-
           return (
             <Pressable
               key={account.id}
@@ -40,7 +38,11 @@ export function AccountList({ accounts, onAccountPress }: AccountListProps) {
                 className="size-11 items-center justify-center rounded-xl"
                 style={{ backgroundColor: account.iconBackground }}
               >
-                <Icon color={account.color} size={21} strokeWidth={2.2} />
+                <FilledIcon
+                  color={account.color}
+                  name={account.icon}
+                  size={22}
+                />
               </View>
 
               <View className="ml-3 flex-1">
@@ -67,7 +69,7 @@ export function AccountList({ accounts, onAccountPress }: AccountListProps) {
                       {account.kind}
                     </Chip.Label>
                   </Chip>
-                  <ChevronRight color="#8e8e8e" size={15} strokeWidth={2.3} />
+                  <FilledIcon color="#8e8e8e" name="chevron-right" size={18} />
                 </View>
               </View>
             </Pressable>

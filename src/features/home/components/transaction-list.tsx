@@ -1,7 +1,7 @@
-import { ArrowDownLeft, ArrowUpRight } from "lucide-react-native";
 import { Text, View } from "react-native";
 
 import { formatSignedCurrency } from "@/shared/lib/currency";
+import { FilledIcon, type FilledIconName } from "@/shared/ui/filled-icon";
 
 import type { Transaction, TransactionTone } from "../types";
 
@@ -23,9 +23,8 @@ export function TransactionList({ transactions }: TransactionListProps) {
   return (
     <View className="gap-1">
       {transactions.map((transaction, index) => {
-        const Icon = transaction.icon;
-        const DirectionIcon =
-          transaction.amount >= 0 ? ArrowDownLeft : ArrowUpRight;
+        const directionIcon: FilledIconName =
+          transaction.amount >= 0 ? "arrow-bottom-left" : "arrow-top-right";
         const tone = toneStyles[transaction.tone];
 
         return (
@@ -39,7 +38,11 @@ export function TransactionList({ transactions }: TransactionListProps) {
               className="size-11 items-center justify-center rounded-xl"
               style={{ backgroundColor: tone.backgroundColor }}
             >
-              <Icon color={tone.foregroundColor} size={20} strokeWidth={2} />
+              <FilledIcon
+                color={tone.foregroundColor}
+                name={transaction.icon}
+                size={21}
+              />
             </View>
 
             <View className="ml-3 flex-1 gap-0.5">
@@ -59,7 +62,7 @@ export function TransactionList({ transactions }: TransactionListProps) {
               >
                 {formatSignedCurrency(transaction.amount)}
               </Text>
-              <DirectionIcon color="#8e8e8e" size={13} strokeWidth={2} />
+              <FilledIcon color="#8e8e8e" name={directionIcon} size={15} />
             </View>
           </View>
         );

@@ -1,4 +1,4 @@
-import type { LucideIcon } from "lucide-react-native";
+import type { FilledIconName } from "@/shared/ui/filled-icon";
 
 export type TransactionTone = "emerald" | "blue" | "amber" | "rose";
 
@@ -8,7 +8,7 @@ export type Transaction = {
   category: string;
   occurredAt: string;
   amount: number;
-  icon: LucideIcon;
+  icon: FilledIconName;
   tone: TransactionTone;
 };
 

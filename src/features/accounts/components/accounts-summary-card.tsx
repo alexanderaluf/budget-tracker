@@ -1,8 +1,8 @@
 import { Card, Chip } from "heroui-native";
-import { ArrowUpRight, ShieldCheck } from "lucide-react-native";
 import { Text, View } from "react-native";
 
 import { formatCurrency } from "@/shared/lib/currency";
+import { FilledIcon } from "@/shared/ui/filled-icon";
 
 type AccountsSummaryCardProps = {
   assets: number;
@@ -21,13 +21,13 @@ export function AccountsSummaryCard({
     <Card className="border border-[#2d2d2d] bg-[#171717] p-0">
       <Card.Header className="flex-row items-center justify-between px-5 pt-5">
         <View className="flex-row items-center gap-2">
-          <ShieldCheck color="#70d2eb" size={17} strokeWidth={2.4} />
+          <FilledIcon color="#70d2eb" name="shield-check" size={18} />
           <Text className="font-manrope-semibold text-xs uppercase tracking-widest text-muted">
             Total net worth
           </Text>
         </View>
         <Chip color="success" size="sm" variant="soft">
-          <ArrowUpRight color="#70d2eb" size={13} strokeWidth={2.5} />
+          <FilledIcon color="#70d2eb" name="arrow-top-right" size={15} />
           <Chip.Label className="font-manrope-bold">
             {monthlyChangePercent}%
           </Chip.Label>

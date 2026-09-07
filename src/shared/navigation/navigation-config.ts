@@ -1,22 +1,20 @@
-import {
-    ChartNoAxesCombined,
-    CreditCard,
-    House,
-    Search,
-} from "lucide-react-native";
-
 import type { TabId, TabItem } from "./types";
 
 export const navigationItems: TabItem[] = [
-  { id: "home", label: "Home", href: "/", icon: House },
-  { id: "accounts", label: "Accounts", href: "/accounts", icon: CreditCard },
+  { id: "home", label: "Home", href: "/", icon: "home-variant" },
+  {
+    id: "accounts",
+    label: "Accounts",
+    href: "/accounts",
+    icon: "credit-card-chip",
+  },
   {
     id: "reports",
     label: "Reports",
     href: "/reports",
-    icon: ChartNoAxesCombined,
+    icon: "chart-donut-variant",
   },
-  { id: "search", label: "Search", href: "/search", icon: Search },
+  { id: "search", label: "Search", href: "/search", icon: "magnify" },
 ];
 
 export function getTabFromPathname(pathname: string): TabId {

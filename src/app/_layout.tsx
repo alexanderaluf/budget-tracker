@@ -7,10 +7,15 @@ import { Manrope_700Bold } from "@expo-google-fonts/manrope/700Bold";
 import { useFonts } from "expo-font";
 import { NavigationBar } from "expo-navigation-bar";
 import { Stack } from "expo-router";
+import { SQLiteProvider } from "expo-sqlite";
 import { StatusBar } from "expo-status-bar";
 import { HeroUINativeProvider } from "heroui-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { Uniwind, useUniwind } from "uniwind";
+
+import { migrateLocalDatabase } from "@/data/database/migrations";
+import { LocalDataProvider } from "@/data/local-data-provider";
+import { ProfileProvider } from "@/features/profile/profile-provider";
 
 Uniwind.setTheme("dark");
 
@@ -37,12 +42,21 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <HeroUINativeProvider>
-        <SystemBars />
-        <Stack
-          screenOptions={{
-            headerShown: false,
-          }}
-        />
+        <SQLiteProvider
+          databaseName="budget-manager.db"
+          onInit={migrateLocalDatabase}
+        >
+          <LocalDataProvider>
+            <ProfileProvider>
+              <SystemBars />
+              <Stack
+                screenOptions={{
+                  headerShown: false,
+                }}
+              />
+            </ProfileProvider>
+          </LocalDataProvider>
+        </SQLiteProvider>
       </HeroUINativeProvider>
     </GestureHandlerRootView>
   );

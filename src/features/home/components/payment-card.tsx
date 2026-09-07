@@ -1,9 +1,9 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { Card } from "heroui-native";
-import { Eye, EyeOff, Nfc } from "lucide-react-native";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { formatCurrency } from "@/shared/lib/currency";
+import { FilledIcon } from "@/shared/ui/filled-icon";
 
 import type { PaymentCardDetails } from "../types";
 import { CardBrand } from "./card-brand";
@@ -20,7 +20,7 @@ export function PaymentCard({
   isBalanceVisible,
   onToggleBalance,
 }: PaymentCardProps) {
-  const VisibilityIcon = isBalanceVisible ? Eye : EyeOff;
+  const visibilityIcon = isBalanceVisible ? "eye" : "eye-off";
   const numberGroups = ["••••", "••••", "••••", card.lastFour];
 
   return (
@@ -61,7 +61,7 @@ export function PaymentCard({
         <View className="flex-row items-end justify-between">
           <View className="flex-row items-center gap-3">
             <EmvChip />
-            <Nfc color="#ffffff" size={20} strokeWidth={2.2} />
+            <FilledIcon color="#ffffff" name="nfc" size={21} />
           </View>
 
           <View className="items-end">
@@ -78,7 +78,7 @@ export function PaymentCard({
                 onPress={onToggleBalance}
                 style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
               >
-                <VisibilityIcon color="#ffffff" size={14} strokeWidth={2.3} />
+                <FilledIcon color="#ffffff" name={visibilityIcon} size={16} />
               </Pressable>
             </View>
             <Text

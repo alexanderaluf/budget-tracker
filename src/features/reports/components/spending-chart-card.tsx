@@ -1,8 +1,8 @@
 import { Card, Chip } from "heroui-native";
-import { TrendingDown } from "lucide-react-native";
 import { Text, View } from "react-native";
 
 import { formatCurrency } from "@/shared/lib/currency";
+import { FilledIcon } from "@/shared/ui/filled-icon";
 
 import type { DailySpend } from "../types";
 
@@ -19,7 +19,7 @@ export function SpendingChartCard({
   dailyAverage,
   dailySpending,
 }: SpendingChartCardProps) {
-  const maximum = Math.max(...dailySpending.map((item) => item.amount));
+  const maximum = Math.max(...dailySpending.map((item) => item.amount), 1);
 
   return (
     <Card className="border border-[#2d2d2d] bg-[#171717] p-0">
@@ -33,7 +33,7 @@ export function SpendingChartCard({
           </Card.Title>
         </View>
         <Chip color="success" size="sm" variant="soft">
-          <TrendingDown color="#70d2eb" size={13} strokeWidth={2.6} />
+          <FilledIcon color="#70d2eb" name="trending-down" size={15} />
           <Chip.Label className="font-manrope-bold">
             {Math.abs(changePercent)}%
           </Chip.Label>

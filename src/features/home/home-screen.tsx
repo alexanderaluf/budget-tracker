@@ -1,27 +1,43 @@
+import { useRouter } from "expo-router";
 import { Button } from "heroui-native";
-import { Bell, ChevronRight } from "lucide-react-native";
 import { useState } from "react";
-import { Alert, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 
+import { useLocalData } from "@/data/local-data-provider";
+import {
+    selectAccounts,
+    selectBudgetCategories,
+    selectMonthlySummary,
+    selectTransactions,
+} from "@/data/selectors/document-selectors";
+import { ProfileAvatar } from "@/features/profile/components/profile-avatar";
+import { useProfiles } from "@/features/profile/profile-provider";
+import { FilledIcon } from "@/shared/ui/filled-icon";
 import { TabPage } from "@/shared/ui/tab-page";
 
 import { BudgetCard } from "./components/budget-card";
 import { PaymentCard } from "./components/payment-card";
 import { TransactionList } from "./components/transaction-list";
-import {
-    accountSummary,
-    budgetCategories,
-    primaryCard,
-    recentTransactions,
-} from "./data/home-data";
+import { primaryCard } from "./data/home-data";
 
 export function HomeScreen() {
+  const router = useRouter();
+  const { activeProfile } = useProfiles();
+  const { document } = useLocalData();
   const [isBalanceVisible, setIsBalanceVisible] = useState(true);
   const [showAllTransactions, setShowAllTransactions] = useState(false);
+  const transactions = selectTransactions(document);
+  const summary = selectMonthlySummary(document);
+  const accounts = selectAccounts(document);
+  const persistedBudgets = selectBudgetCategories(document);
+  const availableBalance = accounts.reduce(
+    (total, account) => total + account.balance,
+    0,
+  );
 
   const displayedTransactions = showAllTransactions
-    ? recentTransactions
-    : recentTransactions.slice(0, 3);
+    ? transactions
+    : transactions.slice(0, 3);
 
   return (
     <TabPage>
@@ -31,33 +47,40 @@ export function HomeScreen() {
             Saturday, September 5
           </Text>
           <Text className="mt-1 font-manrope-bold text-2xl text-foreground">
-            Good morning, {accountSummary.firstName}
+            Good morning, {activeProfile.name.split(" ")[0]}
           </Text>
         </View>
 
-        <Button
-          accessibilityLabel="View notifications"
-          isIconOnly
-          size="md"
-          variant="outline"
-          className="border-border bg-surface"
-          onPress={() => Alert.alert("Notifications", "You are all caught up.")}
+        <Pressable
+          accessibilityLabel="Open profile"
+          accessibilityRole="button"
+          hitSlop={6}
+          onPress={() => router.push("/profile")}
+          style={({ pressed }) => ({ opacity: pressed ? 0.68 : 1 })}
         >
-          <Bell color="#f2f2f2" size={20} strokeWidth={2} />
-        </Button>
+          <ProfileAvatar
+            initials={activeProfile.initials}
+            color={activeProfile.color}
+            size="md"
+          />
+        </Pressable>
       </View>
 
       <PaymentCard
-        card={primaryCard}
+        card={{
+          ...primaryCard,
+          balance: availableBalance,
+          cardholder: activeProfile.name,
+        }}
         isBalanceVisible={isBalanceVisible}
         onToggleBalance={() => setIsBalanceVisible((current) => !current)}
       />
 
       <BudgetCard
-        categories={budgetCategories}
-        income={accountSummary.monthlyIncome}
-        savingsRate={accountSummary.savingsRate}
-        spent={accountSummary.monthlySpent}
+        categories={persistedBudgets}
+        income={summary.income}
+        savingsRate={summary.savingsRate}
+        spent={summary.spent}
       />
 
       <View>
@@ -78,7 +101,7 @@ export function HomeScreen() {
             <Button.Label className="font-manrope-semibold text-[#70d2eb]">
               {showAllTransactions ? "Show less" : "See all"}
             </Button.Label>
-            <ChevronRight color="#70d2eb" size={16} strokeWidth={2.5} />
+            <FilledIcon color="#70d2eb" name="chevron-right" size={18} />
           </Button>
         </View>
 

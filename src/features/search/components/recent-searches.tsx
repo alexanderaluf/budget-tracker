@@ -1,6 +1,7 @@
 import { Chip } from "heroui-native";
-import { Clock3 } from "lucide-react-native";
 import { Text, View } from "react-native";
+
+import { FilledIcon } from "@/shared/ui/filled-icon";
 
 type RecentSearchesProps = {
   queries: string[];
@@ -11,7 +12,7 @@ export function RecentSearches({ queries, onSelect }: RecentSearchesProps) {
   return (
     <View className="gap-3">
       <View className="flex-row items-center gap-2">
-        <Clock3 color="#a3a3a3" size={16} strokeWidth={2.2} />
+        <FilledIcon color="#a3a3a3" name="clock" size={17} />
         <Text className="font-manrope-bold text-sm text-foreground">
           Recent searches
         </Text>

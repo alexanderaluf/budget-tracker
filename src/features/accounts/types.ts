@@ -1,4 +1,4 @@
-import type { LucideIcon } from "lucide-react-native";
+import type { FilledIconName } from "@/shared/ui/filled-icon";
 
 export type AccountKind = "checking" | "savings" | "credit";
 
@@ -9,7 +9,7 @@ export type Account = {
   kind: AccountKind;
   balance: number;
   lastFour: string;
-  icon: LucideIcon;
+  icon: FilledIconName;
   color: string;
   iconBackground: string;
 };
