@@ -11,12 +11,14 @@ import { EmvChip } from "./emv-chip";
 
 type PaymentCardProps = {
   card: PaymentCardDetails;
+  currencyCode?: string;
   isBalanceVisible: boolean;
   onToggleBalance: () => void;
 };
 
 export function PaymentCard({
   card,
+  currencyCode = "USD",
   isBalanceVisible,
   onToggleBalance,
 }: PaymentCardProps) {
@@ -84,13 +86,15 @@ export function PaymentCard({
             <Text
               accessibilityLabel={
                 isBalanceVisible
-                  ? `Available balance ${formatCurrency(card.balance)}`
+                  ? `Available balance ${card.balance < 0 ? "minus " : ""}${formatCurrency(card.balance, currencyCode)}`
                   : "Available balance hidden"
               }
               className="mt-0.5 font-manrope-bold text-[26px] text-white"
               style={{ lineHeight: 31 }}
             >
-              {isBalanceVisible ? formatCurrency(card.balance) : "••••••"}
+              {isBalanceVisible
+                ? `${card.balance < 0 ? "−" : ""}${formatCurrency(card.balance, currencyCode)}`
+                : "••••••"}
             </Text>
           </View>
         </View>

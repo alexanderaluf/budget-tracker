@@ -3,7 +3,7 @@ import type { SQLiteDatabase } from "expo-sqlite";
 import { createDefaultBackup } from "../model/default-backup";
 import { normalizeBackupDocument } from "../model/normalize-backup";
 
-const DATABASE_VERSION = 2;
+const DATABASE_VERSION = 4;
 
 export async function migrateLocalDatabase(database: SQLiteDatabase) {
   await database.execAsync(`
@@ -66,5 +66,43 @@ export async function migrateLocalDatabase(database: SQLiteDatabase) {
     }
   }
 
-  await database.execAsync(`PRAGMA user_version = ${DATABASE_VERSION};`);
+  if (currentVersion < 3) {
+    await database.withExclusiveTransactionAsync(async (transaction) => {
+      const stored = await transaction.getFirstAsync<{ document_json: string }>(
+        "SELECT document_json FROM app_document WHERE id = 1",
+      );
+      if (stored) {
+        const document = normalizeBackupDocument(
+          JSON.parse(stored.document_json),
+        );
+        await transaction.runAsync(
+          "UPDATE app_document SET schema_version = ?, document_json = ?, updated_at = ? WHERE id = 1",
+          document._local.schemaVersion,
+          JSON.stringify(document),
+          new Date().toISOString(),
+        );
+      }
+      await transaction.execAsync("PRAGMA user_version = 3;");
+    });
+  }
+
+  if (currentVersion < 4) {
+    await database.withExclusiveTransactionAsync(async (transaction) => {
+      const stored = await transaction.getFirstAsync<{ document_json: string }>(
+        "SELECT document_json FROM app_document WHERE id = 1",
+      );
+      if (stored) {
+        const document = normalizeBackupDocument(
+          JSON.parse(stored.document_json),
+        );
+        await transaction.runAsync(
+          "UPDATE app_document SET schema_version = ?, document_json = ?, updated_at = ? WHERE id = 1",
+          document._local.schemaVersion,
+          JSON.stringify(document),
+          new Date().toISOString(),
+        );
+      }
+      await transaction.execAsync(`PRAGMA user_version = ${DATABASE_VERSION};`);
+    });
+  }
 }

@@ -30,6 +30,10 @@ export function TabShell() {
   }
 
   function handleActionPress(tabId: TabId) {
+    if (tabId === "accounts") {
+      router.push("/accounts/create");
+      return;
+    }
     const action = actionLabels[tabId];
     Alert.alert(action, `${action} is ready for its dedicated flow.`);
   }

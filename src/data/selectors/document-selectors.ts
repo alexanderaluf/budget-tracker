@@ -1,4 +1,6 @@
-import type { Account } from "@/features/accounts/types";
+import type { Account, AccountPeriod, AccountTransaction } from "@/features/accounts/types";
+import type { AccountDraft } from "../model/account-record";
+import { ACCOUNT_ICONS } from "@/features/accounts/account-options";
 import type { BudgetCategory, Transaction } from "@/features/home/types";
 import type { DailySpend, SpendingCategory } from "@/features/reports/types";
 import type { SearchResult } from "@/features/search/types";
@@ -52,40 +54,163 @@ function transactionDate(record: JsonObject) {
 }
 
 export function selectAccounts(document: BackupDocument): Account[] {
-  return document.accounts.map((record, index) => {
-    const institution = text(record.bankName, "Local account");
-    const normalized = `${text(record.name)} ${institution}`.toLowerCase();
-    const kind = normalized.includes("credit")
-      ? "credit"
-      : normalized.includes("saving")
-        ? "savings"
-        : "checking";
+  const profileId = document._local.selectedProfileId;
+  const owner = document.users.find(
+    (user) => String(user.uuid ?? user.id) === profileId,
+  );
+  return document.accounts
+    .filter(
+      (record) =>
+        !profileId ||
+        record.user == null ||
+        record.user === profileId ||
+        (owner?.id != null && record.user === owner.id),
+    )
+    .map((record, index) => {
+      const institution = text(record.bankName, "Local account");
+      const normalized = `${text(record.name)} ${institution}`.toLowerCase();
+      const kind =
+        record.accountType === "card"
+          ? "credit"
+          : record.accountType === "cash"
+            ? "cash"
+            : record.accountType === "savings"
+              ? "savings"
+              : record.type === 1
+                ? "cash"
+                : record.type === 2
+                  ? "savings"
+                  : normalized.includes("credit")
+                    ? "credit"
+                    : normalized.includes("saving")
+                      ? "savings"
+                      : "checking";
+      const storedIcon = text(record.icon);
+      const storedIconPath = text(record.iconPath);
+      const materialIconIsValid =
+        storedIcon.startsWith("material:") &&
+        /^[Mm]/.test(storedIconPath) &&
+        storedIconPath.length <= 20_000;
 
+      return {
+        id: recordId(record, index),
+        accountNumber: text(record.accountNumber),
+        ownerName: text(document.users.find((user) => user.uuid === record.user || user.id === record.user)?.name),
+        ...accountActivityTotals(document, record),
+        name: text(record.name, `Account ${index + 1}`),
+        institution,
+        kind,
+        balance: number(record.amount),
+        lastFour: text(record.cardLastFour, text(record.accountNumber)).slice(
+          -4,
+        ),
+        icon: materialIconIsValid
+          ? storedIcon
+          : (ACCOUNT_ICONS.find(
+              (icon) =>
+                !icon.name.startsWith("material:") && icon.name === record.icon,
+            )?.name ??
+            (kind === "cash"
+              ? "cash"
+              : kind === "credit"
+                ? "credit-card"
+                : kind === "savings"
+                  ? "piggy-bank"
+                  : "bank")),
+        iconPath: materialIconIsValid ? storedIconPath : null,
+        color: /^#[a-f\d]{6}$/i.test(text(record.color))
+          ? text(record.color)
+          : colors[index % colors.length],
+        iconBackground: /^#[a-f\d]{6}$/i.test(text(record.color))
+          ? `${text(record.color)}26`
+          : ["#17343c", "#2f2942", "#3b3020", "#402523"][index % 4],
+        currencyCode: /^[A-Z]{3}$/.test(text(record.currencyCode).toUpperCase())
+          ? text(record.currencyCode).toUpperCase()
+          : "USD",
+        isDefault: record.isDefault === true,
+        isExcluded: record.isExcluded === true,
+        cardCompany: text(record.cardCompany),
+        paymentDay:
+          typeof record.paymentDay === "number" &&
+          Number.isInteger(record.paymentDay) &&
+          record.paymentDay >= 1 &&
+          record.paymentDay <= 31
+            ? record.paymentDay
+            : null,
+      };
+    });
+}
+
+function belongsToAccount(transaction: JsonObject, account: JsonObject) {
+  return [account.uuid, account.id].some((id) => id != null && transaction.account === id);
+}
+
+function accountActivityTotals(document: BackupDocument, account: JsonObject) {
+  const currency = text(account.currencyCode, "USD").toUpperCase();
+  const records = document.transactions.filter((item) =>
+    belongsToAccount(item, account) && text(item.currencyCode, currency).toUpperCase() === currency,
+  );
+  return {
+    income: records.filter((item) => item.type === 1).reduce((sum, item) => sum + Math.abs(number(item.amount)), 0),
+    expense: records.filter((item) => item.type === 0).reduce((sum, item) => sum + Math.abs(number(item.amount)), 0),
+  };
+}
+
+export function selectAccountTransactions(document: BackupDocument, accountId: string): AccountTransaction[] {
+  const account = selectAccounts(document).find((item) => item.id === accountId);
+  const record = document.accounts.find((item) => String(item.uuid ?? item.id) === accountId);
+  if (!account || !record) return [];
+  return document.transactions.filter((item) => belongsToAccount(item, record)).map((item, index) => {
+    const timestamp = new Date(text(item.date, text(item.createdAt))).getTime();
+    const type = item.type === 1 ? "income" : item.type === 0 ? "expense" : "transfer";
     return {
-      id: recordId(record, index),
-      name: text(record.name, `Account ${index + 1}`),
-      institution,
-      kind,
-      balance: number(record.amount),
-      lastFour: text(record.accountNumber, "••••").slice(-4),
-      icon:
-        kind === "credit"
-          ? "credit-card"
-          : kind === "savings"
-            ? "piggy-bank"
-            : "bank",
-      color: colors[index % colors.length],
-      iconBackground: ["#17343c", "#2f2942", "#3b3020", "#402523"][index % 4],
-    };
-  });
+      id: recordId(item, index),
+      name: text(item.name, "Untitled transaction"),
+      category: text(item.categoryName, lookupName(document.categories, item.category)),
+      amount: Math.abs(number(item.amount)),
+      type,
+      currencyCode: /^[A-Z]{3}$/.test(text(item.currencyCode).toUpperCase()) ? text(item.currencyCode).toUpperCase() : account.currencyCode,
+      timestamp: Number.isFinite(timestamp) ? timestamp : null,
+    } satisfies AccountTransaction;
+  }).sort((a, b) => (b.timestamp ?? -Infinity) - (a.timestamp ?? -Infinity));
+}
+
+export function accountPeriodRange(period: AccountPeriod, anchor: Date) {
+  const start = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate());
+  if (period === "Weekly") start.setDate(start.getDate() - (start.getDay() + 6) % 7);
+  if (period === "Monthly") start.setDate(1);
+  if (period === "Yearly") start.setMonth(0, 1);
+  const end = new Date(start);
+  if (period === "Yearly") end.setFullYear(end.getFullYear() + 1);
+  else if (period === "Monthly") end.setMonth(end.getMonth() + 1);
+  else end.setDate(end.getDate() + (period === "Weekly" ? 7 : 1));
+  return { start, end };
+}
+
+export function filterAccountTransactions(transactions: AccountTransaction[], period: AccountPeriod, anchor: Date) {
+  const { start, end } = accountPeriodRange(period, anchor);
+  return transactions.filter((item) => item.timestamp != null && item.timestamp >= start.getTime() && item.timestamp < end.getTime());
+}
+
+export function selectAccountDraft(document: BackupDocument, id: string): AccountDraft | null {
+  const account = selectAccounts(document).find((item) => item.id === id);
+  if (!account) return null;
+  return {
+    name: account.name, amount: String(account.balance), accountNumber: account.accountNumber,
+    accountType: account.kind === "cash" ? "cash" : account.kind === "savings" ? "savings" : "card",
+    currencyCode: account.currencyCode, icon: account.icon, iconPath: account.iconPath,
+    color: account.color, isDefault: account.isDefault, isExcluded: account.isExcluded,
+    cardLastFour: account.lastFour, cardCompany: account.cardCompany, paymentDay: account.paymentDay,
+  };
 }
 
 export function selectAccountTotals(accounts: Account[]) {
-  const assets = accounts.reduce(
+  const included = accounts.filter((account) => !account.isExcluded);
+  const assets = included.reduce(
     (total, account) => total + Math.max(account.balance, 0),
     0,
   );
-  const liabilities = accounts.reduce(
+  const liabilities = included.reduce(
     (total, account) => total + Math.abs(Math.min(account.balance, 0)),
     0,
   );
@@ -95,6 +220,30 @@ export function selectAccountTotals(accounts: Account[]) {
     netWorth: assets - liabilities,
     monthlyChangePercent: 0,
   };
+}
+
+export function selectAccountTotalsByCurrency(accounts: Account[]) {
+  return [...new Set(accounts.map((account) => account.currencyCode))].map(
+    (currencyCode) => ({
+      currencyCode,
+      ...selectAccountTotals(
+        accounts.filter((account) => account.currencyCode === currencyCode),
+      ),
+    }),
+  );
+}
+
+// Exclusion affects calculations; records remain visible in activity and search.
+function includedTransactions(document: BackupDocument) {
+  const excludedIds = new Set<JsonValue>(
+    document.accounts
+      .filter((account) => account.isExcluded === true)
+      .flatMap((account) => [account.uuid, account.id])
+      .filter((id) => id != null),
+  );
+  return document.transactions.filter(
+    (transaction) => !excludedIds.has(transaction.account),
+  );
 }
 
 export function selectTransactions(document: BackupDocument): Transaction[] {
@@ -143,7 +292,7 @@ export function selectSearchResults(document: BackupDocument): SearchResult[] {
 }
 
 export function selectMonthlySummary(document: BackupDocument) {
-  const values = document.transactions.map(transactionAmount);
+  const values = includedTransactions(document).map(transactionAmount);
   const income = values.filter((value) => value > 0).reduce((a, b) => a + b, 0);
   const spent = Math.abs(
     values.filter((value) => value < 0).reduce((a, b) => a + b, 0),
@@ -162,7 +311,7 @@ export function selectBudgetCategories(
     const categoryIds = Array.isArray(budget.categories)
       ? budget.categories
       : [];
-    const spent = document.transactions
+    const spent = includedTransactions(document)
       .filter((transaction) =>
         categoryIds.some((id) => id === transaction.category),
       )
@@ -185,7 +334,7 @@ export function selectSpendingCategories(
   document: BackupDocument,
 ): SpendingCategory[] {
   const totals = new Map<string, number>();
-  for (const transaction of document.transactions) {
+  for (const transaction of includedTransactions(document)) {
     if (number(transaction.type) === 1) continue;
     const category = text(
       transaction.categoryName,
@@ -211,7 +360,7 @@ export function selectSpendingCategories(
 
 export function selectDailySpending(document: BackupDocument): DailySpend[] {
   const dayTotals = new Map<string, number>();
-  for (const transaction of document.transactions) {
+  for (const transaction of includedTransactions(document)) {
     if (number(transaction.type) === 1) continue;
     const date = new Date(text(transaction.createdAt));
     if (Number.isNaN(date.getTime())) continue;

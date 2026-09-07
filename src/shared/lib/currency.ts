@@ -4,8 +4,12 @@ const currencyFormatter = new Intl.NumberFormat("en-US", {
   minimumFractionDigits: 2,
 });
 
-export function formatCurrency(value: number) {
-  return currencyFormatter.format(Math.abs(value));
+export function formatCurrency(value: number, currency = "USD") {
+  return currency === "USD"
+    ? currencyFormatter.format(Math.abs(value))
+    : new Intl.NumberFormat("en-US", { style: "currency", currency }).format(
+        Math.abs(value),
+      );
 }
 
 export function formatSignedCurrency(value: number) {

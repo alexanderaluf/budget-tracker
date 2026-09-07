@@ -1,11 +1,12 @@
 import {
-    BACKUP_COLLECTION_KEYS,
-    BACKUP_VERSION,
-    LOCAL_SCHEMA_VERSION,
-    type AttachmentManifest,
-    type BackupDocument,
+  BACKUP_COLLECTION_KEYS,
+  BACKUP_VERSION,
+  LOCAL_SCHEMA_VERSION,
+  type AttachmentManifest,
+  type BackupDocument,
 } from "./backup-document";
 import { isJsonObject } from "./json";
+import { normalizeAccountRecord } from "./account-record";
 
 function normalizeAttachments(value: unknown): AttachmentManifest[] {
   if (!Array.isArray(value)) return [];
@@ -46,12 +47,18 @@ export function normalizeBackupDocument(value: unknown): BackupDocument {
   }
 
   const local = isJsonObject(value._local) ? value._local : {};
+  if (
+    typeof local.schemaVersion === "number" &&
+    local.schemaVersion > LOCAL_SCHEMA_VERSION
+  ) {
+    throw new Error(
+      "This backup uses a newer local schema. Update the app before restoring it.",
+    );
+  }
+  document.accounts = document.accounts.map(normalizeAccountRecord);
   document._local = {
     ...local,
-    schemaVersion:
-      typeof local.schemaVersion === "number"
-        ? local.schemaVersion
-        : LOCAL_SCHEMA_VERSION,
+    schemaVersion: LOCAL_SCHEMA_VERSION,
     exportedAt: typeof local.exportedAt === "string" ? local.exportedAt : null,
     selectedProfileId:
       typeof local.selectedProfileId === "string"

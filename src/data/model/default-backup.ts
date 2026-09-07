@@ -1,9 +1,9 @@
 import {
-    BACKUP_COLLECTION_KEYS,
-    BACKUP_VERSION,
-    LOCAL_SCHEMA_VERSION,
-    type BackupCollectionKey,
-    type BackupDocument,
+  BACKUP_COLLECTION_KEYS,
+  BACKUP_VERSION,
+  LOCAL_SCHEMA_VERSION,
+  type BackupCollectionKey,
+  type BackupDocument,
 } from "./backup-document";
 import type { JsonObject } from "./json";
 
@@ -66,6 +66,13 @@ export function createDefaultBackup(): BackupDocument {
       {
         id: 1,
         uuid: "account-checking",
+        accountType: "card",
+        icon: "bank",
+        iconPath: null,
+        color: "#70d2eb",
+        cardLastFour: null,
+        cardCompany: null,
+        paymentDay: null,
         name: "Everyday checking",
         bankName: "Northstar Bank",
         accountNumber: "2841",
@@ -82,6 +89,13 @@ export function createDefaultBackup(): BackupDocument {
       {
         id: 2,
         uuid: "account-savings",
+        accountType: "savings",
+        icon: "piggy-bank",
+        iconPath: null,
+        color: "#b89cf5",
+        cardLastFour: null,
+        cardCompany: null,
+        paymentDay: null,
         name: "Emergency savings",
         bankName: "Northstar Bank",
         accountNumber: "9016",
@@ -98,6 +112,13 @@ export function createDefaultBackup(): BackupDocument {
       {
         id: 3,
         uuid: "account-credit",
+        accountType: "card",
+        icon: "credit-card",
+        iconPath: null,
+        color: "#f2c66d",
+        cardLastFour: "4438",
+        cardCompany: "Mastercard",
+        paymentDay: null,
         name: "Everyday rewards",
         bankName: "Summit Credit",
         accountNumber: "4438",

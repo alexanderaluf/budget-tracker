@@ -1,44 +1,38 @@
-import { Chip } from "heroui-native";
-import { Alert } from "react-native";
-
+import { useRouter } from "expo-router";
+import { FlatList, Pressable, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalData } from "@/data/local-data-provider";
-import {
-    selectAccounts,
-    selectAccountTotals,
-} from "@/data/selectors/document-selectors";
-import { PageHeader } from "@/shared/ui/page-header";
-import { TabPage } from "@/shared/ui/tab-page";
-
-import { AccountList } from "./components/account-list";
-import { AccountsSummaryCard } from "./components/accounts-summary-card";
-import type { Account } from "./types";
+import { selectAccounts } from "@/data/selectors/document-selectors";
+import { AccountCard } from "./components/account-card";
 
 export function AccountsScreen() {
   const { document } = useLocalData();
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
   const accounts = selectAccounts(document);
-  const accountTotals = selectAccountTotals(accounts);
-
-  function handleAccountPress(account: Account) {
-    Alert.alert(account.name, `Account ending in ${account.lastFour}`);
-  }
-
   return (
-    <TabPage>
-      <PageHeader
-        action={
-          <Chip color="success" size="sm" variant="soft">
-            <Chip.Label className="font-manrope-bold">
-              {accounts.length} linked
-            </Chip.Label>
-          </Chip>
-        }
-        description="All balances, cards, and savings in one place."
-        eyebrow="Portfolio"
-        title="Accounts"
-      />
-
-      <AccountsSummaryCard {...accountTotals} />
-      <AccountList accounts={accounts} onAccountPress={handleAccountPress} />
-    </TabPage>
+    <FlatList
+      data={accounts}
+      keyExtractor={(item) => item.id}
+      contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 110 + insets.bottom, gap: 14 }}
+      showsVerticalScrollIndicator={false}
+      ListHeaderComponent={
+        <View className="flex-row items-center justify-between px-1 py-4">
+          <Text accessibilityRole="header" className="font-manrope-bold text-2xl text-foreground">Accounts</Text>
+          <Text className="font-sans text-sm text-muted">{accounts.length} accounts</Text>
+        </View>
+      }
+      renderItem={({ item }) => (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`View ${item.name} account details`}
+          onPress={() => router.push({ pathname: "/accounts/[id]", params: { id: item.id } })}
+          style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
+        >
+          <AccountCard account={item} />
+        </Pressable>
+      )}
+      ListEmptyComponent={<Text className="px-4 py-12 text-center font-sans text-base text-muted">No accounts yet. Tap the add account button below to create your first account.</Text>}
+    />
   );
 }

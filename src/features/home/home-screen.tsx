@@ -5,10 +5,10 @@ import { Pressable, Text, View } from "react-native";
 
 import { useLocalData } from "@/data/local-data-provider";
 import {
-    selectAccounts,
-    selectBudgetCategories,
-    selectMonthlySummary,
-    selectTransactions,
+  selectAccounts,
+  selectBudgetCategories,
+  selectMonthlySummary,
+  selectTransactions,
 } from "@/data/selectors/document-selectors";
 import { useProfiles } from "@/features/profile/profile-provider";
 import { FilledIcon } from "@/shared/ui/filled-icon";
@@ -29,10 +29,13 @@ export function HomeScreen() {
   const summary = selectMonthlySummary(document);
   const accounts = selectAccounts(document);
   const persistedBudgets = selectBudgetCategories(document);
-  const availableBalance = accounts.reduce(
-    (total, account) => total + account.balance,
-    0,
-  );
+  const availableBalance = accounts
+    .filter(
+      (account) =>
+        !account.isExcluded &&
+        account.currencyCode === activeProfile.currencyCode.toUpperCase(),
+    )
+    .reduce((total, account) => total + account.balance, 0);
 
   const displayedTransactions = showAllTransactions
     ? transactions
@@ -67,6 +70,7 @@ export function HomeScreen() {
       </View>
 
       <PaymentCard
+        currencyCode={activeProfile.currencyCode}
         card={{
           ...primaryCard,
           balance: availableBalance,

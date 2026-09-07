@@ -1,7 +1,7 @@
 import type { JsonObject, JsonValue } from "./json";
 
 export const BACKUP_VERSION = 3;
-export const LOCAL_SCHEMA_VERSION = 2;
+export const LOCAL_SCHEMA_VERSION = 4;
 
 export const BACKUP_COLLECTION_KEYS = [
   "transactions",

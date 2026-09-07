@@ -5,6 +5,7 @@ import { formatCurrency } from "@/shared/lib/currency";
 import { FilledIcon } from "@/shared/ui/filled-icon";
 
 import type { Account } from "../types";
+import { AccountIcon } from "./account-icon";
 
 type AccountListProps = {
   accounts: Account[];
@@ -19,7 +20,7 @@ export function AccountList({ accounts, onAccountPress }: AccountListProps) {
           Your accounts
         </Card.Title>
         <Card.Description className="mt-1 font-sans text-muted">
-          Connected balances update automatically
+          Saved on this device
         </Card.Description>
       </Card.Header>
 
@@ -38,9 +39,10 @@ export function AccountList({ accounts, onAccountPress }: AccountListProps) {
                 className="size-11 items-center justify-center rounded-xl"
                 style={{ backgroundColor: account.iconBackground }}
               >
-                <FilledIcon
+                <AccountIcon
                   color={account.color}
                   name={account.icon}
+                  pathData={account.iconPath}
                   size={22}
                 />
               </View>
@@ -50,8 +52,19 @@ export function AccountList({ accounts, onAccountPress }: AccountListProps) {
                   {account.name}
                 </Text>
                 <Text className="mt-0.5 font-sans text-xs text-muted">
-                  {account.institution} · •••• {account.lastFour}
+                  {account.cardCompany || account.currencyCode}
+                  {account.lastFour ? ` · •••• ${account.lastFour}` : ""}
                 </Text>
+                {(account.isDefault || account.isExcluded) && (
+                  <Text className="mt-1 font-sans text-xs text-muted">
+                    {[
+                      account.isDefault ? "Default" : "",
+                      account.isExcluded ? "Excluded from totals" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </Text>
+                )}
               </View>
 
               <View className="ml-2 items-end gap-1.5">
@@ -61,7 +74,7 @@ export function AccountList({ accounts, onAccountPress }: AccountListProps) {
                   }`}
                 >
                   {account.balance < 0 ? "-" : ""}
-                  {formatCurrency(account.balance)}
+                  {formatCurrency(account.balance, account.currencyCode)}
                 </Text>
                 <View className="flex-row items-center gap-1">
                   <Chip color="default" size="sm" variant="tertiary">
@@ -75,6 +88,12 @@ export function AccountList({ accounts, onAccountPress }: AccountListProps) {
             </Pressable>
           );
         })}
+        {!accounts.length && (
+          <Text className="py-6 font-sans text-sm text-muted">
+            No accounts yet. Tap the add account button below to create your
+            first account.
+          </Text>
+        )}
       </Card.Body>
     </Card>
   );
