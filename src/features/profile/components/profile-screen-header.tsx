@@ -6,9 +6,13 @@ import { FilledIcon } from "@/shared/ui/filled-icon";
 
 type ProfileScreenHeaderProps = {
   title: string;
+  onBack?: () => void;
 };
 
-export function ProfileScreenHeader({ title }: ProfileScreenHeaderProps) {
+export function ProfileScreenHeader({
+  title,
+  onBack,
+}: ProfileScreenHeaderProps) {
   const router = useRouter();
 
   return (
@@ -18,7 +22,7 @@ export function ProfileScreenHeader({ title }: ProfileScreenHeaderProps) {
         isIconOnly
         size="sm"
         variant="ghost"
-        onPress={() => router.back()}
+        onPress={onBack ?? (() => router.back())}
       >
         <FilledIcon color="#f2f2f2" name="arrow-left" size={24} />
       </Button>

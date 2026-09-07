@@ -1,13 +1,13 @@
 {
   "expo": {
-    "name": "budget-manager",
-    "slug": "budget-manager",
+    "name": "Plutus",
+    "slug": "plutus",
     "version": "1.0.0",
     "platforms": ["ios", "android"],
     "orientation": "portrait",
     "backgroundColor": "#000000",
     "icon": "./assets/images/icon.png",
-    "scheme": "budgetmanager",
+    "scheme": "plutus",
     "userInterfaceStyle": "dark",
     "ios": {
       "icon": "./assets/expo.icon"
@@ -24,11 +24,10 @@
     },
     "plugins": [
       "expo-router",
-      "@react-native-vector-icons/material-design-icons",
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow Budget Manager to select a profile photo.",
+          "photosPermission": "Allow Plutus to select a profile photo.",
           "cameraPermission": false,
           "microphonePermission": false
         }

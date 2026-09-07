@@ -179,6 +179,9 @@ export function BottomNavigation({
                     color={isActive ? "#70d2eb" : "#ededed"}
                     name={item.icon}
                     size={24}
+                    weight={
+                      item.id === "reports" || item.id === "search" ? 600 : 400
+                    }
                   />
                   <Text
                     allowFontScaling={false}
@@ -212,7 +215,17 @@ export function BottomNavigation({
           ]}
         >
           <Animated.View style={[styles.actionIcon, actionIconStyle]}>
-            <FilledIcon color="#073442" name={actionIcon} size={29} />
+            <FilledIcon
+              color="#073442"
+              name={actionIcon}
+              size={29}
+              weight={
+                displayedActionItem === "home" ||
+                displayedActionItem === "search"
+                  ? 600
+                  : 400
+              }
+            />
           </Animated.View>
         </Pressable>
       </View>

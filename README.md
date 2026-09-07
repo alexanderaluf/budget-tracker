@@ -50,7 +50,7 @@ To learn more about developing your project with Expo, look at the following res
 
 ## Local data and backups
 
-Budget Manager is local-first and has no backend. The canonical application
+Plutus is local-first and has no backend. The canonical application
 document is stored in an on-device SQLite database, while profile photos and
 other attachments are stored in the application's private documents directory.
 All writes are serialized and committed transactionally to SQLite.

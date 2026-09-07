@@ -35,7 +35,7 @@ async function shareFile(file: File, mimeType: string) {
   }
 
   await Sharing.shareAsync(file.uri, {
-    dialogTitle: "Export Budget Manager data",
+    dialogTitle: "Export Plutus data",
     mimeType,
   });
 }
@@ -48,7 +48,7 @@ export async function exportBackup(
 
   if (format === "json") {
     const file = createExportFile(
-      `budget-manager-${suffix}.json`,
+      `plutus-${suffix}.json`,
       JSON.stringify(createJsonBackupDocument(document), null, 2),
     );
     await shareFile(file, "application/json");
@@ -57,7 +57,7 @@ export async function exportBackup(
 
   if (format === "csv") {
     const file = createExportFile(
-      `budget-manager-transactions-${suffix}.csv`,
+      `plutus-transactions-${suffix}.csv`,
       transactionsToCsv(document.transactions),
     );
     await shareFile(file, "text/csv");
@@ -65,7 +65,7 @@ export async function exportBackup(
   }
 
   const file = createExportFile(
-    `budget-manager-full-${suffix}.zip`,
+    `plutus-full-${suffix}.zip`,
     await createZipBackup(document),
   );
   await shareFile(file, "application/zip");
