@@ -3,7 +3,7 @@ import type { SQLiteDatabase } from "expo-sqlite";
 import { createDefaultBackup } from "../model/default-backup";
 import { normalizeBackupDocument } from "../model/normalize-backup";
 
-const DATABASE_VERSION = 4;
+const DATABASE_VERSION = 6;
 
 export async function migrateLocalDatabase(database: SQLiteDatabase) {
   await database.execAsync(`
@@ -100,6 +100,66 @@ export async function migrateLocalDatabase(database: SQLiteDatabase) {
           document._local.schemaVersion,
           JSON.stringify(document),
           new Date().toISOString(),
+        );
+      }
+      await transaction.execAsync("PRAGMA user_version = 4;");
+    });
+  }
+
+  if (currentVersion < 5) {
+    await database.withExclusiveTransactionAsync(async (transaction) => {
+      const stored = await transaction.getFirstAsync<{ document_json: string }>(
+        "SELECT document_json FROM app_document WHERE id = 1",
+      );
+      if (stored) {
+        const document = normalizeBackupDocument(
+          JSON.parse(stored.document_json),
+        );
+        const isOriginalSeed = document.users.some(
+          (user) => user.uuid === "alex-personal",
+        );
+        if (isOriginalSeed) {
+          const bank = document.accounts.find(
+            (account) =>
+              account.uuid === "account-checking" &&
+              account.name === "Everyday checking" &&
+              account.bankName === "Northstar Bank",
+          );
+          if (bank && bank.cardCompany == null && bank.cardLastFour == null) {
+            bank.accountType = "bank";
+            bank.type = 3;
+          }
+          const card = document.accounts.find(
+            (account) =>
+              account.uuid === "account-credit" &&
+              account.name === "Everyday rewards",
+          );
+          if (card && card.cardCompany === "Mastercard") {
+            card.linkedBankAccountId ??= "account-checking";
+            card.paymentDay ??= 10;
+          }
+        }
+        await transaction.runAsync(
+          "UPDATE app_document SET schema_version = ?, document_json = ?, updated_at = ? WHERE id = 1",
+          document._local.schemaVersion,
+          JSON.stringify(document),
+          new Date().toISOString(),
+        );
+      }
+      await transaction.execAsync("PRAGMA user_version = 5;");
+    });
+  }
+
+  if (currentVersion < 6) {
+    await database.withExclusiveTransactionAsync(async (transaction) => {
+      const stored = await transaction.getFirstAsync<{ document_json: string }>(
+        "SELECT document_json FROM app_document WHERE id = 1",
+      );
+      if (stored) {
+        const document = normalizeBackupDocument(JSON.parse(stored.document_json));
+        await transaction.runAsync(
+          "UPDATE app_document SET schema_version = ?, document_json = ?, updated_at = ? WHERE id = 1",
+          document._local.schemaVersion, JSON.stringify(document), new Date().toISOString(),
         );
       }
       await transaction.execAsync(`PRAGMA user_version = ${DATABASE_VERSION};`);

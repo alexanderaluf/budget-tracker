@@ -6,7 +6,7 @@ import { AccountIcon } from "./account-icon";
 import { CardCompanyLogo } from "./card-company-logo";
 
 export function AccountCard({ account }: { account: Account }) {
-  const kind = account.kind === "credit" || account.kind === "checking" ? "Card" : account.kind === "cash" ? "Cash" : "Savings";
+  const kind = account.kind === "credit" ? "Card" : account.kind === "bank" || account.kind === "checking" ? "Bank" : account.kind === "cash" ? "Cash" : "Savings";
   return (
     <View style={[styles.card, { backgroundColor: `${account.color}30`, borderColor: `${account.color}45` }]}>
       <View style={styles.row}>
@@ -26,12 +26,14 @@ export function AccountCard({ account }: { account: Account }) {
         </Text>
       </View>
       {!!account.accountNumber && <Text className="font-sans text-sm text-foreground">Account number · {account.accountNumber}</Text>}
+      {kind === "Bank" && !!account.bankName && <Text className="font-sans text-sm text-foreground">Bank · {account.bankName}</Text>}
       {(account.cardCompany || account.lastFour && kind === "Card") ? (
         <View style={styles.row}>
           {!!account.cardCompany && <CardCompanyLogo company={account.cardCompany} />}
           <View style={{ flex: 1, gap: 4 }}>
             <Text className="font-manrope-semibold text-sm text-foreground">{account.cardCompany || "Card"}{account.lastFour ? ` · •••• ${account.lastFour}` : ""}</Text>
             {account.paymentDay != null && <Text className="font-sans text-xs text-muted">Paid on day {account.paymentDay} each month</Text>}
+            {!!account.linkedBankAccountName && <Text className="font-sans text-xs text-muted">Paid from {account.linkedBankAccountName}</Text>}
           </View>
         </View>
       ) : null}

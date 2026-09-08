@@ -33,6 +33,7 @@ import {
   addAccountToDocument,
   updateAccountInDocument,
   validateAccountDraft,
+  parseAccountAmount,
   type AccountDraft,
 } from "@/data/model/account-record";
 import { CurrencySelectorSheet } from "@/features/profile/components/currency-selector-sheet";
@@ -43,16 +44,27 @@ import { ACCOUNT_COLORS, colorForeground } from "./account-options";
 import { AccountIcon } from "./components/account-icon";
 import { AccountIconPicker, AccountPicker } from "./components/account-picker";
 import { CardCompanyLogo } from "./components/card-company-logo";
-import { selectAccountDraft } from "@/data/selectors/document-selectors";
+import { AccountCurrencyChangeSheet, type CurrencyChangeRequest } from "./components/account-currency-change-sheet";
+import {
+  selectAccountDraft,
+  selectBankAccounts,
+} from "@/data/selectors/document-selectors";
 
 const defaultIcons = {
   card: "credit-card",
   cash: "cash",
   savings: "piggy-bank",
+  bank: "bank",
 } as const;
 
 type AccountType = (typeof ACCOUNT_TYPES)[number];
 type TypeFrame = { width: number; x: number };
+const ACCOUNT_TYPE_OPTIONS: readonly AccountType[] = [
+  "bank",
+  "card",
+  "cash",
+  "savings",
+];
 
 function AccountTypeSelector({
   selected,
@@ -114,7 +126,7 @@ function AccountTypeSelector({
             style={[styles.typeIndicator, indicatorStyle]}
           />
         ) : null}
-        {ACCOUNT_TYPES.map((type) => {
+        {ACCOUNT_TYPE_OPTIONS.map((type) => {
           const isSelected = type === selected;
           return (
             <Pressable
@@ -186,6 +198,9 @@ export function AccountCreateScreen({ editId }: { editId?: string }) {
   const { activeProfile } = useProfiles();
   // Capture the owner for this draft; a later profile change cannot reassign it.
   const [profileId] = useState(activeProfile.id);
+  const [originalAccount] = useState(() => editId ? selectAccountDraft(document, editId) : null);
+  const [currencyChange, setCurrencyChange] = useState<CurrencyChangeRequest | null>(null);
+  const [currencyChangeNote, setCurrencyChangeNote] = useState("");
   const [draft, setDraft] = useState<AccountDraft>(() => (editId ? selectAccountDraft(document, editId) : null) ?? {
     name: "",
     amount: "",
@@ -200,9 +215,11 @@ export function AccountCreateScreen({ editId }: { editId?: string }) {
     cardLastFour: "",
     cardCompany: "",
     paymentDay: null,
+    bankName: "",
+    linkedBankAccountId: null,
   });
   const [picker, setPicker] = useState<
-    "icon" | "currency" | "company" | "day" | null
+    "icon" | "currency" | "company" | "day" | "bank" | null
   >(null);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
@@ -213,6 +230,12 @@ export function AccountCreateScreen({ editId }: { editId?: string }) {
     ? draft.color
     : ACCOUNT_COLORS[0];
   const currency = currencies.find((item) => item.code === draft.currencyCode);
+  const bankAccounts = selectBankAccounts(document).filter(
+    (account) => account.id !== editId,
+  );
+  const linkedBankAccount = bankAccounts.find(
+    (account) => account.id === draft.linkedBankAccountId,
+  );
   function change<K extends keyof AccountDraft>(
     key: K,
     value: AccountDraft[K],
@@ -248,9 +271,14 @@ export function AccountCreateScreen({ editId }: { editId?: string }) {
       accountId.current ??= uuid.v4();
       const id = accountId.current;
       const now = new Date().toISOString();
-      await updateDocument((current) =>
-        editId ? updateAccountInDocument(current, draft, editId, now) : addAccountToDocument(current, draft, profileId, id, now),
-      );
+      await updateDocument((current) => {
+        if (editId && originalAccount) {
+          const latest = selectAccountDraft(current, editId);
+          if (latest && (latest.amount !== originalAccount.amount || latest.currencyCode !== originalAccount.currencyCode))
+            throw new Error("This account balance changed while you were editing. Reopen the account to use its latest balance.");
+        }
+        return editId ? updateAccountInDocument(current, draft, editId, now) : addAccountToDocument(current, draft, profileId, id, now);
+      });
       if (editId) router.back();
       else router.dismissTo("/accounts");
     } catch (reason) {
@@ -337,7 +365,11 @@ export function AccountCreateScreen({ editId }: { editId?: string }) {
                 </Pressable>
                 <Input
                   accessibilityLabel="Account name"
-                  placeholder="e.g. Everyday card"
+                  placeholder={
+                    draft.accountType === "bank"
+                      ? "e.g. Main bank account"
+                      : "e.g. Everyday card"
+                  }
                   maxLength={100}
                   value={draft.name}
                   onChangeText={(value) => change("name", value)}
@@ -375,6 +407,12 @@ export function AccountCreateScreen({ editId }: { editId?: string }) {
                   className="h-14 rounded-2xl bg-surface"
                 />
               </View>
+              {(draft.accountType === "card" ||
+                draft.accountType === "bank") && (
+                <Text className="font-sans text-xs leading-5 text-muted">
+                  Use a negative balance for money owed or an overdraft.
+                </Text>
+              )}
             </View>
             <View className="gap-2">
               <Text className="font-manrope-medium text-sm text-muted">
@@ -390,6 +428,29 @@ export function AccountCreateScreen({ editId }: { editId?: string }) {
                 className="h-14 rounded-2xl bg-surface"
               />
             </View>
+            {draft.accountType === "bank" && (
+              <View className="gap-3 pt-1">
+                <View className="flex-row items-center gap-3">
+                  <FilledIcon name="bank" color="#70d2eb" size={24} />
+                  <Text className="font-manrope-semibold text-base text-foreground">
+                    Bank details
+                  </Text>
+                </View>
+                <View className="gap-2">
+                  <Text className="font-manrope-medium text-sm text-muted">
+                    Bank name
+                  </Text>
+                  <Input
+                    accessibilityLabel="Bank name"
+                    placeholder="e.g. Bank Hapoalim"
+                    maxLength={100}
+                    value={draft.bankName}
+                    onChangeText={(value) => change("bankName", value)}
+                    className="h-14 rounded-2xl bg-surface"
+                  />
+                </View>
+              </View>
+            )}
             {draft.accountType === "card" && (
               <View className="gap-3 pt-1">
                 <View className="flex-row items-center gap-3">
@@ -434,10 +495,27 @@ export function AccountCreateScreen({ editId }: { editId?: string }) {
                         : "Choose a day"
                     }
                     onPress={() => openPicker("day")}
+                    hasDivider
+                  />
+                  <OptionRow
+                    icon="bank"
+                    title="Bank account"
+                    description={
+                      linkedBankAccount
+                        ? `${linkedBankAccount.name} · ${linkedBankAccount.bankName}`
+                        : bankAccounts.length
+                          ? "Select the account that pays this card"
+                          : "Create a bank account first"
+                    }
+                    onPress={() => openPicker("bank")}
                   />
                 </View>
                 <Text className="font-sans text-xs leading-5 text-muted">
-                  For shorter months, days 29–31 use the last day of the month.
+                  On the payment day, the card debt is paid from the linked bank
+                  account. Both accounts may go into overdraft. Days 29–31 use
+                  the last day in shorter months.
+                  {linkedBankAccount && linkedBankAccount.currencyCode !== draft.currencyCode
+                    ? ` Payments convert ${draft.currencyCode} to ${linkedBankAccount.currencyCode} at the daily rate when processed.` : ""}
                 </Text>
               </View>
             )}
@@ -447,6 +525,7 @@ export function AccountCreateScreen({ editId }: { editId?: string }) {
               description={`${draft.currencyCode} (${currency?.symbol ?? draft.currencyCode})`}
               onPress={() => openPicker("currency")}
             />
+            {!!currencyChangeNote && <Text className="font-sans text-sm text-muted">{currencyChangeNote} Past transactions retain their original currency.</Text>}
             {(
               [
                 {
@@ -598,17 +677,31 @@ export function AccountCreateScreen({ editId }: { editId?: string }) {
           </Pressable>
         </View>
       </KeyboardAvoidingView>
-      {picker === "currency" && (
-        <CurrencySelectorSheet
-          currencies={currencies}
-          isOpen
-          selectedCode={draft.currencyCode}
-          onOpenChange={(open) => {
-            if (!open) setPicker(null);
-          }}
-          onSelect={(item) => change("currencyCode", item.code)}
-        />
-      )}
+      <CurrencySelectorSheet
+        currencies={currencies}
+        isOpen={picker === "currency"}
+        selectedCode={draft.currencyCode}
+        onOpenChange={(open) => {
+          if (!open) setPicker(null);
+        }}
+        onSelect={(item) => {
+          if (item.code === draft.currencyCode) return;
+          try {
+            const amount = draft.amount.trim() ? parseAccountAmount(draft.amount) : 0;
+            setCurrencyChange({ from: draft.currencyCode, to: item.code, amount });
+            setError("");
+          } catch (reason) {
+            setError(reason instanceof Error ? reason.message : "Enter a valid balance first.");
+          }
+        }}
+      />
+      <AccountCurrencyChangeSheet request={currencyChange} onClose={() => setCurrencyChange(null)}
+        onApply={(amount, explanation) => {
+          if (!currencyChange) return;
+          setDraft((current) => ({ ...current, currencyCode: currencyChange.to, amount: String(amount) }));
+          setCurrencyChangeNote(explanation);
+          setCurrencyChange(null);
+        }} />
       {picker === "icon" && (
         <AccountIconPicker
           selected={{ name: draft.icon, pathData: draft.iconPath }}
@@ -686,6 +779,63 @@ export function AccountCreateScreen({ editId }: { editId?: string }) {
             <Text className="font-sans text-sm text-muted">
               Days 29–31 fall on the last day in shorter months.
             </Text>
+          </ScrollView>
+        </AccountPicker>
+      )}
+      {picker === "bank" && (
+        <AccountPicker title="Bank account" onClose={() => setPicker(null)}>
+          <ScrollView contentContainerClassName="px-5 pb-5">
+            {bankAccounts.length ? (
+              bankAccounts.map((account) => (
+                <Pressable
+                  key={account.id}
+                  accessibilityRole="radio"
+                  accessibilityLabel={`${account.name}, ${account.bankName}`}
+                  accessibilityState={{
+                    checked: draft.linkedBankAccountId === account.id,
+                  }}
+                  onPress={() => {
+                    change("linkedBankAccountId", account.id);
+                    setPicker(null);
+                  }}
+                  className="min-h-20 flex-row items-center gap-4 border-b border-border py-4"
+                >
+                  <View
+                    className="size-12 items-center justify-center rounded-2xl"
+                    style={{ backgroundColor: account.color }}
+                  >
+                    <AccountIcon
+                      name={account.icon}
+                      pathData={account.iconPath}
+                      color={colorForeground(account.color)}
+                      size={24}
+                    />
+                  </View>
+                  <View className="flex-1 gap-1">
+                    <Text className="font-manrope-semibold text-base text-foreground">
+                      {account.name}
+                    </Text>
+                    <Text className="font-sans text-sm text-muted">
+                      {account.bankName} · {account.currencyCode}
+                    </Text>
+                  </View>
+                  {draft.linkedBankAccountId === account.id && (
+                    <FilledIcon name="check" color="#70d2eb" size={24} />
+                  )}
+                </Pressable>
+              ))
+            ) : (
+              <View className="items-center gap-3 px-4 py-12">
+                <FilledIcon name="bank" color="#70d2eb" size={36} />
+                <Text className="text-center font-manrope-semibold text-base text-foreground">
+                  No bank accounts yet
+                </Text>
+                <Text className="text-center font-sans text-sm leading-5 text-muted">
+                  Add a Bank account, then connect this card to it. The bank and
+                  card can use different currencies.
+                </Text>
+              </View>
+            )}
           </ScrollView>
         </AccountPicker>
       )}

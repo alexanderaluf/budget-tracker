@@ -1,4 +1,4 @@
-export type AccountKind = "checking" | "savings" | "credit" | "cash";
+export type AccountKind = "bank" | "checking" | "savings" | "credit" | "cash";
 
 export type Account = {
   id: string;
@@ -16,6 +16,9 @@ export type Account = {
   isExcluded: boolean;
   cardCompany: string;
   paymentDay: number | null;
+  bankName: string;
+  linkedBankAccountId: string | null;
+  linkedBankAccountName: string;
   accountNumber: string;
   ownerName: string;
   income: number;

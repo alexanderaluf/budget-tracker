@@ -30,8 +30,15 @@ const {
 const {
   CARD_COMPANIES,
   addAccountToDocument,
+  updateAccountInDocument,
   parseAccountAmount,
 } = require("../src/data/model/account-record.ts");
+const {
+  settleDueCardPayments,
+} = require("../src/data/model/card-payment.ts");
+const { getExchangeRates } = require("../src/data/exchange-rates/exchange-rate-service.ts");
+const { convertCurrency, parseExchangeRates, storeExchangeRates } = require("../src/data/model/exchange-rate.ts");
+const { selectExchangeQuote } = require("../src/data/selectors/exchange-rate-selectors.ts");
 const {
   selectAccounts,
   selectAccountTotalsByCurrency,
@@ -39,6 +46,9 @@ const {
   selectSpendingCategories,
   selectDailySpending,
   selectBudgetCategories,
+  selectBankAccounts,
+  selectAccountDraft,
+  selectAccountTransactions,
 } = require("../src/data/selectors/document-selectors.ts");
 const {
   createJsonBackupDocument,
@@ -58,7 +68,7 @@ const draft = (overrides = {}) => ({
   amount: "-123.45",
   accountNumber: "0012345",
   accountType: "card",
-  currencyCode: "ILS",
+  currencyCode: "USD",
   icon: "car",
   iconPath: null,
   color: "#AB47BC",
@@ -67,6 +77,8 @@ const draft = (overrides = {}) => ({
   cardLastFour: "0007",
   cardCompany: "Visa",
   paymentDay: 31,
+  bankName: "",
+  linkedBankAccountId: "account-checking",
   ...overrides,
 });
 const add = (document, changes = {}, id = "test-account") =>
@@ -171,6 +183,7 @@ test("card saves explicit type, money, stable identity, leading zeroes, appearan
   assert.equal(record.accountNumber, "0012345");
   assert.equal(record.cardLastFour, "0007");
   assert.equal(record.paymentDay, 31);
+  assert.equal(record.linkedBankAccountId, "account-checking");
   assert.equal(record.user, "alex-personal");
   assert.equal(record.createdAt, now);
   assert.equal(record.updatedAt, now);
@@ -179,7 +192,7 @@ test("card saves explicit type, money, stable identity, leading zeroes, appearan
   assert.equal(view.icon, "car");
   assert.equal(view.iconPath, null);
   assert.equal(view.color, "#ab47bc");
-  assert.equal(view.currencyCode, "ILS");
+  assert.equal(view.currencyCode, "USD");
   assert.equal(view.lastFour, "0007");
   assert.equal(current.accounts.length, 3);
   assert.equal(current.accounts[0].isDefault, true);
@@ -225,9 +238,27 @@ test("cash and savings discard hidden card-only draft fields and do not change d
     assert.equal(record.cardLastFour, null);
     assert.equal(record.cardCompany, null);
     assert.equal(record.paymentDay, null);
+    assert.equal(record.linkedBankAccountId, null);
+    assert.equal(record.bankName, null);
     assert.equal(selectAccounts(next).at(-1).kind, accountType);
     assert.equal(next.accounts[0].isDefault, true);
   }
+});
+
+test("bank saves its name and is available as a same-profile card payment account", () => {
+  const next = add(createDefaultBackup(), {
+    accountType: "bank",
+    name: "Salary account",
+    bankName: "Bank Hapoalim",
+    isDefault: false,
+  });
+  const record = next.accounts.at(-1);
+  assert.equal(record.accountType, "bank");
+  assert.equal(record.type, 3);
+  assert.equal(record.bankName, "Bank Hapoalim");
+  assert.equal(record.linkedBankAccountId, null);
+  assert.equal(selectAccounts(next).at(-1).kind, "bank");
+  assert.ok(selectBankAccounts(next).some((account) => account.id === "test-account"));
 });
 
 test("Material rounded filled icons persist their exact SVG path", () => {
@@ -267,6 +298,9 @@ test("reject malformed amounts, card details and missing owners before mutation"
     { paymentDay: 0 },
     { paymentDay: 32 },
     { paymentDay: 1.5 },
+    { linkedBankAccountId: null },
+    { linkedBankAccountId: "account-savings" },
+    { accountType: "bank", bankName: " " },
     { color: "red" },
     { currencyCode: "?" },
     { icon: "material:account-balance", iconPath: null },
@@ -323,7 +357,10 @@ test("excluded accounts remain visible but never contribute to balances or spend
 });
 
 test("mixed currencies have separate totals and new profiles only see their accounts", () => {
-  const next = add(createDefaultBackup());
+  const next = add(createDefaultBackup(), {
+    accountType: "cash",
+    currencyCode: "ILS",
+  });
   const groups = selectAccountTotalsByCurrency(selectAccounts(next));
   assert.equal(groups.length, 2);
   assert.equal(
@@ -343,12 +380,179 @@ test("JSON backup round trip preserves all new account options and unknown field
   );
   assert.deepEqual(restored.accounts, next.accounts);
   assert.deepEqual(restored.unknown, next.unknown);
-  assert.equal(restored._local.schemaVersion, 4);
+  assert.equal(restored._local.schemaVersion, 6);
+  assert.equal(restored.accounts.at(-1).linkedBankAccountId, "account-checking");
   assert.throws(() => normalizeBackupDocument({ backupVersion: 999 }), /newer/);
   assert.throws(
     () => normalizeBackupDocument({ _local: { schemaVersion: 999 } }),
     /newer/,
   );
+});
+
+test("monthly card payment debits its bank into overdraft, clears debt and records one transfer per side", () => {
+  const current = createDefaultBackup();
+  const bank = current.accounts.find((account) => account.uuid === "account-checking");
+  const card = current.accounts.find((account) => account.uuid === "account-credit");
+  bank.amount = 1000;
+  card.amount = -6000;
+  card.paymentDay = 10;
+  card.lastPaymentPeriod = null;
+
+  const beforeDue = settleDueCardPayments(current, new Date(2026, 8, 9, 12));
+  assert.equal(beforeDue, current);
+
+  const paid = settleDueCardPayments(current, new Date(2026, 8, 10, 12));
+  assert.equal(paid.accounts.find((account) => account.uuid === "account-checking").amount, -5000);
+  assert.equal(paid.accounts.find((account) => account.uuid === "account-credit").amount, 0);
+  assert.equal(paid.accounts.find((account) => account.uuid === "account-credit").lastPaymentPeriod, "2026-09");
+  const transfers = paid.transactions.filter((transaction) => transaction.cardPaymentPeriod === "2026-09");
+  assert.equal(transfers.length, 2);
+  assert.ok(transfers.every((transaction) => transaction.type === 2 && transaction.amount === 6000));
+
+  assert.equal(settleDueCardPayments(paid, new Date(2026, 8, 30, 12)), paid);
+  const nextMonthDraft = structuredClone(paid);
+  nextMonthDraft.accounts.find((account) => account.uuid === "account-credit").amount = -500;
+  const nextMonth = settleDueCardPayments(nextMonthDraft, new Date(2026, 9, 10, 12));
+  assert.equal(nextMonth.accounts.find((account) => account.uuid === "account-checking").amount, -5500);
+  assert.equal(nextMonth.transactions.filter((transaction) => transaction.cardPaymentPeriod === "2026-10").length, 2);
+});
+
+test("days 29 to 31 settle on the last day of a shorter month", () => {
+  const current = createDefaultBackup();
+  const card = current.accounts.find((account) => account.uuid === "account-credit");
+  card.amount = -250;
+  card.paymentDay = 31;
+  card.lastPaymentPeriod = null;
+  const paid = settleDueCardPayments(current, new Date(2027, 1, 28, 12));
+  assert.equal(paid.accounts.find((account) => account.uuid === "account-credit").amount, 0);
+  assert.equal(paid.accounts.find((account) => account.uuid === "account-credit").lastPaymentPeriod, "2027-02");
+});
+
+const rateNow = new Date("2026-09-10T12:00:00.000Z");
+const rateTable = (date = "2026-09-10") => parseExchangeRates(
+  { date, usd: { usd: 1, ils: 3.2, eur: 0.85, jpy: 147.2 } }, "USD", rateNow,
+);
+
+test("daily-rate fetch uses one table and falls back for HTTP, JSON and payload errors", async () => {
+  for (const failure of [
+    async () => { throw new Error("offline"); },
+    async () => ({ ok: false }),
+    async () => ({ ok: true, json: async () => { throw new Error("invalid JSON"); } }),
+    async () => ({ ok: true, json: async () => ({ date: "2026-09-10", eur: { usd: 1 } }) }),
+  ]) {
+    const calls = [];
+    const fetched = await getExchangeRates("USD", async (url) => {
+      calls.push(url);
+      if (calls.length === 1) return failure();
+      return { ok: true, json: async () => ({ date: "2026-09-10", usd: { usd: 1, ils: 3.2, eur: 0.85 } }) };
+    }, rateNow);
+    assert.equal(calls.length, 2);
+    assert.match(calls[0], /^https:\/\/cdn\.jsdelivr\.net\/.*\/usd.min.json$/);
+    assert.equal(calls[1], "https://latest.currency-api.pages.dev/v1/currencies/usd.min.json");
+    assert.equal(fetched.rates.ILS, 3.2);
+    assert.equal(fetched.rates.EUR, 0.85);
+  }
+  let calls = 0;
+  await assert.rejects(getExchangeRates("USD", async () => { calls++; throw new Error("offline"); }, rateNow), /Unable to retrieve/);
+  assert.equal(calls, 2);
+  await assert.rejects(getExchangeRates("../secret", async () => { throw new Error("must not run"); }), /Invalid currency/);
+});
+
+test("exchange-rate validation and money rounding reject unsafe data and preserve overdrafts", () => {
+  for (const rate of [0, -1, Infinity, NaN, "3.2"]) {
+    assert.throws(() => parseExchangeRates({ date: "2026-09-10", usd: { usd: 1, ils: rate } }, "USD", rateNow));
+  }
+  assert.throws(() => parseExchangeRates({ date: "2026-02-30", usd: { usd: 1, ils: 3 } }, "USD", rateNow));
+  assert.throws(() => parseExchangeRates({ date: "2027-01-01", usd: { usd: 1, ils: 3 } }, "USD", rateNow));
+  assert.equal(convertCurrency(5000, 3.2, "ILS"), 16000);
+  assert.equal(convertCurrency(-5000, 3.2, "ILS"), -16000);
+  assert.equal(convertCurrency(1.005, 1, "USD"), 1.01);
+  assert.equal(convertCurrency(-1.005, 1, "USD"), -1.01);
+  assert.equal(convertCurrency(1, 147.2, "JPY"), 147);
+  assert.equal(convertCurrency(1, 0.3075, "KWD"), 0.308);
+  assert.throws(() => convertCurrency(Number.MAX_VALUE, 3, "ILS"));
+});
+
+test("all account types allow keep-number or converted currency changes, preserving history and card links", () => {
+  for (const accountType of ["bank", "card", "cash", "savings"]) {
+    for (const convert of [false, true]) {
+      let document = add(createDefaultBackup(), { accountType, bankName: "Test bank", amount: "5000" });
+      document.transactions.push({ uuid: "old", account: "test-account", type: 0, amount: 100, custom: "keep" });
+      document.transactions.push({ uuid: "explicit", account: "test-account", type: 0, amount: 10, currencyCode: "EUR" });
+      if (accountType === "bank") document.accounts.find((a) => a.uuid === "account-credit").linkedBankAccountId = "test-account";
+      const draft = selectAccountDraft(document, "test-account");
+      const next = updateAccountInDocument(document, { ...draft, currencyCode: "ILS",
+        amount: String(convert ? convertCurrency(5000, 3.2, "ILS") : 5000) }, "test-account", now);
+      assert.equal(next.accounts.at(-1).amount, convert ? 16000 : 5000);
+      assert.equal(next.accounts.at(-1).currencyCode, "ILS");
+      assert.equal(next.transactions.find((t) => t.uuid === "old").currencyCode, "USD");
+      assert.equal(next.transactions.find((t) => t.uuid === "old").custom, "keep");
+      assert.equal(next.transactions.find((t) => t.uuid === "explicit").currencyCode, "EUR");
+      assert.equal(selectAccountTransactions(next, "test-account").find((t) => t.id === "old").amount, 100);
+      if (accountType === "bank") assert.equal(next.accounts.find((a) => a.uuid === "account-credit").linkedBankAccountId, "test-account");
+      if (accountType === "card") assert.equal(next.accounts.at(-1).linkedBankAccountId, "account-checking");
+      assert.equal(document.accounts.at(-1).currencyCode, "USD");
+    }
+  }
+  const crossCurrency = add(createDefaultBackup(), { currencyCode: "ILS" });
+  assert.equal(crossCurrency.accounts.at(-1).linkedBankAccountId, "account-checking");
+});
+
+test("two USD cards settle in ILS exactly once, preserving rate audit and spending totals", () => {
+  let document = createDefaultBackup();
+  document.accounts.find((a) => a.uuid === "account-checking").currencyCode = "ILS";
+  document.accounts.find((a) => a.uuid === "account-checking").amount = 1000;
+  document.accounts.find((a) => a.uuid === "account-credit").amount = -6000;
+  document = add(document, { amount: "-6000", paymentDay: 10 }, "second-card");
+  document = storeExchangeRates(document, rateTable());
+  const paid = settleDueCardPayments(document, rateNow);
+  assert.equal(paid.accounts.find((a) => a.uuid === "account-checking").amount, -37400);
+  assert.equal(paid.accounts.find((a) => a.uuid === "account-credit").amount, 0);
+  assert.equal(paid.accounts.find((a) => a.uuid === "second-card").amount, 0);
+  const transfers = paid.transactions.filter((t) => t.cardPaymentPeriod === "2026-09");
+  assert.equal(transfers.length, 4);
+  assert.ok(transfers.filter((t) => t.account === "account-checking").every((t) => t.amount === 19200 && t.currencyCode === "ILS"));
+  assert.ok(transfers.every((t) => t.sourceAmount === 6000 && t.exchangeRate === 3.2 && t.exchangeRateDate === "2026-09-10"));
+  assert.equal(paid.accounts.find((a) => a.uuid === "account-checking").transactions.length, 2);
+  assert.deepEqual(selectMonthlySummary(paid), selectMonthlySummary(document));
+  assert.deepEqual(selectSpendingCategories(paid), selectSpendingCategories(document));
+  assert.equal(settleDueCardPayments(paid, rateNow), paid);
+  const restored = normalizeBackupDocument(JSON.parse(JSON.stringify(createFullBackupDocument(paid))));
+  assert.equal(settleDueCardPayments(restored, rateNow), restored);
+  restored.accounts.find((a) => a.uuid === "second-card").lastPaymentPeriod = null;
+  const repaired = settleDueCardPayments(restored, rateNow);
+  assert.equal(repaired.accounts.find((a) => a.uuid === "account-checking").amount, -37400);
+});
+
+test("foreign-currency payday waits for a current rate, and catches up before next month's payday", () => {
+  const current = createDefaultBackup();
+  current.accounts[0].currencyCode = "ILS";
+  const bankBalance = current.accounts[0].amount;
+  assert.equal(settleDueCardPayments(current, rateNow), current);
+  const stale = storeExchangeRates(current, rateTable("2026-09-09"));
+  assert.equal(selectExchangeQuote(stale, "USD", "ILS", rateNow, true), null);
+  assert.equal(settleDueCardPayments(stale, rateNow), stale);
+  assert.equal(stale.accounts[0].amount, bankBalance);
+  assert.equal(stale.accounts[2].lastPaymentPeriod, null);
+  const later = new Date("2026-10-02T12:00:00.000Z");
+  const fresh = parseExchangeRates({ date: "2026-10-02", usd: { usd: 1, ils: 3 } }, "USD", later);
+  const paid = settleDueCardPayments(storeExchangeRates(stale, fresh), later);
+  assert.equal(paid.accounts[2].lastPaymentPeriod, "2026-09");
+  assert.equal(paid.accounts[2].amount, 0);
+  assert.equal(paid.transactions.at(-1).exchangeRateDate, "2026-10-02");
+  assert.equal(paid.transactions.at(-1).createdAt, later.toISOString());
+});
+
+test("rate tables and unknown imported rates survive JSON and full backup round trips", () => {
+  const document = createDefaultBackup();
+  document.exchangeRates = [{ id: 42, custom: { keep: true } }];
+  const saved = storeExchangeRates(document, rateTable());
+  for (const exportDocument of [createJsonBackupDocument, createFullBackupDocument]) {
+    const restored = normalizeBackupDocument(JSON.parse(JSON.stringify(exportDocument(saved))));
+    assert.deepEqual(restored.exchangeRates, saved.exchangeRates);
+    assert.equal(selectExchangeQuote(restored, "USD", "ILS", rateNow, true).rate, 3.2);
+    assert.equal(restored._local.cloudProvider, null);
+  }
 });
 
 function sqliteAdapter(filename) {
@@ -404,7 +608,7 @@ test("every card company survives SQLite reopening and both backup document form
   }
 });
 
-test("SQLite v2 to v4 migration preserves imported fields, commits accounts, survives reopening and rolls back failed writes", async () => {
+test("SQLite v2 to v6 migration preserves imported fields, upgrades the known seed, survives reopening and rolls back failed writes", async () => {
   const directory = fs.mkdtempSync(
     path.join(os.tmpdir(), "budget-accounts-test-"),
   );
@@ -427,21 +631,22 @@ test("SQLite v2 to v4 migration preserves imported fields, commits accounts, sur
     );
     await migrateLocalDatabase(database);
     const migrated = await readDocument(database);
-    assert.equal(migrated._local.schemaVersion, 4);
-    assert.equal(migrated.accounts[0].accountType, null);
+    assert.equal(migrated._local.schemaVersion, 6);
+    assert.equal(migrated.accounts[0].accountType, "bank");
     assert.equal(migrated.accounts[0].icon, 12345);
     assert.equal(migrated.accounts[0].custom, "legacy");
     assert.equal(migrated.accounts[0].iconPath, null);
     assert.deepEqual(migrated.importedUnknown, { keep: true });
     assert.equal(
       (await database.getFirstAsync("PRAGMA user_version")).user_version,
-      4,
+      6,
     );
-    const next = add(migrated);
+    const next = storeExchangeRates(add(migrated), rateTable());
     await writeDocument(database, next);
     database.close();
     database = sqliteAdapter(filename);
     assert.deepEqual(await readDocument(database), next);
+    assert.equal(selectExchangeQuote(await readDocument(database), "USD", "ILS", rateNow, true).rate, 3.2);
     await migrateLocalDatabase(database);
     assert.deepEqual(await readDocument(database), next);
     await database.execAsync(

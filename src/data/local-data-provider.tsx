@@ -7,7 +7,7 @@ import {
     useRef,
     useState,
 } from "react";
-import { ActivityIndicator, View } from "react-native";
+import { ActivityIndicator, AppState, View } from "react-native";
 
 import { readDocument, writeDocument } from "./database/document-repository";
 import type {
@@ -15,6 +15,10 @@ import type {
     BackupDocument,
 } from "./model/backup-document";
 import { createDefaultBackup } from "./model/default-backup";
+import { selectDueCardPayments, settleDueCardPayments } from "./model/card-payment";
+import { getExchangeRates } from "./exchange-rates/exchange-rate-service";
+import { storeExchangeRates, type ExchangeRateSnapshot } from "./model/exchange-rate";
+import { selectExchangeRates } from "./selectors/exchange-rate-selectors";
 import type { JsonObject } from "./model/json";
 import {
     cloneBackupDocument,
@@ -26,6 +30,9 @@ type DocumentUpdater = (current: BackupDocument) => BackupDocument;
 type LocalDataContextValue = {
   document: BackupDocument;
   isHydrated: boolean;
+  paymentError: string;
+  reconcileCardPayments: () => Promise<void>;
+  ensureExchangeRates: (base: string) => Promise<ExchangeRateSnapshot>;
   refresh: () => Promise<void>;
   replaceDocument: (document: BackupDocument) => Promise<void>;
   updateDocument: (updater: DocumentUpdater) => Promise<void>;
@@ -47,16 +54,119 @@ export function LocalDataProvider({ children }: PropsWithChildren) {
   const [isHydrated, setIsHydrated] = useState(false);
   const documentRef = useRef(document);
   const writeQueue = useRef(Promise.resolve());
+  const [paymentError, setPaymentError] = useState("");
+  const hydrationRef = useRef(false);
+  const settlementWork = useRef<Promise<void> | null>(null);
+  const rateRequests = useRef(new Map<string, Promise<ExchangeRateSnapshot>>());
+  const lastRateAttempt = useRef(new Map<string, number>());
 
   useEffect(() => {
     void refresh();
   }, []);
 
+  useEffect(() => {
+    if (isHydrated) void reconcileCardPayments().catch(reportPaymentError);
+  }, [isHydrated, document]);
+
+  function reportPaymentError() {
+    setPaymentError("Card payments could not be saved. Please retry.");
+  }
+
+  useEffect(() => {
+    let midnightTimer: ReturnType<typeof setTimeout>;
+    let disposed = false;
+    const scheduleMidnightSettlement = () => {
+      if (disposed) return;
+      const now = new Date();
+      const nextMidnight = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate() + 1,
+        0,
+        0,
+        1,
+      );
+      midnightTimer = setTimeout(() => {
+        void reconcileCardPayments()
+          .catch(reportPaymentError)
+          .finally(scheduleMidnightSettlement);
+      }, nextMidnight.getTime() - now.getTime());
+    };
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active")
+        void reconcileCardPayments().catch(reportPaymentError);
+    });
+    scheduleMidnightSettlement();
+    return () => {
+      disposed = true;
+      clearTimeout(midnightTimer);
+      subscription.remove();
+    };
+  }, []);
+
   async function refresh() {
-    const persisted = await readDocument(database);
-    documentRef.current = persisted;
-    setDocument(persisted);
-    setIsHydrated(true);
+    writeQueue.current = writeQueue.current.catch(() => undefined).then(async () => {
+      const persisted = await readDocument(database);
+      documentRef.current = persisted;
+      setDocument(persisted);
+      hydrationRef.current = true;
+      setIsHydrated(true);
+    });
+    await writeQueue.current;
+  }
+
+  async function reconcileCardPayments() {
+    if (!hydrationRef.current) return;
+    if (settlementWork.current) return settlementWork.current;
+    const work = async () => {
+      const now = new Date();
+      const bases = new Set(selectDueCardPayments(documentRef.current, now)
+        .filter(({ card, bank }) => Number(card.amount) < 0 && card.currencyCode !== bank.currencyCode)
+        .map(({ card }) => String(card.currencyCode)));
+      await Promise.all([...bases].map(async (base) => {
+        // Avoid repeated failed downloads on every local write while offline.
+        if (Date.now() - (lastRateAttempt.current.get(base) ?? 0) < 60_000) return;
+        lastRateAttempt.current.set(base, Date.now());
+        try { await ensureExchangeRates(base); } catch { /* Leave payment pending. */ }
+      }));
+      writeQueue.current = writeQueue.current
+      .catch(() => undefined)
+      .then(async () => {
+        const next = settleDueCardPayments(documentRef.current);
+        if (next === documentRef.current) return;
+        const normalized = normalizeBackupDocument(next);
+        await writeDocument(database, normalized);
+        documentRef.current = normalized;
+        setDocument(normalized);
+      });
+      await writeQueue.current;
+      const pending = selectDueCardPayments(documentRef.current).some(({ card }) => Number(card.amount) < 0);
+      setPaymentError(pending
+        ? "Card payment pending: today's exchange rate is unavailable. Connect to the internet and retry."
+        : "");
+    };
+    settlementWork.current = work().finally(() => { settlementWork.current = null; });
+    await settlementWork.current;
+  }
+
+  async function retryCardPayments() {
+    lastRateAttempt.current.clear();
+    try { await reconcileCardPayments(); } catch { reportPaymentError(); }
+  }
+
+  async function ensureExchangeRates(base: string) {
+    const code = base.toUpperCase();
+    const cached = selectExchangeRates(documentRef.current, code);
+    const today = new Date().toISOString().slice(0, 10);
+    if (cached && cached.date === today) return cached;
+    const pending = rateRequests.current.get(code);
+    if (pending) return pending;
+    const request = getExchangeRates(code).then(async (snapshot) => {
+      await updateDocument((current) => storeExchangeRates(current, snapshot));
+      return snapshot;
+    }).finally(() => rateRequests.current.delete(code));
+    rateRequests.current.set(code, request);
+    return request;
   }
 
   async function replaceDocument(nextDocument: BackupDocument) {
@@ -75,8 +185,10 @@ export function LocalDataProvider({ children }: PropsWithChildren) {
     writeQueue.current = writeQueue.current
       .catch(() => undefined)
       .then(async () => {
-        const next = normalizeBackupDocument(
-          updater(cloneBackupDocument(documentRef.current)),
+        const next = settleDueCardPayments(
+          normalizeBackupDocument(
+            updater(cloneBackupDocument(documentRef.current)),
+          ),
         );
         await writeDocument(database, next);
         documentRef.current = next;
@@ -137,6 +249,9 @@ export function LocalDataProvider({ children }: PropsWithChildren) {
       value={{
         document,
         isHydrated,
+        paymentError,
+        reconcileCardPayments: retryCardPayments,
+        ensureExchangeRates,
         refresh,
         replaceDocument,
         updateDocument,

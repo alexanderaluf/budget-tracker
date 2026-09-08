@@ -1,7 +1,8 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { BottomSheet, Button } from "heroui-native";
 import { useMemo, useRef, useState } from "react";
-import { Alert, FlatList, Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalData } from "@/data/local-data-provider";
 import { deleteAccountFromDocument } from "@/data/model/account-record";
@@ -42,6 +43,13 @@ export function AccountDetailsScreen() {
     else next.setDate(next.getDate() + direction * (period === "Weekly" ? 7 : 1));
     setAnchor(next);
     setAllTime(false);
+  }
+
+  function editAccount() {
+    setMenu(null);
+    setTimeout(() => {
+      router.push({ pathname: "/accounts/[id]/edit", params: { id } });
+    }, 220);
   }
 
   async function deleteAccount() {
@@ -121,27 +129,102 @@ export function AccountDetailsScreen() {
       <View style={[styles.dock, { bottom: Math.max(insets.bottom, 10) }]}>
         <AccountPeriodSelector value={period} onChange={(value) => { setPeriod(value); setAllTime(false); }} />
       </View>
-      {menu != null && <Modal transparent visible animationType="slide" onRequestClose={() => { if (!deleting) setMenu(null); }}>
-        <View style={styles.modal}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Close account options" disabled={deleting} onPress={() => setMenu(null)} style={StyleSheet.absoluteFill} />
-          <View accessibilityViewIsModal style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 16) + 12 }]}>
-            <View style={styles.handle} />
-            <Text accessibilityRole="header" className="font-manrope-bold text-xl text-foreground">{menu === "confirm" ? "Delete account?" : account.name}</Text>
-            {menu === "actions" ? <>
-              <Text className="text-sm text-muted">{account.ownerName}</Text>
-              <Pressable accessibilityRole="button" onPress={() => { setMenu(null); router.push({ pathname: "/accounts/[id]/edit", params: { id } }); }} style={styles.action}><FilledIcon name="pencil" color="#ededed" size={24} /><Text className="font-manrope-semibold text-base text-foreground">Edit</Text></Pressable>
-              <Pressable accessibilityRole="button" onPress={() => { setDeleteError(""); setMenu("confirm"); }} style={styles.action}><Text className="font-manrope-semibold text-base text-[#ef8175]">Delete</Text></Pressable>
-            </> : <>
-              <Text className="font-sans text-base leading-6 text-muted">{transactions.length ? `Deleting ${account.name} will permanently delete this account and all ${transactions.length} related transactions. This cannot be undone.` : `Permanently delete ${account.name}? This cannot be undone.`}</Text>
-              {!!deleteError && <Text accessibilityRole="alert" className="text-[#ef8175]">{deleteError}</Text>}
-              <View style={styles.row}>
-                <Pressable accessibilityRole="button" disabled={deleting} onPress={() => setMenu(null)} style={[styles.confirmButton, { backgroundColor: "#343434" }]}><Text className="font-manrope-bold text-foreground">Cancel</Text></Pressable>
-                <Pressable accessibilityRole="button" accessibilityState={{ disabled: deleting, busy: deleting }} disabled={deleting} onPress={deleteAccount} style={[styles.confirmButton, { backgroundColor: "#ef8175", opacity: deleting ? 0.6 : 1 }]}><Text className="font-manrope-bold text-black">{deleting ? "Deleting…" : "Delete"}</Text></Pressable>
-              </View>
-            </>}
-          </View>
-        </View>
-      </Modal>}
+      <BottomSheet
+        isOpen={menu != null}
+        onOpenChange={(open) => {
+          if (!open && !deleting) {
+            setMenu(null);
+            setDeleteError("");
+          }
+        }}
+      >
+        <BottomSheet.Portal unstable_accessibilityContainerViewIsModal>
+          <BottomSheet.Overlay isCloseOnPress={!deleting} />
+          <BottomSheet.Content
+            topInset={insets.top}
+            enablePanDownToClose={!deleting}
+            contentContainerClassName="px-5 pb-0 pt-1"
+            backgroundClassName="rounded-t-[28px] bg-surface"
+            handleIndicatorClassName="w-10 bg-muted/40"
+          >
+            <View
+              className="gap-4"
+              style={{ paddingBottom: Math.max(insets.bottom, 16) + 12 }}
+            >
+              {menu === "confirm" ? (
+                <>
+                  <View className="gap-2">
+                    <BottomSheet.Title>Delete account?</BottomSheet.Title>
+                    <BottomSheet.Description className="font-sans text-base leading-6">
+                      {transactions.length
+                        ? `Deleting ${account.name} will permanently delete this account and all ${transactions.length} related transactions. This cannot be undone.`
+                        : `Permanently delete ${account.name}? This cannot be undone.`}
+                    </BottomSheet.Description>
+                  </View>
+                  {!!deleteError && (
+                    <Text accessibilityRole="alert" className="text-danger">
+                      {deleteError}
+                    </Text>
+                  )}
+                  <View className="flex-row gap-3">
+                    <Button
+                      className="flex-1"
+                      variant="tertiary"
+                      isDisabled={deleting}
+                      onPress={() => setMenu("actions")}
+                    >
+                      <Button.Label>Cancel</Button.Label>
+                    </Button>
+                    <Button
+                      className="flex-1"
+                      variant="danger"
+                      isDisabled={deleting}
+                      accessibilityLabel={
+                        deleting ? "Deleting account" : "Delete account"
+                      }
+                      accessibilityState={{ busy: deleting }}
+                      onPress={deleteAccount}
+                    >
+                      <Button.Label>
+                        {deleting ? "Deleting…" : "Delete"}
+                      </Button.Label>
+                    </Button>
+                  </View>
+                </>
+              ) : (
+                <>
+                  <View className="gap-1">
+                    <BottomSheet.Title>{account.name}</BottomSheet.Title>
+                    {!!account.ownerName && (
+                      <BottomSheet.Description>
+                        {account.ownerName}
+                      </BottomSheet.Description>
+                    )}
+                  </View>
+                  <Button
+                    className="w-full justify-start"
+                    variant="secondary"
+                    onPress={editAccount}
+                  >
+                    <FilledIcon name="pencil" color="#ededed" size={22} />
+                    <Button.Label>Edit account</Button.Label>
+                  </Button>
+                  <Button
+                    className="w-full justify-start"
+                    variant="danger-soft"
+                    onPress={() => {
+                      setDeleteError("");
+                      setMenu("confirm");
+                    }}
+                  >
+                    <Button.Label>Delete account</Button.Label>
+                  </Button>
+                </>
+              )}
+            </View>
+          </BottomSheet.Content>
+        </BottomSheet.Portal>
+      </BottomSheet>
     </SafeAreaView>
   );
 }
@@ -155,9 +238,5 @@ const styles = StyleSheet.create({
   transaction: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 18, borderBottomWidth: 1, borderBottomColor: "#232323" },
   scrim: { position: "absolute", bottom: 0, left: 0, right: 0 },
   dock: { position: "absolute", left: 12, right: 12 },
-  modal: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.65)" },
-  sheet: { padding: 24, gap: 16, borderTopLeftRadius: 28, borderTopRightRadius: 28, backgroundColor: "#202020" },
-  handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: "#666666", alignSelf: "center", marginBottom: 8 },
   action: { minHeight: 52, flexDirection: "row", alignItems: "center", gap: 16 },
-  confirmButton: { flex: 1, minHeight: 52, borderRadius: 26, justifyContent: "center", alignItems: "center" },
 });

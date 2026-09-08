@@ -7,6 +7,7 @@ import {
 } from "./backup-document";
 import { isJsonObject } from "./json";
 import { normalizeAccountRecord } from "./account-record";
+import { RATE_SOURCE } from "./exchange-rate";
 
 function normalizeAttachments(value: unknown): AttachmentManifest[] {
   if (!Array.isArray(value)) return [];
@@ -56,6 +57,11 @@ export function normalizeBackupDocument(value: unknown): BackupDocument {
     );
   }
   document.accounts = document.accounts.map(normalizeAccountRecord);
+  // Leave foreign/imported rate formats intact. Selectors validate our tables
+  // before use; missing freshness metadata must never imply a current rate.
+  document.exchangeRates = document.exchangeRates.map((record) =>
+    record.source === RATE_SOURCE ? { fetchedAt: null, ...record } : record,
+  );
   document._local = {
     ...local,
     schemaVersion: LOCAL_SCHEMA_VERSION,

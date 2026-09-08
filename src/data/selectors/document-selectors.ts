@@ -72,6 +72,8 @@ export function selectAccounts(document: BackupDocument): Account[] {
       const kind =
         record.accountType === "card"
           ? "credit"
+          : record.accountType === "bank"
+            ? "bank"
           : record.accountType === "cash"
             ? "cash"
             : record.accountType === "savings"
@@ -130,6 +132,18 @@ export function selectAccounts(document: BackupDocument): Account[] {
         isDefault: record.isDefault === true,
         isExcluded: record.isExcluded === true,
         cardCompany: text(record.cardCompany),
+        bankName: text(record.bankName),
+        linkedBankAccountId:
+          typeof record.linkedBankAccountId === "string"
+            ? record.linkedBankAccountId
+            : null,
+        linkedBankAccountName: text(
+          document.accounts.find(
+            (candidate) =>
+              String(candidate.uuid ?? candidate.id) ===
+              record.linkedBankAccountId,
+          )?.name,
+        ),
         paymentDay:
           typeof record.paymentDay === "number" &&
           Number.isInteger(record.paymentDay) &&
@@ -197,11 +211,21 @@ export function selectAccountDraft(document: BackupDocument, id: string): Accoun
   if (!account) return null;
   return {
     name: account.name, amount: String(account.balance), accountNumber: account.accountNumber,
-    accountType: account.kind === "cash" ? "cash" : account.kind === "savings" ? "savings" : "card",
+    accountType: account.kind === "cash" ? "cash" : account.kind === "savings" ? "savings" : account.kind === "bank" || account.kind === "checking" ? "bank" : "card",
     currencyCode: account.currencyCode, icon: account.icon, iconPath: account.iconPath,
     color: account.color, isDefault: account.isDefault, isExcluded: account.isExcluded,
     cardLastFour: account.lastFour, cardCompany: account.cardCompany, paymentDay: account.paymentDay,
+    bankName: account.bankName, linkedBankAccountId: account.linkedBankAccountId,
   };
+}
+
+export function selectBankAccounts(document: BackupDocument): Account[] {
+  const bankIds = new Set(
+    document.accounts
+      .filter((record) => record.accountType === "bank")
+      .map((record) => String(record.uuid ?? record.id)),
+  );
+  return selectAccounts(document).filter((account) => bankIds.has(account.id));
 }
 
 export function selectAccountTotals(accounts: Account[]) {
@@ -242,7 +266,7 @@ function includedTransactions(document: BackupDocument) {
       .filter((id) => id != null),
   );
   return document.transactions.filter(
-    (transaction) => !excludedIds.has(transaction.account),
+    (transaction) => !excludedIds.has(transaction.account) && transaction.type !== 2,
   );
 }
 
