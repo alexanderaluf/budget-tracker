@@ -51,7 +51,7 @@ import {
     type CurrencyChangeRequest,
 } from "./components/account-currency-change-sheet";
 import { AccountIcon } from "./components/account-icon";
-import { AccountIconPicker, AccountPicker } from "./components/account-picker";
+import { IconPicker, PickerModal as AccountPicker } from "@/shared/ui/icon-picker";
 import { CardCompanyLogo } from "./components/card-company-logo";
 import { SavingsDetailsForm } from "./components/savings-details-form";
 
@@ -770,7 +770,7 @@ export function AccountCreateScreen({ editId }: { editId?: string }) {
         }}
       />
       {picker === "icon" && (
-        <AccountIconPicker
+        <IconPicker
           selected={{ name: draft.icon, pathData: draft.iconPath }}
           onClose={() => setPicker(null)}
           onSelect={(icon) => {

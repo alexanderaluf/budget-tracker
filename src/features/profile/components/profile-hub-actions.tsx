@@ -1,4 +1,5 @@
 import { Pressable, Text, View } from "react-native";
+import { useRouter } from "expo-router";
 
 import { FilledIcon, type FilledIconName } from "@/shared/ui/filled-icon";
 
@@ -40,8 +41,16 @@ export function ProfileHubActions({
   onManageProfiles,
   onSettings,
 }: ProfileHubActionsProps) {
+  const router = useRouter();
   return (
     <View className="gap-4">
+      <View className="overflow-hidden rounded-3xl">
+        <ActionRow
+          icon="shopping"
+          label="Categories"
+          onPress={() => router.push("/categories")}
+        />
+      </View>
       <View className="gap-0.5 overflow-hidden rounded-3xl bg-black">
         <ActionRow
           icon="plus"

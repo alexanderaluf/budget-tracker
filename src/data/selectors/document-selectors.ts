@@ -1,4 +1,5 @@
 import { ACCOUNT_ICONS } from "@/features/accounts/account-options";
+export { selectCategories, selectCategoryMonthlyTotals, selectCategoryTransactions } from "./category-selectors";
 import type {
     Account,
     AccountPeriod,

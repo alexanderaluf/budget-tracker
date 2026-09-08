@@ -6,6 +6,7 @@ import {
     type BackupDocument,
 } from "./backup-document";
 import type { JsonObject } from "./json";
+import { normalizeCategoryRecord } from "./category-record";
 
 const now = "2026-09-06T00:00:00.000Z";
 
@@ -174,7 +175,7 @@ export function createDefaultBackup(): BackupDocument {
       { id: 4, uuid: "category-coffee", name: "Coffee", type: 0 },
       { id: 5, uuid: "category-income", name: "Income", type: 1 },
       { id: 6, uuid: "category-goals", name: "Savings goals", type: 0 },
-    ],
+    ].map((record) => normalizeCategoryRecord({ ...record, createdAt: now, updatedAt: now })),
     budgets: [
       {
         id: 1,
