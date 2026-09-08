@@ -1,10 +1,14 @@
-import type { Account, AccountPeriod, AccountTransaction } from "@/features/accounts/types";
-import type { AccountDraft } from "../model/account-record";
 import { ACCOUNT_ICONS } from "@/features/accounts/account-options";
+import type {
+    Account,
+    AccountPeriod,
+    AccountTransaction,
+} from "@/features/accounts/types";
 import type { BudgetCategory, Transaction } from "@/features/home/types";
 import type { DailySpend, SpendingCategory } from "@/features/reports/types";
 import type { SearchResult } from "@/features/search/types";
 import type { FilledIconName } from "@/shared/ui/filled-icon";
+import type { AccountDraft } from "../model/account-record";
 
 import type { BackupDocument } from "../model/backup-document";
 import type { JsonObject, JsonValue } from "../model/json";
@@ -74,19 +78,19 @@ export function selectAccounts(document: BackupDocument): Account[] {
           ? "credit"
           : record.accountType === "bank"
             ? "bank"
-          : record.accountType === "cash"
-            ? "cash"
-            : record.accountType === "savings"
-              ? "savings"
-              : record.type === 1
-                ? "cash"
-                : record.type === 2
-                  ? "savings"
-                  : normalized.includes("credit")
-                    ? "credit"
-                    : normalized.includes("saving")
-                      ? "savings"
-                      : "checking";
+            : record.accountType === "cash"
+              ? "cash"
+              : record.accountType === "savings"
+                ? "savings"
+                : record.type === 1
+                  ? "cash"
+                  : record.type === 2
+                    ? "savings"
+                    : normalized.includes("credit")
+                      ? "credit"
+                      : normalized.includes("saving")
+                        ? "savings"
+                        : "checking";
       const storedIcon = text(record.icon);
       const storedIconPath = text(record.iconPath);
       const materialIconIsValid =
@@ -97,7 +101,11 @@ export function selectAccounts(document: BackupDocument): Account[] {
       return {
         id: recordId(record, index),
         accountNumber: text(record.accountNumber),
-        ownerName: text(document.users.find((user) => user.uuid === record.user || user.id === record.user)?.name),
+        ownerName: text(
+          document.users.find(
+            (user) => user.uuid === record.user || user.id === record.user,
+          )?.name,
+        ),
         ...accountActivityTotals(document, record),
         name: text(record.name, `Account ${index + 1}`),
         institution,
@@ -156,42 +164,86 @@ export function selectAccounts(document: BackupDocument): Account[] {
 }
 
 function belongsToAccount(transaction: JsonObject, account: JsonObject) {
-  return [account.uuid, account.id].some((id) => id != null && transaction.account === id);
+  return [account.uuid, account.id].some(
+    (id) => id != null && transaction.account === id,
+  );
 }
 
 function accountActivityTotals(document: BackupDocument, account: JsonObject) {
   const currency = text(account.currencyCode, "USD").toUpperCase();
-  const records = document.transactions.filter((item) =>
-    belongsToAccount(item, account) && text(item.currencyCode, currency).toUpperCase() === currency,
+  const records = document.transactions.filter(
+    (item) =>
+      belongsToAccount(item, account) &&
+      text(item.currencyCode, currency).toUpperCase() === currency,
   );
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1).getTime();
+  const thisMonth = records.filter((item) => {
+    const timestamp = new Date(text(item.date, text(item.createdAt))).getTime();
+    return (
+      Number.isFinite(timestamp) &&
+      timestamp >= monthStart &&
+      timestamp < monthEnd
+    );
+  });
+  const total = (items: JsonObject[], type: number) =>
+    items
+      .filter((item) => item.type === type)
+      .reduce((sum, item) => sum + Math.abs(number(item.amount)), 0);
   return {
-    income: records.filter((item) => item.type === 1).reduce((sum, item) => sum + Math.abs(number(item.amount)), 0),
-    expense: records.filter((item) => item.type === 0).reduce((sum, item) => sum + Math.abs(number(item.amount)), 0),
+    income: total(records, 1),
+    expense: total(records, 0),
+    monthlyIncome: total(thisMonth, 1),
+    monthlyExpense: total(thisMonth, 0),
   };
 }
 
-export function selectAccountTransactions(document: BackupDocument, accountId: string): AccountTransaction[] {
-  const account = selectAccounts(document).find((item) => item.id === accountId);
-  const record = document.accounts.find((item) => String(item.uuid ?? item.id) === accountId);
+export function selectAccountTransactions(
+  document: BackupDocument,
+  accountId: string,
+): AccountTransaction[] {
+  const account = selectAccounts(document).find(
+    (item) => item.id === accountId,
+  );
+  const record = document.accounts.find(
+    (item) => String(item.uuid ?? item.id) === accountId,
+  );
   if (!account || !record) return [];
-  return document.transactions.filter((item) => belongsToAccount(item, record)).map((item, index) => {
-    const timestamp = new Date(text(item.date, text(item.createdAt))).getTime();
-    const type = item.type === 1 ? "income" : item.type === 0 ? "expense" : "transfer";
-    return {
-      id: recordId(item, index),
-      name: text(item.name, "Untitled transaction"),
-      category: text(item.categoryName, lookupName(document.categories, item.category)),
-      amount: Math.abs(number(item.amount)),
-      type,
-      currencyCode: /^[A-Z]{3}$/.test(text(item.currencyCode).toUpperCase()) ? text(item.currencyCode).toUpperCase() : account.currencyCode,
-      timestamp: Number.isFinite(timestamp) ? timestamp : null,
-    } satisfies AccountTransaction;
-  }).sort((a, b) => (b.timestamp ?? -Infinity) - (a.timestamp ?? -Infinity));
+  return document.transactions
+    .filter((item) => belongsToAccount(item, record))
+    .map((item, index) => {
+      const timestamp = new Date(
+        text(item.date, text(item.createdAt)),
+      ).getTime();
+      const type =
+        item.type === 1 ? "income" : item.type === 0 ? "expense" : "transfer";
+      return {
+        id: recordId(item, index),
+        name: text(item.name, "Untitled transaction"),
+        category: text(
+          item.categoryName,
+          lookupName(document.categories, item.category),
+        ),
+        amount: Math.abs(number(item.amount)),
+        type,
+        currencyCode: /^[A-Z]{3}$/.test(text(item.currencyCode).toUpperCase())
+          ? text(item.currencyCode).toUpperCase()
+          : account.currencyCode,
+        timestamp: Number.isFinite(timestamp) ? timestamp : null,
+      } satisfies AccountTransaction;
+    })
+    .sort((a, b) => (b.timestamp ?? -Infinity) - (a.timestamp ?? -Infinity));
 }
 
 export function accountPeriodRange(period: AccountPeriod, anchor: Date) {
-  const start = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate());
-  if (period === "Weekly") start.setDate(start.getDate() - (start.getDay() + 6) % 7);
+  const start = new Date(
+    anchor.getFullYear(),
+    anchor.getMonth(),
+    anchor.getDate(),
+  );
+  if (period === "Weekly")
+    start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
   if (period === "Monthly") start.setDate(1);
   if (period === "Yearly") start.setMonth(0, 1);
   const end = new Date(start);
@@ -201,21 +253,49 @@ export function accountPeriodRange(period: AccountPeriod, anchor: Date) {
   return { start, end };
 }
 
-export function filterAccountTransactions(transactions: AccountTransaction[], period: AccountPeriod, anchor: Date) {
+export function filterAccountTransactions(
+  transactions: AccountTransaction[],
+  period: AccountPeriod,
+  anchor: Date,
+) {
   const { start, end } = accountPeriodRange(period, anchor);
-  return transactions.filter((item) => item.timestamp != null && item.timestamp >= start.getTime() && item.timestamp < end.getTime());
+  return transactions.filter(
+    (item) =>
+      item.timestamp != null &&
+      item.timestamp >= start.getTime() &&
+      item.timestamp < end.getTime(),
+  );
 }
 
-export function selectAccountDraft(document: BackupDocument, id: string): AccountDraft | null {
+export function selectAccountDraft(
+  document: BackupDocument,
+  id: string,
+): AccountDraft | null {
   const account = selectAccounts(document).find((item) => item.id === id);
   if (!account) return null;
   return {
-    name: account.name, amount: String(account.balance), accountNumber: account.accountNumber,
-    accountType: account.kind === "cash" ? "cash" : account.kind === "savings" ? "savings" : account.kind === "bank" || account.kind === "checking" ? "bank" : "card",
-    currencyCode: account.currencyCode, icon: account.icon, iconPath: account.iconPath,
-    color: account.color, isDefault: account.isDefault, isExcluded: account.isExcluded,
-    cardLastFour: account.lastFour, cardCompany: account.cardCompany, paymentDay: account.paymentDay,
-    bankName: account.bankName, linkedBankAccountId: account.linkedBankAccountId,
+    name: account.name,
+    amount: String(account.balance),
+    accountNumber: account.accountNumber,
+    accountType:
+      account.kind === "cash"
+        ? "cash"
+        : account.kind === "savings"
+          ? "savings"
+          : account.kind === "bank" || account.kind === "checking"
+            ? "bank"
+            : "card",
+    currencyCode: account.currencyCode,
+    icon: account.icon,
+    iconPath: account.iconPath,
+    color: account.color,
+    isDefault: account.isDefault,
+    isExcluded: account.isExcluded,
+    cardLastFour: account.lastFour,
+    cardCompany: account.cardCompany,
+    paymentDay: account.paymentDay,
+    bankName: account.bankName,
+    linkedBankAccountId: account.linkedBankAccountId,
   };
 }
 
@@ -266,7 +346,8 @@ function includedTransactions(document: BackupDocument) {
       .filter((id) => id != null),
   );
   return document.transactions.filter(
-    (transaction) => !excludedIds.has(transaction.account) && transaction.type !== 2,
+    (transaction) =>
+      !excludedIds.has(transaction.account) && transaction.type !== 2,
   );
 }
 

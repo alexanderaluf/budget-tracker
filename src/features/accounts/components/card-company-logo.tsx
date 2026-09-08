@@ -1,8 +1,12 @@
+import { BlurView } from "expo-blur";
 import { Image, type ImageSource } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
 import { StyleSheet, View } from "react-native";
 
 import { CARD_COMPANIES } from "@/data/model/account-record";
 import { FilledIcon } from "@/shared/ui/filled-icon";
+
+import type { CardPalette } from "../lib/card-color";
 
 type CardCompany = (typeof CARD_COMPANIES)[number];
 
@@ -20,39 +24,111 @@ const logos: Record<CardCompany, ImageSource | null> = {
   Other: null,
 };
 
-export function CardCompanyLogo({ company }: { company: string }) {
+type CardCompanyLogoProps = {
+  company: string;
+  /** Supplying a palette swaps the opaque plate for a frosted, color-matched badge. */
+  palette?: CardPalette;
+  width?: number;
+  height?: number;
+};
+
+export function CardCompanyLogo({
+  company,
+  palette,
+  width = 88,
+  height = 52,
+}: CardCompanyLogoProps) {
   const knownCompany = CARD_COMPANIES.find((name) => name === company);
   const source = knownCompany ? logos[knownCompany] : null;
+  const artwork = {
+    height: Math.round(height * 0.62),
+    width: Math.round(width * 0.78),
+  };
+
+  if (!palette) {
+    return (
+      <View style={[styles.plate, { width, height }]}>
+        {source ? (
+          <Image
+            accessibilityLabel={`${company} logo`}
+            contentFit="contain"
+            source={source}
+            style={artwork}
+          />
+        ) : (
+          <FilledIcon
+            color="#343434"
+            name="credit-card"
+            size={Math.round(height * 0.54)}
+          />
+        )}
+      </View>
+    );
+  }
 
   return (
-    <View style={styles.frame}>
+    <View
+      style={[
+        styles.glass,
+        {
+          backgroundColor: palette.glassFill,
+          borderColor: palette.glassBorder,
+          height,
+          width,
+        },
+      ]}
+    >
+      <BlurView
+        intensity={26}
+        pointerEvents="none"
+        style={StyleSheet.absoluteFill}
+        tint={palette.light ? "light" : "dark"}
+      />
+      <LinearGradient
+        colors={
+          palette.light
+            ? ["rgba(255,255,255,0.78)", "rgba(255,255,255,0.14)"]
+            : ["rgba(255,255,255,0.3)", "rgba(255,255,255,0.03)"]
+        }
+        end={{ x: 1, y: 1 }}
+        pointerEvents="none"
+        start={{ x: 0, y: 0 }}
+        style={StyleSheet.absoluteFill}
+      />
       {source ? (
         <Image
-          source={source}
           accessibilityLabel={`${company} logo`}
           contentFit="contain"
-          style={styles.image}
+          source={source}
+          style={artwork}
+          tintColor={palette.glassInk}
         />
       ) : (
-        <FilledIcon name="credit-card" color="#343434" size={28} />
+        <FilledIcon
+          color={palette.glassInk}
+          name="credit-card"
+          size={Math.round(height * 0.54)}
+        />
       )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  frame: {
+  glass: {
+    alignItems: "center",
+    borderRadius: 12,
+    borderWidth: 1,
+    flexShrink: 0,
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  plate: {
     alignItems: "center",
     backgroundColor: "#ffffff",
     borderRadius: 8,
     flexShrink: 0,
-    height: 52,
     justifyContent: "center",
     overflow: "hidden",
-    width: 88,
-  },
-  image: {
-    height: 44,
-    width: 76,
   },
 });

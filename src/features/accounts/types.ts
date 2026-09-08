@@ -23,6 +23,8 @@ export type Account = {
   ownerName: string;
   income: number;
   expense: number;
+  monthlyIncome: number;
+  monthlyExpense: number;
 };
 
 export type AccountPeriod = "Daily" | "Weekly" | "Monthly" | "Yearly";
