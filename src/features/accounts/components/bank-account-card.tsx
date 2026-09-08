@@ -23,13 +23,6 @@ export function BankAccountCard({ account }: { account: Account }) {
   const net = account.income - account.expense;
   const flow = account.income + account.expense;
   const incomeShare = flow > 0 ? account.income / flow : 0.5;
-  const subtitle = [
-    account.bankName || kindLabels[account.kind],
-    account.accountNumber ? `•••• ${account.accountNumber.slice(-4)}` : "",
-    account.ownerName,
-  ]
-    .filter(Boolean)
-    .join(" · ");
   const badges = [
     account.isDefault ? "Default" : "",
     account.isExcluded ? "Excluded" : "",
@@ -56,33 +49,78 @@ export function BankAccountCard({ account }: { account: Account }) {
         </View>
         <View style={styles.identity}>
           <Text
-            className="font-manrope-bold text-base text-foreground"
+            className="font-manrope-semibold text-[10px]"
+            style={[styles.overline, { color: account.color }]}
+          >
+            {kindLabels[account.kind]} · {account.currencyCode}
+          </Text>
+          <Text
+            className="font-manrope-bold text-lg text-foreground"
             numberOfLines={1}
           >
             {account.name}
           </Text>
-          <Text className="font-sans text-xs text-muted" numberOfLines={1}>
-            {subtitle}
-          </Text>
         </View>
-        <View style={styles.balance}>
-          <Text
-            className="font-manrope-medium text-[10px]"
-            style={[styles.overline, { color: withAlpha(account.color, 0.9) }]}
-          >
-            {account.currencyCode} balance
-          </Text>
-          <Text
-            className="font-manrope-bold text-2xl text-foreground"
-            numberOfLines={1}
-            style={account.balance < 0 ? { color: EXPENSE } : undefined}
-          >
-            {account.balance < 0 ? "−" : ""}
-            {formatCurrency(account.balance, account.currencyCode)}
-          </Text>
+        <View style={styles.badges}>
+          {badges.map((badge) => (
+            <View
+              key={badge}
+              style={[
+                styles.badge,
+                { backgroundColor: withAlpha(account.color, 0.14) },
+              ]}
+            >
+              <Text
+                className="font-manrope-semibold text-[10px]"
+                style={{ color: account.color }}
+              >
+                {badge}
+              </Text>
+            </View>
+          ))}
         </View>
       </View>
 
+      <View
+        style={[styles.details, { borderColor: withAlpha(account.color, 0.2) }]}
+      >
+        <Detail
+          label="Institution"
+          value={account.bankName || account.institution || "Local account"}
+        />
+        {!!account.accountNumber && (
+          <Detail
+            label="Account"
+            value={`•••• ${account.accountNumber.slice(-4)}`}
+          />
+        )}
+        {!!account.ownerName && (
+          <Detail label="Owner" value={account.ownerName} />
+        )}
+      </View>
+
+      <View style={styles.balanceBlock}>
+        <Text className="font-manrope-medium text-xs text-muted">
+          Current balance
+        </Text>
+        <Text
+          adjustsFontSizeToFit
+          className="font-manrope-bold text-3xl text-foreground"
+          minimumFontScale={0.68}
+          numberOfLines={1}
+          style={account.balance < 0 ? { color: EXPENSE } : undefined}
+        >
+          {account.balance < 0 ? "−" : ""}
+          {formatCurrency(account.balance, account.currencyCode)}
+        </Text>
+      </View>
+
+      <Text
+        className="font-manrope-medium text-[10px] text-muted"
+        style={styles.overline}
+      >
+        All-time activity
+      </Text>
       <View style={styles.flowBar}>
         <View
           style={[
@@ -106,7 +144,7 @@ export function BankAccountCard({ account }: { account: Account }) {
           color={INCOME}
           currencyCode={account.currencyCode}
           icon="arrow-bottom-left"
-          label="In · all time"
+          label="Income"
           value={account.income}
         />
         <View
@@ -119,7 +157,7 @@ export function BankAccountCard({ account }: { account: Account }) {
           color={EXPENSE}
           currencyCode={account.currencyCode}
           icon="arrow-top-right"
-          label="Out · all time"
+          label="Expenses"
           value={account.expense}
         />
         <View
@@ -132,35 +170,27 @@ export function BankAccountCard({ account }: { account: Account }) {
           color={net < 0 ? EXPENSE : INCOME}
           currencyCode={account.currencyCode}
           icon={net < 0 ? "trending-down" : "trending-up"}
-          label="Net flow"
+          label="Net"
           prefix={net < 0 ? "−" : "+"}
           value={net}
         />
       </View>
+    </View>
+  );
+}
 
-      {badges.length > 0 && (
-        <View style={styles.badges}>
-          {badges.map((badge) => (
-            <View
-              key={badge}
-              style={[
-                styles.badge,
-                { borderColor: withAlpha(account.color, 0.35) },
-              ]}
-            >
-              <Text
-                className="font-manrope-semibold text-[10px]"
-                style={[
-                  styles.overline,
-                  { color: withAlpha(account.color, 0.95) },
-                ]}
-              >
-                {badge}
-              </Text>
-            </View>
-          ))}
-        </View>
-      )}
+function Detail({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.detail}>
+      <Text className="font-manrope-medium text-[10px] text-muted">
+        {label}
+      </Text>
+      <Text
+        className="font-manrope-semibold text-xs text-foreground"
+        numberOfLines={1}
+      >
+        {value}
+      </Text>
     </View>
   );
 }
@@ -195,6 +225,8 @@ function Stat({
       </View>
       <Text
         className="font-manrope-bold text-sm"
+        adjustsFontSizeToFit
+        minimumFontScale={0.72}
         numberOfLines={1}
         style={{ color }}
       >
@@ -208,20 +240,25 @@ function Stat({
 const styles = StyleSheet.create({
   badge: {
     borderRadius: 999,
-    borderWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingVertical: 5,
   },
-  badges: { flexDirection: "row", gap: 6 },
-  balance: { alignItems: "flex-end", gap: 1 },
+  badges: { alignItems: "flex-end", gap: 5 },
+  balanceBlock: { gap: 3, paddingVertical: 2 },
   card: {
-    borderRadius: 22,
+    borderRadius: 20,
     borderWidth: 1,
-    gap: 14,
+    gap: 12,
     overflow: "hidden",
-    paddingBottom: 14,
-    paddingHorizontal: 16,
-    paddingTop: 14,
+    padding: 16,
+  },
+  detail: { flex: 1, gap: 2, minWidth: 72 },
+  details: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    flexDirection: "row",
+    gap: 14,
+    paddingVertical: 10,
   },
   divider: { alignSelf: "stretch", marginVertical: 2, width: 1 },
   flowBar: {
@@ -240,9 +277,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 44,
   },
-  identity: { flex: 1, gap: 2 },
+  identity: { flex: 1, gap: 1 },
   overline: { letterSpacing: 0.6, textTransform: "uppercase" },
   stat: { flex: 1, gap: 3 },
   statLabel: { alignItems: "center", flexDirection: "row", gap: 5 },
-  stats: { flexDirection: "row", gap: 12 },
+  stats: { flexDirection: "row", gap: 10 },
 });

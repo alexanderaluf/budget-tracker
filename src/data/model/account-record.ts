@@ -1,5 +1,9 @@
 import type { BackupDocument } from "./backup-document";
 import type { JsonObject, JsonValue } from "./json";
+import {
+    type SavingsDetailsDraft,
+    validateSavingsDetails,
+} from "./savings-account";
 
 export const ACCOUNT_TYPES = ["card", "cash", "savings", "bank"] as const;
 export type AccountType = (typeof ACCOUNT_TYPES)[number];
@@ -31,6 +35,7 @@ export interface AccountDraft {
   paymentDay: number | null;
   bankName: string;
   linkedBankAccountId: string | null;
+  savingsDetails: SavingsDetailsDraft;
 }
 
 export function parseAccountAmount(value: string): number {
@@ -82,6 +87,8 @@ export function validateAccountDraft(draft: AccountDraft) {
   }
   if (draft.accountType === "bank" && !draft.bankName.trim())
     throw new Error("Enter the bank name.");
+  if (draft.accountType === "savings")
+    validateSavingsDetails(draft.savingsDetails, amount);
   return amount;
 }
 
@@ -145,6 +152,10 @@ export function addAccountToDocument(
       draft.accountType === "card"
         ? String(linkedBankAccount!.uuid ?? linkedBankAccount!.id)
         : null,
+    savingsDetails:
+      draft.accountType === "savings"
+        ? validateSavingsDetails(draft.savingsDetails, amount)
+        : null,
     lastPaymentPeriod: null,
   };
   return {
@@ -172,6 +183,7 @@ export function normalizeAccountRecord(record: JsonObject): JsonObject {
     paymentDay: null,
     bankName: null,
     linkedBankAccountId: null,
+    savingsDetails: null,
     lastPaymentPeriod: null,
     iconPath: null,
     ...record,
@@ -179,16 +191,30 @@ export function normalizeAccountRecord(record: JsonObject): JsonObject {
 }
 
 function editableAccount(document: BackupDocument, id: string) {
-  const account = document.accounts.find((item) => String(item.uuid ?? item.id) === id);
+  const account = document.accounts.find(
+    (item) => String(item.uuid ?? item.id) === id,
+  );
   if (!account) throw new Error("This account no longer exists.");
   const profileId = document._local.selectedProfileId;
-  const owner = document.users.find((user) => String(user.uuid ?? user.id) === profileId);
-  if (profileId && account.user != null && account.user !== profileId && account.user !== owner?.id)
+  const owner = document.users.find(
+    (user) => String(user.uuid ?? user.id) === profileId,
+  );
+  if (
+    profileId &&
+    account.user != null &&
+    account.user !== profileId &&
+    account.user !== owner?.id
+  )
     throw new Error("Switch to this account's profile first.");
   return account;
 }
 
-export function updateAccountInDocument(current: BackupDocument, draft: AccountDraft, id: string, now: string): BackupDocument {
+export function updateAccountInDocument(
+  current: BackupDocument,
+  draft: AccountDraft,
+  id: string,
+  now: string,
+): BackupDocument {
   const previous = editableAccount(current, id);
   const ids: JsonValue[] = [previous.uuid, previous.id].filter(
     (value) => value != null,
@@ -200,11 +226,21 @@ export function updateAccountInDocument(current: BackupDocument, draft: AccountD
       ids.includes(account.linkedBankAccountId),
   );
   if (linkedCards.length && draft.accountType !== "bank")
-    throw new Error("Disconnect linked cards before changing this bank account type.");
-  const owner = current.users.find((user) => user.uuid === previous.user || user.id === previous.user);
+    throw new Error(
+      "Disconnect linked cards before changing this bank account type.",
+    );
+  const owner = current.users.find(
+    (user) => user.uuid === previous.user || user.id === previous.user,
+  );
   const next = addAccountToDocument(
-    { ...current, accounts: current.accounts.filter((item) => item !== previous) },
-    draft, String(owner?.uuid ?? owner?.id ?? current._local.selectedProfileId), id, now,
+    {
+      ...current,
+      accounts: current.accounts.filter((item) => item !== previous),
+    },
+    draft,
+    String(owner?.uuid ?? owner?.id ?? current._local.selectedProfileId),
+    id,
+    now,
   );
   const updated = next.accounts.at(-1)!;
   if (draft.accountType === "card" && previous.accountType === "card") {
@@ -212,50 +248,109 @@ export function updateAccountInDocument(current: BackupDocument, draft: AccountD
   }
   return {
     ...next,
-    accounts: current.accounts.map((item) => item === previous
-      ? { ...previous, ...updated, uuid: previous.uuid ?? updated.uuid, user: previous.user ?? updated.user, createdAt: previous.createdAt ?? updated.createdAt, transactions: previous.transactions ?? [] }
-      : next.accounts.find((candidate) => String(candidate.uuid ?? candidate.id) === String(item.uuid ?? item.id))!),
+    accounts: current.accounts.map((item) =>
+      item === previous
+        ? {
+            ...previous,
+            ...updated,
+            uuid: previous.uuid ?? updated.uuid,
+            user: previous.user ?? updated.user,
+            createdAt: previous.createdAt ?? updated.createdAt,
+            transactions: previous.transactions ?? [],
+          }
+        : next.accounts.find(
+            (candidate) =>
+              String(candidate.uuid ?? candidate.id) ===
+              String(item.uuid ?? item.id),
+          )!,
+    ),
     transactions: current.transactions.map((item) => {
       if (!related(item)) return item;
       // Legacy transactions inherit the account currency. Freeze that original
       // currency before changing the account; history is never converted.
       const currencyChanged = draft.currencyCode !== previous.currencyCode;
-      return { ...item,
-        ...(currencyChanged && item.currencyCode == null ? { currencyCode: previous.currencyCode ?? "USD" } : {}),
+      return {
+        ...item,
+        ...(currencyChanged && item.currencyCode == null
+          ? { currencyCode: previous.currencyCode ?? "USD" }
+          : {}),
         ...("accountName" in item ? { accountName: draft.name.trim() } : {}),
-        updatedAt: now };
+        updatedAt: now,
+      };
     }),
   };
 }
 
 /** Remove the account, its transactions and their denormalized references atomically. */
-export function deleteAccountFromDocument(current: BackupDocument, id: string, now: string): BackupDocument {
+export function deleteAccountFromDocument(
+  current: BackupDocument,
+  id: string,
+  now: string,
+): BackupDocument {
   const account = editableAccount(current, id);
-  const accountIds = new Set<JsonValue>([account.uuid, account.id].filter((value) => value != null));
-  const removed = current.transactions.filter((item) => accountIds.has(item.account));
-  const transactionIds = new Set<JsonValue>(removed.flatMap((item) => [item.uuid, item.id]).filter((value) => value != null));
-  const accountKeys = new Set(["account", "accountId", "fromAccount", "toAccount", "sourceAccount", "destinationAccount", "parentAccount", "linkedBankAccountId"]);
+  const accountIds = new Set<JsonValue>(
+    [account.uuid, account.id].filter((value) => value != null),
+  );
+  const removed = current.transactions.filter((item) =>
+    accountIds.has(item.account),
+  );
+  const transactionIds = new Set<JsonValue>(
+    removed
+      .flatMap((item) => [item.uuid, item.id])
+      .filter((value) => value != null),
+  );
+  const accountKeys = new Set([
+    "account",
+    "accountId",
+    "fromAccount",
+    "toAccount",
+    "sourceAccount",
+    "destinationAccount",
+    "parentAccount",
+    "linkedBankAccountId",
+  ]);
   const transactionKeys = new Set(["transaction", "transactionId"]);
   function clean(value: JsonValue, key?: string): JsonValue {
     if (key && accountKeys.has(key) && accountIds.has(value)) return null;
-    if (key && transactionKeys.has(key) && transactionIds.has(value)) return null;
+    if (key && transactionKeys.has(key) && transactionIds.has(value))
+      return null;
     if (Array.isArray(value)) {
-      const ids = key === "accounts" ? accountIds : key === "transactions" ? transactionIds : null;
+      const ids =
+        key === "accounts"
+          ? accountIds
+          : key === "transactions"
+            ? transactionIds
+            : null;
       return value.filter((item) => !ids?.has(item)).map((item) => clean(item));
     }
     if (value && typeof value === "object")
-      return Object.fromEntries(Object.entries(value).map(([childKey, child]) => [childKey, clean(child, childKey)]));
+      return Object.fromEntries(
+        Object.entries(value).map(([childKey, child]) => [
+          childKey,
+          clean(child, childKey),
+        ]),
+      );
     return value;
   }
-  const next: BackupDocument = { ...current, accounts: current.accounts.filter((item) => item !== account), transactions: current.transactions.filter((item) => !removed.includes(item)) };
+  const next: BackupDocument = {
+    ...current,
+    accounts: current.accounts.filter((item) => item !== account),
+    transactions: current.transactions.filter(
+      (item) => !removed.includes(item),
+    ),
+  };
   // Process records, not metadata or arbitrary top-level fields.
   for (const key of Object.keys(next)) {
     const collection = next[key];
     if (!Array.isArray(collection)) continue;
     next[key] = collection.map((item) => {
       const cleaned = clean(item);
-      return cleaned && !Array.isArray(cleaned) && typeof cleaned === "object" && JSON.stringify(cleaned) !== JSON.stringify(item)
-        ? { ...cleaned, updatedAt: now } : cleaned;
+      return cleaned &&
+        !Array.isArray(cleaned) &&
+        typeof cleaned === "object" &&
+        JSON.stringify(cleaned) !== JSON.stringify(item)
+        ? { ...cleaned, updatedAt: now }
+        : cleaned;
     });
   }
   return next;

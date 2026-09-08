@@ -1,3 +1,5 @@
+import type { SavingsAccountSummary } from "@/data/model/savings-account";
+
 export type AccountKind = "bank" | "checking" | "savings" | "credit" | "cash";
 
 export type Account = {
@@ -25,6 +27,7 @@ export type Account = {
   expense: number;
   monthlyIncome: number;
   monthlyExpense: number;
+  savingsSummary: SavingsAccountSummary | null;
 };
 
 export type AccountPeriod = "Daily" | "Weekly" | "Monthly" | "Yearly";

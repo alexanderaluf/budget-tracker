@@ -1,11 +1,11 @@
 import type { Account } from "../types";
 import { BankAccountCard } from "./bank-account-card";
 import { CreditAccountCard } from "./credit-account-card";
+import { SavingsAccountCard } from "./savings-account-card";
 
 export function AccountCard({ account }: { account: Account }) {
-  return account.kind === "credit" ? (
-    <CreditAccountCard account={account} />
-  ) : (
-    <BankAccountCard account={account} />
-  );
+  if (account.kind === "credit") return <CreditAccountCard account={account} />;
+  if (account.kind === "savings")
+    return <SavingsAccountCard account={account} />;
+  return <BankAccountCard account={account} />;
 }

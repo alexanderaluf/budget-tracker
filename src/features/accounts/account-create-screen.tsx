@@ -1,54 +1,59 @@
-import { uuid } from "expo-modules-core";
 import { LinearGradient } from "expo-linear-gradient";
+import { uuid } from "expo-modules-core";
 import { useRouter } from "expo-router";
-import { Button, Input, Switch as HeroSwitch } from "heroui-native";
+import { Button, Switch as HeroSwitch, Input } from "heroui-native";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
-  Alert,
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  View,
-  type LayoutChangeEvent,
+    Alert,
+    Keyboard,
+    KeyboardAvoidingView,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Switch,
+    Text,
+    View,
+    type LayoutChangeEvent,
 } from "react-native";
 import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
+    useAnimatedStyle,
+    useSharedValue,
+    withSpring,
 } from "react-native-reanimated";
 import {
-  SafeAreaView,
-  useSafeAreaInsets,
+    SafeAreaView,
+    useSafeAreaInsets,
 } from "react-native-safe-area-context";
 
 import { useLocalData } from "@/data/local-data-provider";
 import {
-  ACCOUNT_TYPES,
-  CARD_COMPANIES,
-  addAccountToDocument,
-  updateAccountInDocument,
-  validateAccountDraft,
-  parseAccountAmount,
-  type AccountDraft,
+    ACCOUNT_TYPES,
+    CARD_COMPANIES,
+    addAccountToDocument,
+    parseAccountAmount,
+    updateAccountInDocument,
+    validateAccountDraft,
+    type AccountDraft,
 } from "@/data/model/account-record";
+import { createDefaultSavingsDetails } from "@/data/model/savings-account";
+import {
+    selectAccountDraft,
+    selectBankAccounts,
+} from "@/data/selectors/document-selectors";
 import { CurrencySelectorSheet } from "@/features/profile/components/currency-selector-sheet";
 import { currencies } from "@/features/profile/data/currencies-data";
 import { useProfiles } from "@/features/profile/profile-provider";
 import { FilledIcon, type FilledIconName } from "@/shared/ui/filled-icon";
 import { ACCOUNT_COLORS, colorForeground } from "./account-options";
+import {
+    AccountCurrencyChangeSheet,
+    type CurrencyChangeRequest,
+} from "./components/account-currency-change-sheet";
 import { AccountIcon } from "./components/account-icon";
 import { AccountIconPicker, AccountPicker } from "./components/account-picker";
 import { CardCompanyLogo } from "./components/card-company-logo";
-import { AccountCurrencyChangeSheet, type CurrencyChangeRequest } from "./components/account-currency-change-sheet";
-import {
-  selectAccountDraft,
-  selectBankAccounts,
-} from "@/data/selectors/document-selectors";
+import { SavingsDetailsForm } from "./components/savings-details-form";
 
 const defaultIcons = {
   card: "credit-card",
@@ -198,26 +203,33 @@ export function AccountCreateScreen({ editId }: { editId?: string }) {
   const { activeProfile } = useProfiles();
   // Capture the owner for this draft; a later profile change cannot reassign it.
   const [profileId] = useState(activeProfile.id);
-  const [originalAccount] = useState(() => editId ? selectAccountDraft(document, editId) : null);
-  const [currencyChange, setCurrencyChange] = useState<CurrencyChangeRequest | null>(null);
+  const [originalAccount] = useState(() =>
+    editId ? selectAccountDraft(document, editId) : null,
+  );
+  const [currencyChange, setCurrencyChange] =
+    useState<CurrencyChangeRequest | null>(null);
   const [currencyChangeNote, setCurrencyChangeNote] = useState("");
-  const [draft, setDraft] = useState<AccountDraft>(() => (editId ? selectAccountDraft(document, editId) : null) ?? {
-    name: "",
-    amount: "",
-    accountNumber: "",
-    accountType: "card",
-    currencyCode: activeProfile.currencyCode.toUpperCase(),
-    icon: "credit-card",
-    iconPath: null,
-    color: ACCOUNT_COLORS[0],
-    isDefault: false,
-    isExcluded: false,
-    cardLastFour: "",
-    cardCompany: "",
-    paymentDay: null,
-    bankName: "",
-    linkedBankAccountId: null,
-  });
+  const [draft, setDraft] = useState<AccountDraft>(
+    () =>
+      (editId ? selectAccountDraft(document, editId) : null) ?? {
+        name: "",
+        amount: "",
+        accountNumber: "",
+        accountType: "card",
+        currencyCode: activeProfile.currencyCode.toUpperCase(),
+        icon: "credit-card",
+        iconPath: null,
+        color: ACCOUNT_COLORS[0],
+        isDefault: false,
+        isExcluded: false,
+        cardLastFour: "",
+        cardCompany: "",
+        paymentDay: null,
+        bankName: "",
+        linkedBankAccountId: null,
+        savingsDetails: createDefaultSavingsDetails(),
+      },
+  );
   const [picker, setPicker] = useState<
     "icon" | "currency" | "company" | "day" | "bank" | null
   >(null);
@@ -236,6 +248,10 @@ export function AccountCreateScreen({ editId }: { editId?: string }) {
   const linkedBankAccount = bankAccounts.find(
     (account) => account.id === draft.linkedBankAccountId,
   );
+  const parsedDraftBalance = Number(draft.amount.replace(",", "."));
+  const savingsBalance = Number.isFinite(parsedDraftBalance)
+    ? parsedDraftBalance
+    : 0;
   function change<K extends keyof AccountDraft>(
     key: K,
     value: AccountDraft[K],
@@ -274,10 +290,18 @@ export function AccountCreateScreen({ editId }: { editId?: string }) {
       await updateDocument((current) => {
         if (editId && originalAccount) {
           const latest = selectAccountDraft(current, editId);
-          if (latest && (latest.amount !== originalAccount.amount || latest.currencyCode !== originalAccount.currencyCode))
-            throw new Error("This account balance changed while you were editing. Reopen the account to use its latest balance.");
+          if (
+            latest &&
+            (latest.amount !== originalAccount.amount ||
+              latest.currencyCode !== originalAccount.currencyCode)
+          )
+            throw new Error(
+              "This account balance changed while you were editing. Reopen the account to use its latest balance.",
+            );
         }
-        return editId ? updateAccountInDocument(current, draft, editId, now) : addAccountToDocument(current, draft, profileId, id, now);
+        return editId
+          ? updateAccountInDocument(current, draft, editId, now)
+          : addAccountToDocument(current, draft, profileId, id, now);
       });
       if (editId) router.back();
       else router.dismissTo("/accounts");
@@ -368,7 +392,9 @@ export function AccountCreateScreen({ editId }: { editId?: string }) {
                   placeholder={
                     draft.accountType === "bank"
                       ? "e.g. Main bank account"
-                      : "e.g. Everyday card"
+                      : draft.accountType === "savings"
+                        ? "e.g. Retirement fund"
+                        : "e.g. Everyday card"
                   }
                   maxLength={100}
                   value={draft.name}
@@ -380,7 +406,8 @@ export function AccountCreateScreen({ editId }: { editId?: string }) {
             </View>
             <View className="gap-2">
               <Text className="font-manrope-medium text-sm text-muted">
-                Opening balance ({draft.currencyCode})
+                {draft.accountType === "savings" ? "Current" : "Opening"}{" "}
+                balance ({draft.currencyCode})
               </Text>
               <View className="flex-row items-center gap-2">
                 <Button
@@ -451,6 +478,16 @@ export function AccountCreateScreen({ editId }: { editId?: string }) {
                 </View>
               </View>
             )}
+            {draft.accountType === "savings" && (
+              <SavingsDetailsForm
+                balance={savingsBalance}
+                currencyCode={draft.currencyCode}
+                value={draft.savingsDetails}
+                onChange={(savingsDetails) =>
+                  change("savingsDetails", savingsDetails)
+                }
+              />
+            )}
             {draft.accountType === "card" && (
               <View className="gap-3 pt-1">
                 <View className="flex-row items-center gap-3">
@@ -514,8 +551,10 @@ export function AccountCreateScreen({ editId }: { editId?: string }) {
                   On the payment day, the card debt is paid from the linked bank
                   account. Both accounts may go into overdraft. Days 29–31 use
                   the last day in shorter months.
-                  {linkedBankAccount && linkedBankAccount.currencyCode !== draft.currencyCode
-                    ? ` Payments convert ${draft.currencyCode} to ${linkedBankAccount.currencyCode} at the daily rate when processed.` : ""}
+                  {linkedBankAccount &&
+                  linkedBankAccount.currencyCode !== draft.currencyCode
+                    ? ` Payments convert ${draft.currencyCode} to ${linkedBankAccount.currencyCode} at the daily rate when processed.`
+                    : ""}
                 </Text>
               </View>
             )}
@@ -525,7 +564,12 @@ export function AccountCreateScreen({ editId }: { editId?: string }) {
               description={`${draft.currencyCode} (${currency?.symbol ?? draft.currencyCode})`}
               onPress={() => openPicker("currency")}
             />
-            {!!currencyChangeNote && <Text className="font-sans text-sm text-muted">{currencyChangeNote} Past transactions retain their original currency.</Text>}
+            {!!currencyChangeNote && (
+              <Text className="font-sans text-sm text-muted">
+                {currencyChangeNote} Past transactions retain their original
+                currency.
+              </Text>
+            )}
             {(
               [
                 {
@@ -659,7 +703,13 @@ export function AccountCreateScreen({ editId }: { editId?: string }) {
             </Text>
           )}
           <Pressable
-            accessibilityLabel={isSaving ? "Saving account" : editId ? "Save changes" : "Add account"}
+            accessibilityLabel={
+              isSaving
+                ? "Saving account"
+                : editId
+                  ? "Save changes"
+                  : "Add account"
+            }
             accessibilityRole="button"
             accessibilityState={{ busy: isSaving, disabled: isSaving }}
             disabled={isSaving}
@@ -687,21 +737,38 @@ export function AccountCreateScreen({ editId }: { editId?: string }) {
         onSelect={(item) => {
           if (item.code === draft.currencyCode) return;
           try {
-            const amount = draft.amount.trim() ? parseAccountAmount(draft.amount) : 0;
-            setCurrencyChange({ from: draft.currencyCode, to: item.code, amount });
+            const amount = draft.amount.trim()
+              ? parseAccountAmount(draft.amount)
+              : 0;
+            setCurrencyChange({
+              from: draft.currencyCode,
+              to: item.code,
+              amount,
+            });
             setError("");
           } catch (reason) {
-            setError(reason instanceof Error ? reason.message : "Enter a valid balance first.");
+            setError(
+              reason instanceof Error
+                ? reason.message
+                : "Enter a valid balance first.",
+            );
           }
         }}
       />
-      <AccountCurrencyChangeSheet request={currencyChange} onClose={() => setCurrencyChange(null)}
+      <AccountCurrencyChangeSheet
+        request={currencyChange}
+        onClose={() => setCurrencyChange(null)}
         onApply={(amount, explanation) => {
           if (!currencyChange) return;
-          setDraft((current) => ({ ...current, currencyCode: currencyChange.to, amount: String(amount) }));
+          setDraft((current) => ({
+            ...current,
+            currencyCode: currencyChange.to,
+            amount: String(amount),
+          }));
           setCurrencyChangeNote(explanation);
           setCurrencyChange(null);
-        }} />
+        }}
+      />
       {picker === "icon" && (
         <AccountIconPicker
           selected={{ name: draft.icon, pathData: draft.iconPath }}

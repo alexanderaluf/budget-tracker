@@ -53,14 +53,17 @@ export function BottomNavigation({
   const [isIndicatorReady, setIsIndicatorReady] = useState(false);
   const [displayedActionItem, setDisplayedActionItem] =
     useState<TabId>(activeItem);
-  const tabFrames = useRef<Partial<Record<TabId, TabFrame>>>({});
+  const [tabFrames, setTabFrames] = useState<Partial<Record<TabId, TabFrame>>>(
+    {},
+  );
   const targetActionItem = useRef(activeItem);
   const actionIcon = actionIcons[displayedActionItem];
 
   useEffect(() => {
-    const activeFrame = tabFrames.current[activeItem];
+    const activeFrame = tabFrames[activeItem];
     if (!activeFrame) return;
 
+    setIsIndicatorReady(true);
     indicatorX.value = withSpring(activeFrame.x, {
       damping: 20,
       mass: 0.7,
@@ -71,7 +74,7 @@ export function BottomNavigation({
       mass: 0.7,
       stiffness: 230,
     });
-  }, [activeItem, indicatorWidth, indicatorX]);
+  }, [activeItem, indicatorWidth, indicatorX, tabFrames]);
 
   useEffect(() => {
     if (activeItem === displayedActionItem) return;
@@ -108,13 +111,11 @@ export function BottomNavigation({
 
   function handleTabLayout(item: TabId, event: LayoutChangeEvent) {
     const { width, x } = event.nativeEvent.layout;
-    tabFrames.current[item] = { width, x };
-
-    if (item === activeItem) {
-      indicatorX.value = x;
-      indicatorWidth.value = width;
-      setIsIndicatorReady(true);
-    }
+    setTabFrames((current) => {
+      const previous = current[item];
+      if (previous?.width === width && previous.x === x) return current;
+      return { ...current, [item]: { width, x } };
+    });
   }
 
   const indicatorStyle = useAnimatedStyle(() => ({

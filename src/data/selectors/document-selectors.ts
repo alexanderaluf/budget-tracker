@@ -9,6 +9,10 @@ import type { DailySpend, SpendingCategory } from "@/features/reports/types";
 import type { SearchResult } from "@/features/search/types";
 import type { FilledIconName } from "@/shared/ui/filled-icon";
 import type { AccountDraft } from "../model/account-record";
+import {
+    getSavingsAccountSummary,
+    savingsDetailsToDraft,
+} from "../model/savings-account";
 
 import type { BackupDocument } from "../model/backup-document";
 import type { JsonObject, JsonValue } from "../model/json";
@@ -111,6 +115,13 @@ export function selectAccounts(document: BackupDocument): Account[] {
         institution,
         kind,
         balance: number(record.amount),
+        savingsSummary:
+          kind === "savings"
+            ? getSavingsAccountSummary(
+                number(record.amount),
+                record.savingsDetails,
+              )
+            : null,
         lastFour: text(record.cardLastFour, text(record.accountNumber)).slice(
           -4,
         ),
@@ -272,6 +283,9 @@ export function selectAccountDraft(
   id: string,
 ): AccountDraft | null {
   const account = selectAccounts(document).find((item) => item.id === id);
+  const record = document.accounts.find(
+    (item) => String(item.uuid ?? item.id) === id,
+  );
   if (!account) return null;
   return {
     name: account.name,
@@ -296,6 +310,7 @@ export function selectAccountDraft(
     paymentDay: account.paymentDay,
     bankName: account.bankName,
     linkedBankAccountId: account.linkedBankAccountId,
+    savingsDetails: savingsDetailsToDraft(record?.savingsDetails),
   };
 }
 
