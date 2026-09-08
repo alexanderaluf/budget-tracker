@@ -5,7 +5,7 @@ import { createDefaultBackup } from "../model/default-backup";
 import type { JsonValue } from "../model/json";
 import { normalizeBackupDocument } from "../model/normalize-backup";
 
-const DATABASE_VERSION = 11;
+const DATABASE_VERSION = 12;
 // Superseded default category uuids from the pre-v9 seed (Groceries/Housing/Dining/Coffee/Income/Savings goals).
 const LEGACY_DEFAULT_CATEGORY_UUIDS = new Set([
   "category-groceries",
@@ -345,7 +345,27 @@ export async function migrateLocalDatabase(database: SQLiteDatabase) {
   }
 
   if (currentVersion < 11) {
-    await database.execAsync(`PRAGMA user_version = ${DATABASE_VERSION};`);
+    await database.execAsync("PRAGMA user_version = 11;");
+  }
+
+  if (currentVersion < 12) {
+    await database.withExclusiveTransactionAsync(async (transaction) => {
+      const stored = await transaction.getFirstAsync<{ document_json: string }>(
+        "SELECT document_json FROM app_document WHERE id = 1",
+      );
+      if (stored) {
+        const document = normalizeBackupDocument(
+          JSON.parse(stored.document_json),
+        );
+        await transaction.runAsync(
+          "UPDATE app_document SET schema_version = ?, document_json = ?, updated_at = ? WHERE id = 1",
+          document._local.schemaVersion,
+          JSON.stringify(document),
+          new Date().toISOString(),
+        );
+      }
+      await transaction.execAsync(`PRAGMA user_version = ${DATABASE_VERSION};`);
+    });
   }
 
   // This revision is independent of PRAGMA user_version so partially migrated devices recover.

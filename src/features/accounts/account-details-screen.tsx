@@ -8,6 +8,10 @@ import {
 } from "@/data/selectors/document-selectors";
 import { formatCurrency } from "@/shared/lib/currency";
 import { FilledIcon } from "@/shared/ui/filled-icon";
+import {
+  colorWithAlpha,
+  useAppThemeColors,
+} from "@/shared/theme/app-theme";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurTargetView } from "expo-blur";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -27,6 +31,7 @@ export function AccountDetailsScreen() {
   const { document, updateDocument } = useLocalData();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const theme = useAppThemeColors();
   const [period, setPeriod] = useState<AccountPeriod>("Monthly");
   const [anchor, setAnchor] = useState(() => new Date());
   const [allTime, setAllTime] = useState(true);
@@ -129,7 +134,9 @@ export function AccountDetailsScreen() {
 
   if (!account)
     return (
-      <SafeAreaView style={styles.screen}>
+      <SafeAreaView
+        style={[styles.screen, { backgroundColor: theme.background }]}
+      >
         <Text className="px-5 py-6 text-foreground">Account not found.</Text>
         <Pressable
           accessibilityRole="button"
@@ -142,7 +149,10 @@ export function AccountDetailsScreen() {
     );
 
   return (
-    <SafeAreaView edges={["top"]} style={styles.screen}>
+    <SafeAreaView
+      edges={["top"]}
+      style={[styles.screen, { backgroundColor: theme.background }]}
+    >
       <BlurTargetView ref={blurTargetRef} style={{ flex: 1 }}>
         <View style={styles.header}>
         <Pressable
@@ -151,7 +161,7 @@ export function AccountDetailsScreen() {
           onPress={() => router.dismissTo("/accounts")}
           style={styles.iconButton}
         >
-          <FilledIcon name="arrow-left" color="#ededed" size={26} />
+          <FilledIcon name="arrow-left" size={26} />
         </Pressable>
         <Text
           accessibilityRole="header"
@@ -165,7 +175,7 @@ export function AccountDetailsScreen() {
           onPress={() => setMenu("actions")}
           style={styles.iconButton}
         >
-          <Text style={{ color: "#ededed", fontSize: 30 }}>⋮</Text>
+          <Text style={{ color: theme.foreground, fontSize: 30 }}>⋮</Text>
         </Pressable>
         </View>
         <FlatList
@@ -179,7 +189,9 @@ export function AccountDetailsScreen() {
         ListHeaderComponent={
           <View style={{ gap: 20 }}>
             <AccountCard account={account} />
-            <View style={styles.summary}>
+            <View
+              style={[styles.summary, { backgroundColor: theme.surface }]}
+            >
               <Text className="font-manrope-bold text-base text-accent">
                 {allTime ? "All time" : `${period} activity`}
               </Text>
@@ -249,7 +261,9 @@ export function AccountDetailsScreen() {
           </View>
         }
         renderItem={({ item }) => (
-          <View style={styles.transaction}>
+          <View
+            style={[styles.transaction, { borderBottomColor: theme.border }]}
+          >
             <FilledIcon
               name={
                 item.type === "income"
@@ -262,8 +276,8 @@ export function AccountDetailsScreen() {
                 item.type === "income"
                   ? "#82d6a1"
                   : item.type === "expense"
-                    ? "#ef8175"
-                    : "#70d2eb"
+                    ? theme.danger
+                    : theme.accent
               }
               size={24}
             />
@@ -280,7 +294,10 @@ export function AccountDetailsScreen() {
             </View>
             <Text
               className="font-manrope-bold text-sm"
-              style={{ color: item.type === "income" ? "#82d6a1" : "#ededed" }}
+              style={{
+                color:
+                  item.type === "income" ? "#82d6a1" : theme.foreground,
+              }}
             >
               {item.type === "income"
                 ? "+"
@@ -301,7 +318,11 @@ export function AccountDetailsScreen() {
         />
         <LinearGradient
           pointerEvents="none"
-          colors={["transparent", "rgba(0,0,0,0.8)", "#000000"]}
+          colors={[
+            colorWithAlpha(theme.background, 0),
+            colorWithAlpha(theme.background, 0.82),
+            theme.background,
+          ]}
           style={[styles.scrim, { height: 110 + insets.bottom }]}
         />
       </BlurTargetView>
@@ -397,7 +418,7 @@ export function AccountDetailsScreen() {
                       variant="secondary"
                       onPress={editAccount}
                     >
-                      <FilledIcon name="pencil" color="#ededed" size={22} />
+                      <FilledIcon name="pencil" size={22} />
                       <Button.Label>Edit account</Button.Label>
                     </Button>
                     <Button
@@ -422,7 +443,7 @@ export function AccountDetailsScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#000000" },
+  screen: { flex: 1 },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -440,7 +461,6 @@ const styles = StyleSheet.create({
   summary: {
     padding: 20,
     borderRadius: 24,
-    backgroundColor: "#171717",
     gap: 18,
   },
   transaction: {
@@ -449,7 +469,6 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingVertical: 18,
     borderBottomWidth: 1,
-    borderBottomColor: "#232323",
   },
   scrim: { position: "absolute", bottom: 0, left: 0, right: 0 },
   dock: { position: "absolute", left: 12, right: 12 },

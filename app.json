@@ -5,21 +5,14 @@
     "version": "1.0.0",
     "platforms": ["ios", "android"],
     "orientation": "portrait",
-    "backgroundColor": "#000000",
-    "icon": "./assets/images/icon.png",
+    "backgroundColor": "#DCE7E0",
     "scheme": "plutus",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon"
     },
     "android": {
-      "backgroundColor": "#000000",
-      "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
-      },
+      "backgroundColor": "#DCE7E0",
       "predictiveBackGestureEnabled": false
     },
     "plugins": [
@@ -32,20 +25,11 @@
           "microphonePermission": false
         }
       ],
-      [
-        "expo-navigation-bar",
-        {
-          "enforceContrast": false,
-          "hidden": false,
-          "style": "light"
-        }
-      ],
+      ["expo-navigation-bar", { "enforceContrast": false, "hidden": false }],
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "backgroundColor": "#DCE7E0"
         }
       ],
       "expo-sqlite",

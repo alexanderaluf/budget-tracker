@@ -24,7 +24,7 @@ export function ProfileScreenHeader({
         variant="ghost"
         onPress={onBack ?? (() => router.back())}
       >
-        <FilledIcon color="#f2f2f2" name="arrow-left" size={24} />
+        <FilledIcon name="arrow-left" size={24} />
       </Button>
       <Text className="ml-2 font-manrope-bold text-xl text-foreground">
         {title}

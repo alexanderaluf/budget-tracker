@@ -7,6 +7,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { BottomNavigation } from "./bottom-navigation";
 import { getTabFromPathname, navigationItems } from "./navigation-config";
 import type { TabId } from "./types";
+import { useAppThemeColors } from "@/shared/theme/app-theme";
 
 const actionLabels: Record<TabId, string> = {
   home: "Add transaction",
@@ -17,6 +18,7 @@ const actionLabels: Record<TabId, string> = {
 
 export function TabShell() {
   const blurTargetRef = useRef<View | null>(null);
+  const theme = useAppThemeColors();
   const pathname = usePathname();
   const router = useRouter();
   const activeItem = getTabFromPathname(pathname);
@@ -41,7 +43,7 @@ export function TabShell() {
   return (
     <SafeAreaView
       edges={["top"]}
-      style={{ flex: 1, backgroundColor: "#000000" }}
+      style={{ flex: 1, backgroundColor: theme.background }}
     >
       <View style={{ flex: 1 }}>
         <BlurTargetView ref={blurTargetRef} style={{ flex: 1 }}>

@@ -20,6 +20,7 @@ import { AccountPeriodSelector } from "@/features/accounts/components/account-pe
 import type { AccountPeriod } from "@/features/accounts/types";
 import { formatCurrency } from "@/shared/lib/currency";
 import { FilledIcon } from "@/shared/ui/filled-icon";
+import { useAppThemeColors } from "@/shared/theme/app-theme";
 import {
   CategoryBadge,
   CategoryChip,
@@ -31,6 +32,7 @@ import { useCategoryClock } from "./use-category-clock";
 export function CategoryDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const theme = useAppThemeColors();
   const { document } = useLocalData();
   const now = useCategoryClock();
   const [selected, setSelected] = useState<string | null>(null);
@@ -74,7 +76,7 @@ export function CategoryDetailsScreen() {
   return (
     <SafeAreaView
       edges={["top", "bottom"]}
-      style={{ flex: 1, backgroundColor: "#000000" }}
+      style={{ flex: 1, backgroundColor: theme.background }}
     >
       <CategoryHeader
         title={category?.name ?? "Category"}
@@ -94,7 +96,7 @@ export function CategoryDetailsScreen() {
                 })
               }
             >
-              <FilledIcon name="plus" color="#ededed" size={27} />
+              <FilledIcon name="plus" size={27} />
             </Button>
             <Button
               isIconOnly
@@ -147,7 +149,7 @@ export function CategoryDetailsScreen() {
               accessibilityLabel="Previous period"
               onPress={() => movePeriod(-1)}
             >
-              <FilledIcon name="arrow-left" color="#aaaaaa" size={20} />
+              <FilledIcon name="arrow-left" size={20} tone="muted" />
             </Button>
             <Button
               variant="ghost"
@@ -166,7 +168,7 @@ export function CategoryDetailsScreen() {
               accessibilityLabel="Next period"
               onPress={() => movePeriod(1)}
             >
-              <FilledIcon name="chevron-right" color="#aaaaaa" size={22} />
+              <FilledIcon name="chevron-right" size={22} tone="muted" />
             </Button>
           </Animated.View>
           <Text className="px-5 pb-2 font-sans text-xs text-muted">
@@ -186,7 +188,7 @@ export function CategoryDetailsScreen() {
               <Animated.View
                 entering={categoryEntrance(90 + Math.min(index, 6) * 30)}
                 layout={categoryLayout}
-                className="flex-row items-center gap-3 border-b border-[#222222] py-4"
+                className="flex-row items-center gap-3 border-b border-border py-4"
               >
                 <CategoryBadge
                   small
@@ -261,7 +263,11 @@ export function CategoryDetailsScreen() {
               }
               className="rounded-2xl px-6"
             >
-              <FilledIcon name="pencil" color="#073442" size={22} />
+              <FilledIcon
+                name="pencil"
+                size={22}
+                tone="accent-foreground"
+              />
               <Button.Label>
                 {selectedId && selectedId !== id ? "Edit child" : "Edit"}
               </Button.Label>

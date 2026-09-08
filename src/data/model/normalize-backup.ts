@@ -1,10 +1,15 @@
 import { normalizeAccountRecord } from "./account-record";
 import {
+    ACCENT_COLOR_IDS,
     BACKUP_COLLECTION_KEYS,
     BACKUP_VERSION,
+    DEFAULT_ACCENT_COLOR,
     LOCAL_SCHEMA_VERSION,
+    THEME_MODES,
+    type AccentColorId,
     type AttachmentManifest,
     type BackupDocument,
+    type ThemeMode,
 } from "./backup-document";
 import { normalizeCategoryRecord } from "./category-record";
 import { RATE_SOURCE } from "./exchange-rate";
@@ -21,6 +26,17 @@ function normalizeAttachments(value: unknown): AttachmentManifest[] {
       typeof item.mimeType === "string" &&
       typeof item.relativePath === "string" &&
       typeof item.size === "number",
+  );
+}
+
+function isThemeMode(value: unknown): value is ThemeMode {
+  return typeof value === "string" && THEME_MODES.includes(value as ThemeMode);
+}
+
+function isAccentColor(value: unknown): value is AccentColorId {
+  return (
+    typeof value === "string" &&
+    ACCENT_COLOR_IDS.includes(value as AccentColorId)
   );
 }
 
@@ -77,6 +93,10 @@ export function normalizeBackupDocument(value: unknown): BackupDocument {
       typeof local.selectedProfileId === "string"
         ? local.selectedProfileId
         : null,
+    themeMode: isThemeMode(local.themeMode) ? local.themeMode : "system",
+    accentColor: isAccentColor(local.accentColor)
+      ? local.accentColor
+      : DEFAULT_ACCENT_COLOR,
     attachments: normalizeAttachments(local.attachments),
     cloudProvider: null,
   };

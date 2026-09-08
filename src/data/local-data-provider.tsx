@@ -8,6 +8,7 @@ import {
     useState,
 } from "react";
 import { ActivityIndicator, AppState, View } from "react-native";
+import { useThemeColor } from "heroui-native";
 
 import { readDocument, writeDocument } from "./database/document-repository";
 import type {
@@ -50,6 +51,7 @@ const LocalDataContext = createContext<LocalDataContextValue | null>(null);
 
 export function LocalDataProvider({ children }: PropsWithChildren) {
   const database = useSQLiteContext();
+  const [background, accent] = useThemeColor(["background", "accent"]);
   const [document, setDocument] = useState(createDefaultBackup);
   const [isHydrated, setIsHydrated] = useState(false);
   const documentRef = useRef(document);
@@ -234,12 +236,12 @@ export function LocalDataProvider({ children }: PropsWithChildren) {
       <View
         style={{
           alignItems: "center",
-          backgroundColor: "#000000",
+          backgroundColor: background,
           flex: 1,
           justifyContent: "center",
         }}
       >
-        <ActivityIndicator color="#70d2eb" size="large" />
+        <ActivityIndicator color={accent} size="large" />
       </View>
     );
   }

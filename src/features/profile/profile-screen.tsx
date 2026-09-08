@@ -1,3 +1,4 @@
+import { useAppThemeColors } from "@/shared/theme/app-theme";
 import { useRouter } from "expo-router";
 import { Button } from "heroui-native";
 import { useEffect, useState } from "react";
@@ -9,42 +10,55 @@ import { ProfileAvatar } from "./components/profile-avatar";
 import { ProfileHubActions } from "./components/profile-hub-actions";
 import { ProfileScreenHeader } from "./components/profile-screen-header";
 import { ProfileSettingsPage } from "./components/profile-settings-page";
+import { ThemeSettingsPage } from "./components/theme-settings-page";
 import { useProfiles } from "./profile-provider";
+
+type ProfilePage = "profile" | "settings" | "theme";
 
 export function ProfileScreen() {
   const router = useRouter();
+  const theme = useAppThemeColors();
   const { activeProfile } = useProfiles();
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [page, setPage] = useState<ProfilePage>("profile");
   const firstName = activeProfile.name.split(" ")[0];
 
   useEffect(() => {
-    if (!isSettingsOpen) return;
+    if (page === "profile") return;
 
     const subscription = BackHandler.addEventListener(
       "hardwareBackPress",
       () => {
-        setIsSettingsOpen(false);
+        setPage((current) => (current === "theme" ? "settings" : "profile"));
         return true;
       },
     );
 
     return () => subscription.remove();
-  }, [isSettingsOpen]);
+  }, [page]);
+
+  const title =
+    page === "theme" ? "Theme" : page === "settings" ? "Settings" : "Accounts";
 
   return (
     <SafeAreaView
       edges={["top", "bottom"]}
-      style={{ flex: 1, backgroundColor: "#000000" }}
+      style={{ flex: 1, backgroundColor: theme.background }}
     >
       <ProfileScreenHeader
         onBack={
-          isSettingsOpen ? () => setIsSettingsOpen(false) : undefined
+          page === "theme"
+            ? () => setPage("settings")
+            : page === "settings"
+              ? () => setPage("profile")
+              : undefined
         }
-        title={isSettingsOpen ? "Settings" : "Accounts"}
+        title={title}
       />
 
-      {isSettingsOpen ? (
-        <ProfileSettingsPage />
+      {page === "settings" ? (
+        <ProfileSettingsPage onOpenTheme={() => setPage("theme")} />
+      ) : page === "theme" ? (
+        <ThemeSettingsPage />
       ) : (
         <View className="flex-1 px-5 pt-10">
           <Animated.View
@@ -74,7 +88,7 @@ export function ProfileScreen() {
                 })
               }
             >
-              <Button.Label className="font-manrope-bold text-[#70d2eb]">
+              <Button.Label className="font-manrope-bold text-accent">
                 Manage your profile
               </Button.Label>
             </Button>
@@ -94,7 +108,7 @@ export function ProfileScreen() {
                 })
               }
               onManageProfiles={() => router.push("/profile/manage")}
-              onSettings={() => setIsSettingsOpen(true)}
+              onSettings={() => setPage("settings")}
             />
           </Animated.View>
         </View>

@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from "react-native";
 
 import { formatCurrency } from "@/shared/lib/currency";
+import { useAppThemeColors } from "@/shared/theme/app-theme";
 import { FilledIcon } from "@/shared/ui/filled-icon";
 
 import { colorForeground } from "../account-options";
@@ -11,6 +12,7 @@ import { AccountIcon } from "./account-icon";
 const GROWTH = "#82d6a1";
 
 export function SavingsAccountCard({ account }: { account: Account }) {
+  const theme = useAppThemeColors();
   const summary = account.savingsSummary;
   if (summary && !summary.isDetailed) {
     return <SimpleSavingsAccountCard account={account} />;
@@ -160,7 +162,7 @@ export function SavingsAccountCard({ account }: { account: Account }) {
           ]}
         />
         <Stat
-          color="#ededed"
+          color={theme.foreground}
           currencyCode={account.currencyCode}
           label="Est. withdrawal"
           value={
@@ -171,7 +173,7 @@ export function SavingsAccountCard({ account }: { account: Account }) {
 
       <View style={styles.footer}>
         <View style={styles.footerItem}>
-          <FilledIcon color="#9a9a9a" name="clock" size={15} />
+          <FilledIcon name="clock" size={15} tone="muted" />
           <Text className="font-sans text-xs text-muted" numberOfLines={1}>
             {summary?.liquidityLabel ?? "Access not specified"}
           </Text>

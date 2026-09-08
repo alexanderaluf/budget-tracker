@@ -15,7 +15,7 @@ export function TransactionSearchField({
     <SearchField value={value} onChange={onChange}>
       <SearchField.Group className="border border-border bg-surface">
         <SearchField.SearchIcon>
-          <FilledIcon color="#a3a3a3" name="magnify" size={20} />
+          <FilledIcon name="magnify" size={20} tone="muted" />
         </SearchField.SearchIcon>
         <SearchField.Input
           autoCapitalize="none"
@@ -24,7 +24,7 @@ export function TransactionSearchField({
           returnKeyType="search"
         />
         <SearchField.ClearButton>
-          <FilledIcon color="#a3a3a3" name="close" size={18} />
+          <FilledIcon name="close" size={18} tone="muted" />
         </SearchField.ClearButton>
       </SearchField.Group>
     </SearchField>

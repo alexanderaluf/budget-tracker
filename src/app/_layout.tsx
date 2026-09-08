@@ -9,19 +9,28 @@ import { NavigationBar } from "expo-navigation-bar";
 import { Stack } from "expo-router";
 import { SQLiteProvider } from "expo-sqlite";
 import { StatusBar } from "expo-status-bar";
+import * as SystemUI from "expo-system-ui";
 import { HeroUINativeProvider } from "heroui-native";
+import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { Uniwind, useUniwind } from "uniwind";
+import { useUniwind } from "uniwind";
 
 import { migrateLocalDatabase } from "@/data/database/migrations";
 import { LocalDataProvider } from "@/data/local-data-provider";
 import { ProfileProvider } from "@/features/profile/profile-provider";
-
-Uniwind.setTheme("dark");
+import {
+    AppThemeController,
+    useAppThemeColors,
+} from "@/shared/theme/app-theme";
 
 function SystemBars() {
   const { theme } = useUniwind();
+  const { background } = useAppThemeColors();
   const isDark = theme === "dark";
+
+  useEffect(() => {
+    void SystemUI.setBackgroundColorAsync(background);
+  }, [background]);
 
   return (
     <>
@@ -32,14 +41,14 @@ function SystemBars() {
 }
 
 export default function RootLayout() {
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     Manrope_400Regular,
     Manrope_500Medium,
     Manrope_600SemiBold,
     Manrope_700Bold,
   });
 
-  if (!fontsLoaded) return null;
+  if (!fontsLoaded && !fontError) return null;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -49,6 +58,7 @@ export default function RootLayout() {
           onInit={migrateLocalDatabase}
         >
           <LocalDataProvider>
+            <AppThemeController />
             <ProfileProvider>
               <SystemBars />
               <Stack

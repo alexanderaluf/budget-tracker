@@ -56,8 +56,8 @@ export function ProfilePhotoPicker({
           initials={initials}
           size="lg"
         />
-        <View className="absolute bottom-0 right-0 size-9 items-center justify-center rounded-full border-4 border-black bg-[#70d2eb]">
-          <FilledIcon color="#073442" name="camera" size={19} />
+        <View className="absolute bottom-0 right-0 size-9 items-center justify-center rounded-full border-4 border-background bg-accent">
+          <FilledIcon name="camera" size={19} tone="accent-foreground" />
         </View>
       </Pressable>
       <Text className="mt-4 font-sans text-sm text-muted">

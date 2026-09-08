@@ -20,16 +20,16 @@ export function AccountsSummaryCard({
   currencyCode,
 }: AccountsSummaryCardProps) {
   return (
-    <Card className="border border-[#2d2d2d] bg-[#171717] p-0">
+    <Card className="border border-border bg-surface p-0">
       <Card.Header className="flex-row items-center justify-between px-5 pt-5">
         <View className="flex-row items-center gap-2">
-          <FilledIcon color="#70d2eb" name="shield-check" size={18} />
+          <FilledIcon name="shield-check" size={18} tone="accent" />
           <Text className="font-manrope-semibold text-xs uppercase tracking-widest text-muted">
             Net worth · {currencyCode}
           </Text>
         </View>
         <Chip color="success" size="sm" variant="soft">
-          <FilledIcon color="#70d2eb" name="arrow-top-right" size={15} />
+          <FilledIcon name="arrow-top-right" size={15} tone="accent" />
           <Chip.Label className="font-manrope-bold">
             {monthlyChangePercent}%
           </Chip.Label>
@@ -43,13 +43,13 @@ export function AccountsSummaryCard({
         </Text>
 
         <View className="flex-row gap-3">
-          <View className="flex-1 rounded-lg bg-[#202020] p-3">
+          <View className="flex-1 rounded-lg bg-surface-secondary p-3">
             <Text className="font-sans text-xs text-muted">Assets</Text>
             <Text className="mt-1 font-manrope-bold text-base text-foreground">
               {formatCurrency(assets, currencyCode)}
             </Text>
           </View>
-          <View className="flex-1 rounded-lg bg-[#202020] p-3">
+          <View className="flex-1 rounded-lg bg-surface-secondary p-3">
             <Text className="font-sans text-xs text-muted">Liabilities</Text>
             <Text className="mt-1 font-manrope-bold text-base text-foreground">
               {formatCurrency(liabilities, currencyCode)}

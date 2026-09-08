@@ -39,7 +39,7 @@ export function ProfileList({
           variant="primary"
           onPress={onCreate}
         >
-          <FilledIcon color="#073442" name="plus" size={20} />
+          <FilledIcon name="plus" size={20} tone="accent-foreground" />
         </Button>
       </Card.Header>
 
@@ -74,8 +74,8 @@ export function ProfileList({
               </View>
 
               {isActive ? (
-                <View className="mr-2 size-7 items-center justify-center rounded-full bg-[#17343c]">
-                  <FilledIcon color="#70d2eb" name="check" size={18} />
+                <View className="mr-2 size-7 items-center justify-center rounded-full bg-accent/15">
+                  <FilledIcon name="check" size={18} tone="accent" />
                 </View>
               ) : null}
               <Button
@@ -85,7 +85,7 @@ export function ProfileList({
                 variant="ghost"
                 onPress={() => onEdit(profile)}
               >
-                <FilledIcon color="#a3a3a3" name="pencil" size={18} />
+                <FilledIcon name="pencil" size={18} tone="muted" />
               </Button>
             </Pressable>
           );

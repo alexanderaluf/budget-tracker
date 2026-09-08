@@ -2,6 +2,10 @@ import { Card } from "heroui-native";
 import { Text, View } from "react-native";
 
 import { formatSignedCurrency } from "@/shared/lib/currency";
+import {
+  colorWithAlpha,
+  useAppThemeColors,
+} from "@/shared/theme/app-theme";
 import { FilledIcon } from "@/shared/ui/filled-icon";
 
 import type { SearchResult } from "../types";
@@ -12,10 +16,12 @@ type SearchResultsProps = {
 };
 
 export function SearchResults({ query, results }: SearchResultsProps) {
+  const theme = useAppThemeColors();
+
   if (results.length === 0) {
     return (
       <Card className="items-center border border-border bg-surface px-6 py-10">
-        <FilledIcon color="#70d2eb" name="magnify-close" size={30} />
+        <FilledIcon name="magnify-close" size={30} tone="accent" />
         <Text className="mt-4 font-manrope-bold text-base text-foreground">
           No matching transactions
         </Text>
@@ -39,6 +45,7 @@ export function SearchResults({ query, results }: SearchResultsProps) {
 
       <Card.Body className="px-5 pb-3">
         {results.map((result, index) => {
+          const tone = result.amount > 0 ? theme.success : theme.accent;
           return (
             <View
               key={result.id}
@@ -48,9 +55,9 @@ export function SearchResults({ query, results }: SearchResultsProps) {
             >
               <View
                 className="size-11 items-center justify-center rounded-xl"
-                style={{ backgroundColor: result.iconBackground }}
+                style={{ backgroundColor: colorWithAlpha(tone, 0.14) }}
               >
-                <FilledIcon color={result.color} name={result.icon} size={21} />
+                <FilledIcon color={tone} name={result.icon} size={21} />
               </View>
               <View className="ml-3 flex-1">
                 <Text className="font-manrope-bold text-sm text-foreground">
@@ -63,7 +70,7 @@ export function SearchResults({ query, results }: SearchResultsProps) {
               <View className="ml-2 items-end">
                 <Text
                   className={`font-manrope-bold text-sm ${
-                    result.amount > 0 ? "text-[#70d2eb]" : "text-foreground"
+                    result.amount > 0 ? "text-accent" : "text-foreground"
                   }`}
                 >
                   {formatSignedCurrency(result.amount)}

@@ -15,10 +15,14 @@ type SettingsItem = {
   badge?: string;
 };
 
+type ProfileSettingsPageProps = {
+  onOpenTheme: () => void;
+};
+
 const primarySettings: SettingsItem[] = [
   {
-    title: "Customize",
-    description: "Theme, home layout, icons, and transaction rows",
+    title: "Theme",
+    description: "Appearance mode and application accent color",
     icon: "tune",
     iconBackground: "#f187ae",
   },
@@ -94,16 +98,29 @@ const toolSettings: SettingsItem[] = [
   },
 ];
 
-function SettingsRow({ item }: { item: SettingsItem }) {
+function SettingsRow({
+  item,
+  onPress,
+}: {
+  item: SettingsItem;
+  onPress?: () => void;
+}) {
   function handlePress() {
-    Alert.alert(item.title, "This section is ready for its dedicated settings.");
+    if (onPress) {
+      onPress();
+      return;
+    }
+    Alert.alert(
+      item.title,
+      "This section is ready for its dedicated settings.",
+    );
   }
 
   return (
     <Pressable
       accessibilityHint={item.description}
       accessibilityRole="button"
-      className="min-h-[92px] flex-row items-center bg-[#171717] px-4 py-4"
+      className="min-h-[92px] flex-row items-center bg-surface px-4 py-4"
       onPress={handlePress}
       style={({ pressed }) => ({ opacity: pressed ? 0.72 : 1 })}
     >
@@ -111,11 +128,7 @@ function SettingsRow({ item }: { item: SettingsItem }) {
         className="size-[48px] items-center justify-center rounded-[14px]"
         style={{ backgroundColor: item.iconBackground }}
       >
-        <FilledIcon
-          color="#090909"
-          name={item.icon}
-          size={27}
-        />
+        <FilledIcon color="#090909" name={item.icon} size={27} />
       </View>
 
       <View className="ml-4 flex-1 justify-center">
@@ -124,8 +137,8 @@ function SettingsRow({ item }: { item: SettingsItem }) {
             {item.title}
           </Text>
           {item.badge ? (
-            <View className="rounded-full bg-[#243238] px-2 py-0.5">
-              <Text className="font-manrope-semibold text-[11px] text-[#70d2eb]">
+            <View className="rounded-full bg-accent/10 px-2 py-0.5">
+              <Text className="font-manrope-semibold text-[11px] text-accent">
                 {item.badge}
               </Text>
             </View>
@@ -139,11 +152,21 @@ function SettingsRow({ item }: { item: SettingsItem }) {
   );
 }
 
-function SettingsGroup({ items }: { items: SettingsItem[] }) {
+function SettingsGroup({
+  items,
+  onOpenTheme,
+}: {
+  items: SettingsItem[];
+  onOpenTheme?: () => void;
+}) {
   return (
-    <View className="gap-0.5 overflow-hidden rounded-[28px] bg-black">
+    <View className="gap-0.5 overflow-hidden rounded-[28px] bg-background">
       {items.map((item) => (
-        <SettingsRow item={item} key={item.title} />
+        <SettingsRow
+          item={item}
+          key={item.title}
+          onPress={item.title === "Theme" ? onOpenTheme : undefined}
+        />
       ))}
     </View>
   );
@@ -156,7 +179,7 @@ function createRevealAnimation(delay: number) {
     .reduceMotion(ReduceMotion.System);
 }
 
-export function ProfileSettingsPage() {
+export function ProfileSettingsPage({ onOpenTheme }: ProfileSettingsPageProps) {
   return (
     <ScrollView
       className="flex-1"
@@ -166,7 +189,7 @@ export function ProfileSettingsPage() {
       showsVerticalScrollIndicator={false}
     >
       <Animated.View entering={createRevealAnimation(45)}>
-        <SettingsGroup items={primarySettings} />
+        <SettingsGroup items={primarySettings} onOpenTheme={onOpenTheme} />
       </Animated.View>
       <Animated.View entering={createRevealAnimation(130)}>
         <SettingsGroup items={toolSettings} />

@@ -24,6 +24,10 @@ import { FilledIcon } from "@/shared/ui/filled-icon";
 import { ICON_GROUPS } from "@/shared/icons/icon-options";
 import { MATERIAL_ROUNDED_FILLED_ICONS } from "@/shared/icons/material-rounded-filled-icons";
 import { RecordIcon, type IconSelection } from "./record-icon";
+import {
+  colorWithAlpha,
+  useAppThemeColors,
+} from "@/shared/theme/app-theme";
 
 type PickerIcon = IconSelection & { label: string; searchText: string };
 type PickerSection = { title: string; data: PickerIcon[][] };
@@ -56,6 +60,7 @@ export function PickerModal({
   onClose: () => void;
 }>) {
   const insets = useSafeAreaInsets();
+  const colors = useAppThemeColors();
   const topInset = Math.max(insets.top, initialWindowMetrics?.insets.top ?? 0);
   const bottomInset = Math.max(
     insets.bottom,
@@ -74,7 +79,7 @@ export function PickerModal({
         <View
           style={{
             flex: 1,
-            backgroundColor: "#000000",
+            backgroundColor: colors.background,
             paddingBottom: bottomInset,
             paddingTop: topInset,
           }}
@@ -86,7 +91,7 @@ export function PickerModal({
               accessibilityLabel="Close picker"
               onPress={onClose}
             >
-              <FilledIcon name="arrow-left" color="#ededed" size={24} />
+              <FilledIcon name="arrow-left" size={24} />
             </Button>
             <View className="flex-1">
               <Text
@@ -114,6 +119,7 @@ export function IconPicker({
   onClose: () => void;
 }) {
   const insets = useSafeAreaInsets();
+  const colors = useAppThemeColors();
   const [query, setQuery] = useState("");
   const [draft, setDraft] = useState(selected);
   const deferredQuery = useDeferredValue(query);
@@ -180,7 +186,7 @@ export function IconPicker({
           windowSize={7}
           contentContainerStyle={{ paddingBottom: 104 + insets.bottom }}
           renderSectionHeader={({ section }) => (
-            <View className="bg-black px-5 pb-2 pt-5">
+            <View className="bg-background px-5 pb-2 pt-5">
               <Text className="font-manrope-semibold text-base text-accent">
                 {section.title}
               </Text>
@@ -201,9 +207,11 @@ export function IconPicker({
                     style={({ pressed }) => [
                       {
                         borderColor:
-                          draft.name === icon.name ? "#70d2eb" : "#343434",
+                          draft.name === icon.name ? colors.accent : colors.border,
                         backgroundColor:
-                          draft.name === icon.name ? "#17343c" : "#0a0a0a",
+                          draft.name === icon.name
+                            ? colorWithAlpha(colors.accent, 0.14)
+                            : colors.surface,
                       },
                       Platform.OS === "android" && styles.androidIconButton,
                       pressed && styles.pressed,
@@ -212,7 +220,11 @@ export function IconPicker({
                     <RecordIcon
                       name={icon.name}
                       pathData={icon.pathData}
-                      color={draft.name === icon.name ? "#70d2eb" : "#ededed"}
+                      color={
+                        draft.name === icon.name
+                          ? colors.accent
+                          : colors.foreground
+                      }
                       size={26}
                     />
                   </Pressable>
@@ -228,7 +240,11 @@ export function IconPicker({
         />
       </View>
       <LinearGradient
-        colors={["rgba(0, 0, 0, 0)", "rgba(0, 0, 0, 0.72)", "#000000"]}
+        colors={[
+          colorWithAlpha(colors.background, 0),
+          colorWithAlpha(colors.background, 0.78),
+          colors.background,
+        ]}
         end={{ x: 0.5, y: 1 }}
         locations={[0, 0.58, 1]}
         pointerEvents="none"
@@ -253,11 +269,15 @@ export function IconPicker({
           }}
           style={({ pressed }) => [
             styles.doneButton,
+            {
+              backgroundColor: colors.accent,
+              borderColor: colorWithAlpha(colors.foreground, 0.18),
+            },
             pressed && styles.pressed,
           ]}
         >
-          <FilledIcon name="check" color="#073442" size={24} />
-          <Text className="font-manrope-bold text-base text-[#073442]">
+          <FilledIcon name="check" size={24} tone="accent-foreground" />
+          <Text className="font-manrope-bold text-base text-accent-foreground">
             Done
           </Text>
         </Pressable>
@@ -287,8 +307,6 @@ const styles = StyleSheet.create({
   },
   doneButton: {
     alignItems: "center",
-    backgroundColor: "#70d2eb",
-    borderColor: "rgba(255, 255, 255, 0.18)",
     borderRadius: 29,
     borderWidth: 1,
     flexDirection: "row",

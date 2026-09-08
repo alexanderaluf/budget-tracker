@@ -82,7 +82,7 @@ export function AccountList({ accounts, onAccountPress }: AccountListProps) {
                       {account.kind}
                     </Chip.Label>
                   </Chip>
-                  <FilledIcon color="#8e8e8e" name="chevron-right" size={18} />
+                  <FilledIcon name="chevron-right" size={18} tone="muted" />
                 </View>
               </View>
             </Pressable>

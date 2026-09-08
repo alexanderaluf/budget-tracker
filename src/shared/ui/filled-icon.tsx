@@ -61,6 +61,7 @@ import type {
     IconProps,
     MaterialSymbolsComponent,
 } from "@material-symbols-svg/react-native/rounded/w400";
+import { useThemeColor } from "heroui-native";
 
 const icons = {
   account: PersonFill,
@@ -128,16 +129,40 @@ const boldIcons = {
 } satisfies Partial<Record<FilledIconName, MaterialSymbolsComponent>>;
 
 type FilledIconProps = Omit<IconProps, "color"> & {
-  color: string;
+  color?: string;
   name: FilledIconName;
+  tone?: "accent" | "accent-foreground" | "danger" | "foreground" | "muted" | "success";
   weight?: 400 | 600;
 };
 
-export function FilledIcon({ name, weight = 400, ...props }: FilledIconProps) {
+export function FilledIcon({
+  color,
+  name,
+  tone = "foreground",
+  weight = 400,
+  ...props
+}: FilledIconProps) {
+  const [accent, accentForeground, danger, foreground, muted, success] =
+    useThemeColor([
+      "accent",
+      "accent-foreground",
+      "danger",
+      "foreground",
+      "muted",
+      "success",
+    ]);
+  const themeColors = {
+    accent,
+    "accent-foreground": accentForeground,
+    danger,
+    foreground,
+    muted,
+    success,
+  };
   const Icon =
     weight === 600 && name in boldIcons
       ? boldIcons[name as keyof typeof boldIcons]
       : icons[name];
 
-  return <Icon {...props} />;
+  return <Icon color={color ?? themeColors[tone]} {...props} />;
 }

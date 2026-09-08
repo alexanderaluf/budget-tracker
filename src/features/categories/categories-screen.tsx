@@ -32,6 +32,10 @@ import { formatCurrency } from "@/shared/lib/currency";
 import { FilledIcon } from "@/shared/ui/filled-icon";
 import { RecordIcon } from "@/shared/ui/record-icon";
 import {
+  colorWithAlpha,
+  useAppThemeColors,
+} from "@/shared/theme/app-theme";
+import {
   CategoryBadge,
   CategoryHeader,
   CategoryTypeSelector,
@@ -40,15 +44,10 @@ import {
 } from "./components/category-ui";
 import { useCategoryClock } from "./use-category-clock";
 
-const BOTTOM_SCRIM_COLORS = [
-  "rgba(0, 0, 0, 0)",
-  "rgba(0, 0, 0, 0.72)",
-  "#000000",
-] as const;
-
 export function CategoriesScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const theme = useAppThemeColors();
   const blurTargetRef = useRef<View | null>(null);
   const { document } = useLocalData();
   const { activeProfile } = useProfiles();
@@ -79,7 +78,7 @@ export function CategoriesScreen() {
   return (
     <SafeAreaView
       edges={["top"]}
-      style={{ flex: 1, backgroundColor: "#000000" }}
+      style={{ flex: 1, backgroundColor: theme.background }}
     >
       <BlurTargetView ref={blurTargetRef} style={{ flex: 1 }}>
         <CategoryHeader title="Categories">
@@ -94,7 +93,7 @@ export function CategoriesScreen() {
             )
           }
         >
-          <FilledIcon name="help" color="#ededed" size={25} />
+          <FilledIcon name="help" size={25} />
         </Button>
         </CategoryHeader>
         <Animated.View
@@ -125,7 +124,7 @@ export function CategoriesScreen() {
         >
           <FilledIcon
             name="filter"
-            color={alphabetical ? "#70d2eb" : "#ededed"}
+            color={alphabetical ? theme.accent : theme.foreground}
             size={26}
           />
         </Button>
@@ -228,7 +227,7 @@ export function CategoriesScreen() {
             entering={categoryEntrance(90)}
             className="flex-1 items-center justify-center gap-3 px-8"
           >
-            <FilledIcon name="shopping" color="#555555" size={64} />
+            <FilledIcon name="shopping" size={64} tone="muted" />
             <Text className="font-manrope-bold text-xl text-foreground">
               No {TYPE_LABELS[type].toLowerCase()} categories yet
             </Text>
@@ -241,7 +240,11 @@ export function CategoriesScreen() {
         />
       </BlurTargetView>
       <LinearGradient
-        colors={BOTTOM_SCRIM_COLORS}
+        colors={[
+          colorWithAlpha(theme.background, 0),
+          colorWithAlpha(theme.background, 0.78),
+          theme.background,
+        ]}
         end={{ x: 0.5, y: 1 }}
         locations={[0, 0.54, 1]}
         pointerEvents="none"
@@ -284,7 +287,7 @@ export function CategoriesScreen() {
             })
           }
         >
-          <FilledIcon name="plus" color="#073442" size={32} />
+          <FilledIcon name="plus" size={32} tone="accent-foreground" />
         </Button>
       </Animated.View>
     </SafeAreaView>

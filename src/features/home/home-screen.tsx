@@ -11,6 +11,7 @@ import {
   selectTransactions,
 } from "@/data/selectors/document-selectors";
 import { useProfiles } from "@/features/profile/profile-provider";
+import { colorForeground } from "@/shared/icons/colors";
 import { FilledIcon } from "@/shared/ui/filled-icon";
 import { TabPage } from "@/shared/ui/tab-page";
 
@@ -64,7 +65,11 @@ export function HomeScreen() {
             className="size-10 items-center justify-center rounded-full"
             style={{ backgroundColor: activeProfile.color }}
           >
-            <FilledIcon color="#073442" name="account" size={25} />
+            <FilledIcon
+              color={colorForeground(activeProfile.color)}
+              name="account"
+              size={25}
+            />
           </View>
         </Pressable>
       </View>
@@ -102,10 +107,10 @@ export function HomeScreen() {
             variant="ghost"
             onPress={() => setShowAllTransactions((current) => !current)}
           >
-            <Button.Label className="font-manrope-semibold text-[#70d2eb]">
+            <Button.Label className="font-manrope-semibold text-accent">
               {showAllTransactions ? "Show less" : "See all"}
             </Button.Label>
-            <FilledIcon color="#70d2eb" name="chevron-right" size={18} />
+            <FilledIcon name="chevron-right" size={18} tone="accent" />
           </Button>
         </View>
 

@@ -35,6 +35,7 @@ import { ICON_COLORS, colorForeground } from "@/shared/icons/colors";
 import { FilledIcon } from "@/shared/ui/filled-icon";
 import { IconPicker } from "@/shared/ui/icon-picker";
 import { RecordIcon } from "@/shared/ui/record-icon";
+import { useAppThemeColors } from "@/shared/theme/app-theme";
 import {
   CategoryChip,
   CategoryHeader,
@@ -44,6 +45,7 @@ import {
 export function CategoryEditorScreen({ editId }: { editId?: string }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const theme = useAppThemeColors();
   const params = useLocalSearchParams<{ parentId?: string; type?: string }>();
   const { document, updateDocument } = useLocalData();
   const { activeProfile } = useProfiles();
@@ -143,7 +145,7 @@ export function CategoryEditorScreen({ editId }: { editId?: string }) {
   return (
     <SafeAreaView
       edges={["top", "bottom"]}
-      style={{ flex: 1, backgroundColor: "#000000" }}
+      style={{ flex: 1, backgroundColor: theme.background }}
     >
       <CategoryHeader
         title={editId ? "Edit category" : "Category"}
@@ -192,8 +194,8 @@ export function CategoryEditorScreen({ editId }: { editId?: string }) {
                     color={colorForeground(color)}
                     size={32}
                   />
-                  <View className="absolute -bottom-1 -right-1 rounded-full border-2 border-black bg-surface p-1">
-                    <FilledIcon name="pencil" color="#ededed" size={14} />
+                  <View className="absolute -bottom-1 -right-1 rounded-full border-2 border-background bg-surface p-1">
+                    <FilledIcon name="pencil" size={14} />
                   </View>
                 </Pressable>
                 <Input
@@ -255,7 +257,7 @@ export function CategoryEditorScreen({ editId }: { editId?: string }) {
                   onPress={() => setShowParents((value) => !value)}
                   className="min-h-16 flex-row items-center gap-3"
                 >
-                  <FilledIcon name="filter" color="#ededed" size={27} />
+                  <FilledIcon name="filter" size={27} />
                   <View className="flex-1 gap-1">
                     <Text className="font-manrope-semibold text-lg text-foreground">
                       Parent category
@@ -269,7 +271,7 @@ export function CategoryEditorScreen({ editId }: { editId?: string }) {
                       transform: [{ rotate: showParents ? "180deg" : "0deg" }],
                     }}
                   >
-                    <KeyboardArrowUpFill color="#70d2eb" size={26} />
+                    <KeyboardArrowUpFill color={theme.accent} size={26} />
                   </View>
                 </Pressable>
                 <CategoryParentOptions open={showParents}>
@@ -279,7 +281,9 @@ export function CategoryEditorScreen({ editId }: { editId?: string }) {
                       onPress={() => change("parentId", null)}
                       className="min-h-11 justify-center rounded-full border px-4"
                       style={{
-                        borderColor: !draft.parentId ? "#70d2eb" : "#333333",
+                        borderColor: !draft.parentId
+                          ? theme.accent
+                          : theme.border,
                       }}
                     >
                       <Text className="font-manrope-medium text-foreground">
@@ -307,16 +311,16 @@ export function CategoryEditorScreen({ editId }: { editId?: string }) {
                     accessibilityRole="tab"
                     accessibilityState={{ selected: palette === value }}
                     onPress={() => setPalette(value)}
-                    className="min-h-11 flex-1 items-center justify-center rounded-lg"
-                    style={{
-                      backgroundColor:
-                        palette === value ? "#70d2eb" : "transparent",
-                    }}
+                    className={`min-h-11 flex-1 items-center justify-center rounded-lg ${
+                      palette === value ? "bg-accent" : "bg-transparent"
+                    }`}
                   >
                     <Text
-                      style={{
-                        color: palette === value ? "#073442" : "#ededed",
-                      }}
+                      className={
+                        palette === value
+                          ? "text-accent-foreground"
+                          : "text-foreground"
+                      }
                     >
                       {value}
                     </Text>
@@ -392,7 +396,7 @@ export function CategoryEditorScreen({ editId }: { editId?: string }) {
             onPress={save}
             className="rounded-full bg-accent"
           >
-            <FilledIcon name="check" color="#073442" size={24} />
+            <FilledIcon name="check" size={24} tone="accent-foreground" />
             <Button.Label>
               {isSaving ? "Saving…" : editId ? "Save category" : "Add category"}
             </Button.Label>

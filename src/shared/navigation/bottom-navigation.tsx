@@ -19,6 +19,10 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { FilledIcon, type FilledIconName } from "@/shared/ui/filled-icon";
+import {
+  colorWithAlpha,
+  useAppThemeColors,
+} from "@/shared/theme/app-theme";
 
 import { navigationItems } from "./navigation-config";
 import type { TabId } from "./types";
@@ -46,6 +50,7 @@ export function BottomNavigation({
   onActionPress,
 }: BottomNavigationProps) {
   const insets = useSafeAreaInsets();
+  const colors = useAppThemeColors();
   const indicatorX = useSharedValue(0);
   const indicatorWidth = useSharedValue(0);
   const actionOpacity = useSharedValue(1);
@@ -131,7 +136,11 @@ export function BottomNavigation({
   return (
     <>
       <LinearGradient
-        colors={["rgba(0, 0, 0, 0)", "rgba(0, 0, 0, 0.72)", "#000000"]}
+        colors={[
+          colorWithAlpha(colors.background, 0),
+          colorWithAlpha(colors.background, 0.78),
+          colors.background,
+        ]}
         end={{ x: 0.5, y: 1 }}
         locations={[0, 0.58, 1]}
         pointerEvents="none"
@@ -140,7 +149,15 @@ export function BottomNavigation({
       />
 
       <View style={[styles.dock, { bottom: Math.max(insets.bottom, 10) }]}>
-        <View style={styles.navigationPill}>
+        <View
+          style={[
+            styles.navigationPill,
+            {
+              backgroundColor: colorWithAlpha(colors.surface, 0.78),
+              borderColor: colors.border,
+            },
+          ]}
+        >
           <BlurView
             blurMethod="dimezisBlurViewSdk31Plus"
             blurReductionFactor={3}
@@ -148,14 +165,18 @@ export function BottomNavigation({
             intensity={36}
             pointerEvents="none"
             style={StyleSheet.absoluteFill}
-            tint="dark"
+            tint={colors.isDark ? "dark" : "light"}
           />
 
           <View accessibilityRole="tablist" style={styles.tabsTrack}>
             {isIndicatorReady ? (
               <Animated.View
                 pointerEvents="none"
-                style={[styles.activeIndicator, indicatorStyle]}
+                style={[
+                  styles.activeIndicator,
+                  { backgroundColor: colorWithAlpha(colors.foreground, 0.14) },
+                  indicatorStyle,
+                ]}
               />
             ) : null}
 
@@ -177,7 +198,7 @@ export function BottomNavigation({
                   ]}
                 >
                   <FilledIcon
-                    color={isActive ? "#70d2eb" : "#ededed"}
+                    color={isActive ? colors.accent : colors.foreground}
                     name={item.icon}
                     size={24}
                     weight={
@@ -188,7 +209,10 @@ export function BottomNavigation({
                     allowFontScaling={false}
                     className="font-manrope-bold"
                     numberOfLines={1}
-                    style={[styles.label, isActive && styles.activeLabel]}
+                    style={[
+                      styles.label,
+                      { color: isActive ? colors.accent : colors.foreground },
+                    ]}
                   >
                     {item.label}
                   </Text>
@@ -212,12 +236,13 @@ export function BottomNavigation({
           onPress={() => onActionPress(activeItem)}
           style={({ pressed }) => [
             styles.actionButton,
+            { backgroundColor: colors.accent },
             pressed && styles.pressed,
           ]}
         >
           <Animated.View style={[styles.actionIcon, actionIconStyle]}>
             <FilledIcon
-              color="#073442"
+              color={colors.accentForeground}
               name={actionIcon}
               size={29}
               weight={
@@ -255,7 +280,6 @@ const styles = StyleSheet.create({
   navigationPill: {
     alignItems: "stretch",
     backgroundColor: "transparent",
-    borderColor: "#303030",
     borderRadius: 30,
     borderWidth: 1,
     flex: 1,
@@ -278,25 +302,19 @@ const styles = StyleSheet.create({
   },
   activeIndicator: {
     bottom: 0,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
     borderRadius: 26,
     left: 0,
     position: "absolute",
     top: 0,
   },
   label: {
-    color: "#ededed",
     fontSize: 10.5,
     lineHeight: 14,
     textAlign: "center",
     width: "100%",
   },
-  activeLabel: {
-    color: "#70d2eb",
-  },
   actionButton: {
     alignItems: "center",
-    backgroundColor: "#70d2eb",
     borderRadius: 29,
     height: 58,
     justifyContent: "center",

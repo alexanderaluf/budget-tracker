@@ -388,6 +388,8 @@ test("mixed currencies have separate totals and new profiles only see their acco
 
 test("JSON backup round trip preserves all new account options and unknown fields", () => {
   const next = add(createDefaultBackup());
+  next._local.themeMode = "dark";
+  next._local.accentColor = "violet";
   next.unknown = { values: [1, 2, 3] };
   next.accounts.at(-1).unknown = "keep";
   const restored = normalizeBackupDocument(
@@ -395,7 +397,9 @@ test("JSON backup round trip preserves all new account options and unknown field
   );
   assert.deepEqual(restored.accounts, next.accounts);
   assert.deepEqual(restored.unknown, next.unknown);
-  assert.equal(restored._local.schemaVersion, 11);
+  assert.equal(restored._local.schemaVersion, 12);
+  assert.equal(restored._local.themeMode, "dark");
+  assert.equal(restored._local.accentColor, "violet");
   assert.equal(
     restored.accounts.at(-1).linkedBankAccountId,
     "account-checking",
@@ -405,6 +409,15 @@ test("JSON backup round trip preserves all new account options and unknown field
     () => normalizeBackupDocument({ _local: { schemaVersion: 999 } }),
     /newer/,
   );
+});
+
+test("theme preferences default to system and reject unknown accents", () => {
+  const restored = normalizeBackupDocument({
+    backupVersion: 3,
+    _local: { themeMode: "sunset", accentColor: "chartreuse" },
+  });
+  assert.equal(restored._local.themeMode, "system");
+  assert.equal(restored._local.accentColor, "cyan");
 });
 
 test("savings accounts preserve ownership, terms, fees and configurable tax rules", () => {
@@ -990,7 +1003,7 @@ test("every card company survives SQLite reopening and both backup document form
   }
 });
 
-test("SQLite v2 to v11 migration preserves imported fields, upgrades the known seed, survives reopening and rolls back failed writes", async () => {
+test("SQLite v2 to v12 migration preserves imported fields, upgrades the known seed, survives reopening and rolls back failed writes", async () => {
   const directory = fs.mkdtempSync(
     path.join(os.tmpdir(), "budget-accounts-test-"),
   );
@@ -1013,7 +1026,9 @@ test("SQLite v2 to v11 migration preserves imported fields, upgrades the known s
     );
     await migrateLocalDatabase(database);
     const migrated = await readDocument(database);
-    assert.equal(migrated._local.schemaVersion, 11);
+    assert.equal(migrated._local.schemaVersion, 12);
+    assert.equal(migrated._local.themeMode, "system");
+    assert.equal(migrated._local.accentColor, "cyan");
     assert.equal(migrated.accounts[0].accountType, "bank");
     assert.equal(migrated.accounts[0].icon, 12345);
     assert.equal(migrated.accounts[0].custom, "legacy");
@@ -1022,7 +1037,7 @@ test("SQLite v2 to v11 migration preserves imported fields, upgrades the known s
     assert.deepEqual(migrated.importedUnknown, { keep: true });
     assert.equal(
       (await database.getFirstAsync("PRAGMA user_version")).user_version,
-      11,
+      12,
     );
     const next = storeExchangeRates(add(migrated), rateTable());
     await writeDocument(database, next);

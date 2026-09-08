@@ -24,9 +24,9 @@ export function CurrencySelectorDialog({
     <Dialog isOpen={isOpen} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay />
-        <Dialog.Content className="gap-4 border border-border bg-[#171717]">
+        <Dialog.Content className="gap-4 border border-border bg-overlay">
           <Dialog.Close variant="ghost">
-            <FilledIcon color="#f2f2f2" name="close" size={19} />
+            <FilledIcon name="close" size={19} />
           </Dialog.Close>
           <View className="gap-1 pr-8">
             <Dialog.Title className="font-manrope-bold">
@@ -44,15 +44,15 @@ export function CurrencySelectorDialog({
               return (
                 <Pressable
                   key={currency.code}
-                  className={`flex-row items-center bg-[#202020] px-4 py-3 ${
+                  className={`flex-row items-center bg-surface-secondary px-4 py-3 ${
                     index < currencies.length - 1
                       ? "border-b border-border"
                       : ""
                   }`}
                   onPress={() => onSelect(currency)}
                 >
-                  <View className="size-9 items-center justify-center rounded-full bg-[#70d2eb]">
-                    <Text className="font-manrope-bold text-base text-[#073442]">
+                  <View className="size-9 items-center justify-center rounded-full bg-accent">
+                    <Text className="font-manrope-bold text-base text-accent-foreground">
                       {currency.symbol}
                     </Text>
                   </View>
@@ -65,7 +65,7 @@ export function CurrencySelectorDialog({
                     </Text>
                   </View>
                   {isSelected ? (
-                    <FilledIcon color="#70d2eb" name="check" size={20} />
+                    <FilledIcon name="check" size={20} tone="accent" />
                   ) : null}
                 </Pressable>
               );

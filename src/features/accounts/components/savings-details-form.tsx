@@ -20,6 +20,7 @@ import {
     type SavingsDetailsDraft,
 } from "@/data/model/savings-account";
 import { formatCurrency } from "@/shared/lib/currency";
+import { useAppThemeColors } from "@/shared/theme/app-theme";
 import { FilledIcon } from "@/shared/ui/filled-icon";
 
 type SavingsDetailsFormProps = {
@@ -35,6 +36,7 @@ export function SavingsDetailsForm({
   value,
   onChange,
 }: SavingsDetailsFormProps) {
+  const theme = useAppThemeColors();
   const [showProducts, setShowProducts] = useState(false);
   const product = SAVINGS_PRODUCT_OPTIONS.find(
     (option) => option.value === value.productType,
@@ -82,11 +84,7 @@ export function SavingsDetailsForm({
               {product.description}
             </Text>
           </View>
-          <FilledIcon
-            color="#ededed"
-            name={showProducts ? "close" : "chevron-right"}
-            size={20}
-          />
+          <FilledIcon name={showProducts ? "close" : "chevron-right"} size={20} />
         </Pressable>
         {showProducts && (
           <View className="overflow-hidden rounded-2xl border border-border bg-surface">
@@ -112,7 +110,7 @@ export function SavingsDetailsForm({
                     </Text>
                   </View>
                   {selected && (
-                    <FilledIcon color="#70d2eb" name="check" size={20} />
+                    <FilledIcon name="check" size={20} tone="accent" />
                   )}
                 </Pressable>
               );
@@ -351,8 +349,11 @@ export function SavingsDetailsForm({
           maxLength={500}
           onChangeText={(next) => change("notes", next)}
           placeholder="Access conditions, guarantees, beneficiary notes..."
-          placeholderTextColor="#777777"
-          style={styles.notes}
+          placeholderTextColor={theme.muted}
+          style={[
+            styles.notes,
+            { backgroundColor: theme.surface, color: theme.foreground },
+          ]}
           textAlignVertical="top"
           value={value.notes}
         />
@@ -368,6 +369,8 @@ function SavingsModeToggle({
   isDetailed: boolean;
   onChange: (value: boolean) => void;
 }) {
+  const theme = useAppThemeColors();
+
   return (
     <Pressable
       accessibilityRole="switch"
@@ -378,7 +381,7 @@ function SavingsModeToggle({
       onPress={() => onChange(!isDetailed)}
     >
       <View className="size-11 items-center justify-center rounded-xl bg-accent/15">
-        <FilledIcon color="#70d2eb" name="piggy-bank" size={23} />
+        <FilledIcon name="piggy-bank" size={23} tone="accent" />
       </View>
       <View className="flex-1 gap-1">
         <Text className="font-manrope-semibold text-base text-foreground">
@@ -401,8 +404,11 @@ function SavingsModeToggle({
           </HeroSwitch>
         ) : (
           <Switch
-            thumbColor={isDetailed ? "#073442" : "#bdbdbd"}
-            trackColor={{ false: "#333333", true: "#70d2eb" }}
+            thumbColor={isDetailed ? theme.accentForeground : theme.muted}
+            trackColor={{
+              false: theme.surfaceTertiary,
+              true: theme.accent,
+            }}
             value={isDetailed}
           />
         )}
@@ -585,9 +591,7 @@ function EstimateRow({
 
 const styles = StyleSheet.create({
   notes: {
-    backgroundColor: "#171717",
     borderRadius: 16,
-    color: "#ededed",
     fontFamily: "Manrope_400Regular",
     fontSize: 14,
     minHeight: 104,

@@ -10,6 +10,10 @@ import { colorForeground } from "@/shared/icons/colors";
 import { FilledIcon } from "@/shared/ui/filled-icon";
 import { GlassSegmentedControl } from "@/shared/ui/glass-segmented-control";
 import { RecordIcon } from "@/shared/ui/record-icon";
+import {
+  colorWithAlpha,
+  useAppThemeColors,
+} from "@/shared/theme/app-theme";
 
 export const TYPE_LABELS = ["Expense", "Income", "Transfer"] as const;
 export const TYPE_COLORS = ["#ef666d", "#80c783", "#58b5f3"] as const;
@@ -42,7 +46,7 @@ export function CategoryHeader({
           router.canGoBack() ? router.back() : router.replace("/")
         }
       >
-        <FilledIcon name="arrow-left" color="#ededed" size={26} />
+        <FilledIcon name="arrow-left" size={26} />
       </Button>
       <Text
         accessibilityRole="header"
@@ -116,6 +120,8 @@ export function CategoryChip({
   onPress: () => void;
   onLongPress?: () => void;
 }) {
+  const theme = useAppThemeColors();
+
   return (
     <Pressable
       accessibilityRole="button"
@@ -136,8 +142,10 @@ export function CategoryChip({
       }}
       className="min-h-11 flex-row items-center gap-2 rounded-full border px-3 py-2"
       style={{
-        borderColor: selected ? "#70d2eb" : "#202020",
-        backgroundColor: selected ? "#17343c" : "#171717",
+        borderColor: selected ? theme.accent : theme.border,
+        backgroundColor: selected
+          ? colorWithAlpha(theme.accent, 0.14)
+          : theme.surface,
       }}
     >
       {category ? (
@@ -148,11 +156,11 @@ export function CategoryChip({
           size={20}
         />
       ) : (
-        <FilledIcon name="filter" color="#70d2eb" size={20} />
+        <FilledIcon name="filter" size={20} tone="accent" />
       )}
       <Text
         className="font-manrope-medium text-sm"
-        style={{ color: selected ? "#70d2eb" : "#ededed" }}
+        style={{ color: selected ? theme.accent : theme.foreground }}
       >
         {category?.name ?? "All"}
       </Text>

@@ -40,6 +40,10 @@ import { currencies } from "@/features/profile/data/currencies-data";
 import { useProfiles } from "@/features/profile/profile-provider";
 import { FilledIcon, type FilledIconName } from "@/shared/ui/filled-icon";
 import { GlassSegmentedControl } from "@/shared/ui/glass-segmented-control";
+import {
+  colorWithAlpha,
+  useAppThemeColors,
+} from "@/shared/theme/app-theme";
 import { ACCOUNT_COLORS, colorForeground } from "./account-options";
 import {
     AccountCurrencyChangeSheet,
@@ -111,14 +115,14 @@ function OptionRow({
         hasDivider ? "border-b border-border" : ""
       }`}
     >
-      {leading ?? <FilledIcon name={icon} color="#70d2eb" size={26} />}
+      {leading ?? <FilledIcon name={icon} size={26} tone="accent" />}
       <View className="flex-1 gap-1">
         <Text className="font-manrope-semibold text-base text-foreground">
           {title}
         </Text>
         <Text className="font-sans text-sm text-muted">{description}</Text>
       </View>
-      <FilledIcon name="chevron-right" color="#ededed" size={24} />
+      <FilledIcon name="chevron-right" size={24} />
     </Pressable>
   );
 }
@@ -126,6 +130,7 @@ function OptionRow({
 export function AccountCreateScreen({ editId }: { editId?: string }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const theme = useAppThemeColors();
   const { document, updateDocument } = useLocalData();
   const { activeProfile } = useProfiles();
   // Capture the owner for this draft; a later profile change cannot reassign it.
@@ -248,7 +253,7 @@ export function AccountCreateScreen({ editId }: { editId?: string }) {
   return (
     <SafeAreaView
       edges={["top"]}
-      style={{ flex: 1, backgroundColor: "#000000" }}
+      style={{ flex: 1, backgroundColor: theme.background }}
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -262,7 +267,7 @@ export function AccountCreateScreen({ editId }: { editId?: string }) {
             accessibilityLabel="Go back"
             onPress={goBack}
           >
-            <FilledIcon name="arrow-left" color="#ededed" size={24} />
+            <FilledIcon name="arrow-left" size={24} />
           </Button>
           <Text
             accessibilityRole="header"
@@ -310,8 +315,8 @@ export function AccountCreateScreen({ editId }: { editId?: string }) {
                     color={colorForeground(color)}
                     size={30}
                   />
-                  <View className="absolute -bottom-1 -right-1 rounded-full border-2 border-black bg-surface p-1">
-                    <FilledIcon name="pencil" color="#ededed" size={13} />
+                  <View className="absolute -bottom-1 -right-1 rounded-full border-2 border-background bg-surface p-1">
+                    <FilledIcon name="pencil" size={13} />
                   </View>
                 </Pressable>
                 <Input
@@ -385,7 +390,7 @@ export function AccountCreateScreen({ editId }: { editId?: string }) {
             {draft.accountType === "bank" && (
               <View className="gap-3 pt-1">
                 <View className="flex-row items-center gap-3">
-                  <FilledIcon name="bank" color="#70d2eb" size={24} />
+                  <FilledIcon name="bank" size={24} tone="accent" />
                   <Text className="font-manrope-semibold text-base text-foreground">
                     Bank details
                   </Text>
@@ -418,7 +423,7 @@ export function AccountCreateScreen({ editId }: { editId?: string }) {
             {draft.accountType === "card" && (
               <View className="gap-3 pt-1">
                 <View className="flex-row items-center gap-3">
-                  <FilledIcon name="credit-card" color="#70d2eb" size={24} />
+                  <FilledIcon name="credit-card" size={24} tone="accent" />
                   <Text className="font-manrope-semibold text-base text-foreground">
                     Card details
                   </Text>
@@ -529,7 +534,7 @@ export function AccountCreateScreen({ editId }: { editId?: string }) {
               >
                 <FilledIcon
                   name={option.icon}
-                  color={option.key === "isExcluded" ? "#ef8175" : "#70d2eb"}
+                  tone={option.key === "isExcluded" ? "danger" : "accent"}
                   size={26}
                 />
                 <View className="flex-1 gap-1">
@@ -558,8 +563,15 @@ export function AccountCreateScreen({ editId }: { editId?: string }) {
                     <Switch
                       value={draft[option.key]}
                       disabled={isSaving}
-                      trackColor={{ false: "#333333", true: "#70d2eb" }}
-                      thumbColor={draft[option.key] ? "#073442" : "#bdbdbd"}
+                      trackColor={{
+                        false: theme.surfaceTertiary,
+                        true: theme.accent,
+                      }}
+                      thumbColor={
+                        draft[option.key]
+                          ? theme.accentForeground
+                          : theme.muted
+                      }
                     />
                   )}
                 </View>
@@ -609,7 +621,11 @@ export function AccountCreateScreen({ editId }: { editId?: string }) {
           </View>
         </ScrollView>
         <LinearGradient
-          colors={["rgba(0, 0, 0, 0)", "rgba(0, 0, 0, 0.72)", "#000000"]}
+          colors={[
+            colorWithAlpha(theme.background, 0),
+            colorWithAlpha(theme.background, 0.78),
+            theme.background,
+          ]}
           end={{ x: 0.5, y: 1 }}
           locations={[0, 0.58, 1]}
           pointerEvents="none"
@@ -643,12 +659,17 @@ export function AccountCreateScreen({ editId }: { editId?: string }) {
             onPress={save}
             style={({ pressed }) => [
               styles.addButton,
+              { backgroundColor: theme.accent },
               pressed && styles.pressed,
               isSaving && styles.disabled,
             ]}
           >
-            <FilledIcon name="credit-card-plus" color="#073442" size={24} />
-            <Text className="font-manrope-bold text-base text-[#073442]">
+            <FilledIcon
+              name="credit-card-plus"
+              size={24}
+              tone="accent-foreground"
+            />
+            <Text className="font-manrope-bold text-base text-accent-foreground">
               {isSaving ? "Saving…" : editId ? "Save changes" : "Add account"}
             </Text>
           </Pressable>
@@ -731,7 +752,7 @@ export function AccountCreateScreen({ editId }: { editId?: string }) {
                   {company}
                 </Text>
                 {draft.cardCompany === company && (
-                  <FilledIcon name="check" color="#70d2eb" size={24} />
+                  <FilledIcon name="check" size={24} tone="accent" />
                 )}
               </Pressable>
             ))}
@@ -814,13 +835,13 @@ export function AccountCreateScreen({ editId }: { editId?: string }) {
                     </Text>
                   </View>
                   {draft.linkedBankAccountId === account.id && (
-                    <FilledIcon name="check" color="#70d2eb" size={24} />
+                    <FilledIcon name="check" size={24} tone="accent" />
                   )}
                 </Pressable>
               ))
             ) : (
               <View className="items-center gap-3 px-4 py-12">
-                <FilledIcon name="bank" color="#70d2eb" size={36} />
+                <FilledIcon name="bank" size={36} tone="accent" />
                 <Text className="text-center font-manrope-semibold text-base text-foreground">
                   No bank accounts yet
                 </Text>
@@ -855,7 +876,6 @@ const styles = StyleSheet.create({
   },
   addButton: {
     alignItems: "center",
-    backgroundColor: "#70d2eb",
     borderRadius: 29,
     flexDirection: "row",
     gap: 10,

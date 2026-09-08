@@ -30,6 +30,8 @@ export function createDefaultBackup(): BackupDocument {
       defaultCategoriesRevision: DEFAULT_CATEGORIES_REVISION,
       exportedAt: null,
       selectedProfileId: "alex-personal",
+      themeMode: "system",
+      accentColor: "cyan",
       attachments: [],
       cloudProvider: null,
     },

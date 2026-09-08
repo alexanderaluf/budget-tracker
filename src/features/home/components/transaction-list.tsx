@@ -1,6 +1,10 @@
 import { Text, View } from "react-native";
 
 import { formatSignedCurrency } from "@/shared/lib/currency";
+import {
+  colorWithAlpha,
+  useAppThemeColors,
+} from "@/shared/theme/app-theme";
 import { FilledIcon, type FilledIconName } from "@/shared/ui/filled-icon";
 
 import type { Transaction, TransactionTone } from "../types";
@@ -9,7 +13,7 @@ const toneStyles: Record<
   TransactionTone,
   { backgroundColor: string; foregroundColor: string }
 > = {
-  emerald: { backgroundColor: "#17343c", foregroundColor: "#70d2eb" },
+  emerald: { backgroundColor: "#173a2a", foregroundColor: "#78d6a3" },
   blue: { backgroundColor: "#1b2e45", foregroundColor: "#82b8ee" },
   amber: { backgroundColor: "#3b3020", foregroundColor: "#f2c66d" },
   rose: { backgroundColor: "#402523", foregroundColor: "#ef8175" },
@@ -20,12 +24,20 @@ type TransactionListProps = {
 };
 
 export function TransactionList({ transactions }: TransactionListProps) {
+  const theme = useAppThemeColors();
+
   return (
     <View className="gap-1">
       {transactions.map((transaction, index) => {
         const directionIcon: FilledIconName =
           transaction.amount >= 0 ? "arrow-bottom-left" : "arrow-top-right";
-        const tone = toneStyles[transaction.tone];
+        const tone =
+          transaction.tone === "emerald"
+            ? {
+                backgroundColor: colorWithAlpha(theme.accent, 0.14),
+                foregroundColor: theme.accent,
+              }
+            : toneStyles[transaction.tone];
 
         return (
           <View
@@ -57,12 +69,12 @@ export function TransactionList({ transactions }: TransactionListProps) {
             <View className="ml-2 items-end gap-1">
               <Text
                 className={`font-manrope-bold text-[14px] ${
-                  transaction.amount >= 0 ? "text-[#70d2eb]" : "text-foreground"
+                  transaction.amount >= 0 ? "text-accent" : "text-foreground"
                 }`}
               >
                 {formatSignedCurrency(transaction.amount)}
               </Text>
-              <FilledIcon color="#8e8e8e" name={directionIcon} size={15} />
+              <FilledIcon name={directionIcon} size={15} tone="muted" />
             </View>
           </View>
         );

@@ -12,6 +12,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useAppThemeColors } from "@/shared/theme/app-theme";
 
 import { FilledIcon } from "@/shared/ui/filled-icon";
 
@@ -24,6 +25,7 @@ import { useProfiles } from "./profile-provider";
 
 export function UserEditorScreen() {
   const router = useRouter();
+  const theme = useAppThemeColors();
   const { mode, profileId } = useLocalSearchParams<{
     mode?: "create" | "edit";
     profileId?: string;
@@ -85,7 +87,7 @@ export function UserEditorScreen() {
   return (
     <SafeAreaView
       edges={["top", "bottom"]}
-      style={{ flex: 1, backgroundColor: "#000000" }}
+      style={{ flex: 1, backgroundColor: theme.background }}
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -112,7 +114,7 @@ export function UserEditorScreen() {
             </Text>
             <View className="relative justify-center">
               <FilledIcon
-                color="#a3a3a3"
+                tone="muted"
                 name="account"
                 size={20}
                 style={{ position: "absolute", left: 18, zIndex: 2 }}
@@ -128,7 +130,7 @@ export function UserEditorScreen() {
           </View>
 
           <View className="gap-3">
-            <Text className="font-manrope-semibold text-base text-[#70d2eb]">
+            <Text className="font-manrope-semibold text-base text-accent">
               Currency
             </Text>
             <Pressable
@@ -150,11 +152,11 @@ export function UserEditorScreen() {
               }}
             >
               {currency ? (
-                <View className="size-9.5 items-center justify-center rounded-full bg-[#70d2eb]">
+                <View className="size-9.5 items-center justify-center rounded-full bg-accent">
                   <Text
                     numberOfLines={1}
                     adjustsFontSizeToFit
-                    className="px-1 font-manrope-bold text-base text-[#073442]"
+                    className="px-1 font-manrope-bold text-base text-accent-foreground"
                   >
                     {currency.symbol}
                   </Text>
@@ -169,7 +171,7 @@ export function UserEditorScreen() {
                     "Choose your preferred currency for transactions"}
                 </Text>
               </View>
-              <FilledIcon color="#a3a3a3" name="chevron-right" size={24} />
+              <FilledIcon name="chevron-right" size={24} tone="muted" />
             </Pressable>
             <Text className="font-sans text-sm leading-5 text-muted">
               Your profile and main currency are saved on this device when you
@@ -182,10 +184,10 @@ export function UserEditorScreen() {
           <Button
             isDisabled={!canSubmit || isSaving}
             size="lg"
-            className="h-[50px] rounded-full bg-[#70d2eb]"
+            className="h-[50px] rounded-full bg-accent"
             onPress={handleSubmit}
           >
-            <Button.Label className="font-manrope-bold text-base text-[#073442]">
+            <Button.Label className="font-manrope-bold text-base text-accent-foreground">
               {isSaving ? "Saving..." : isEditing ? "Update User" : "Add User"}
             </Button.Label>
           </Button>

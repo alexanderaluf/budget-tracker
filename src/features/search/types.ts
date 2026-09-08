@@ -8,6 +8,4 @@ export type SearchResult = {
   date: string;
   amount: number;
   icon: FilledIconName;
-  color: string;
-  iconBackground: string;
 };

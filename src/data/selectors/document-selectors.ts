@@ -397,7 +397,6 @@ export function selectSearchResults(document: BackupDocument): SearchResult[] {
       record.accountName,
       lookupName(document.accounts, record.account),
     );
-    const income = number(record.type) === 1;
     return {
       id: recordId(record, index),
       title: text(record.name, "Untitled transaction"),
@@ -406,8 +405,6 @@ export function selectSearchResults(document: BackupDocument): SearchResult[] {
       date: transactionDate(record),
       amount: transactionAmount(record),
       icon: categoryIcon(category),
-      color: income ? "#82b8ee" : "#70d2eb",
-      iconBackground: income ? "#1b2e45" : "#17343c",
     };
   });
 }

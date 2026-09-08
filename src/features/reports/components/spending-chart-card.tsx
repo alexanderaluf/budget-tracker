@@ -22,7 +22,7 @@ export function SpendingChartCard({
   const maximum = Math.max(...dailySpending.map((item) => item.amount), 1);
 
   return (
-    <Card className="border border-[#2d2d2d] bg-[#171717] p-0">
+    <Card className="border border-border bg-surface p-0">
       <Card.Header className="flex-row items-start justify-between px-5 pt-5">
         <View>
           <Card.Description className="font-sans text-muted">
@@ -33,7 +33,7 @@ export function SpendingChartCard({
           </Card.Title>
         </View>
         <Chip color="success" size="sm" variant="soft">
-          <FilledIcon color="#70d2eb" name="trending-down" size={15} />
+          <FilledIcon name="trending-down" size={15} tone="accent" />
           <Chip.Label className="font-manrope-bold">
             {Math.abs(changePercent)}%
           </Chip.Label>
@@ -47,9 +47,9 @@ export function SpendingChartCard({
               key={`${item.day}-${index}`}
               className="flex-1 items-center gap-2"
             >
-              <View className="h-24 w-full justify-end overflow-hidden rounded-md bg-[#242424]">
+              <View className="h-24 w-full justify-end overflow-hidden rounded-md bg-surface-tertiary">
                 <View
-                  className="w-full rounded-md bg-[#70d2eb]"
+                  className="w-full rounded-md bg-accent"
                   style={{
                     height: `${Math.max((item.amount / maximum) * 100, 12)}%`,
                   }}

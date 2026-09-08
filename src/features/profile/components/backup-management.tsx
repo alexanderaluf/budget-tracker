@@ -40,7 +40,7 @@ function BackupAction({
       className="h-auto w-full justify-start rounded-none px-1 py-3"
       onPress={onPress}
     >
-      <FilledIcon color="#70d2eb" name={icon} size={21} />
+      <FilledIcon name={icon} size={21} tone="accent" />
       <View className="ml-3 flex-1 items-start">
         <Button.Label className="font-manrope-semibold text-sm text-foreground">
           {label}
@@ -125,7 +125,7 @@ export function BackupManagement() {
   }
 
   return (
-    <View className="gap-1 rounded-lg border border-border bg-[#202020] px-3">
+    <View className="gap-1 rounded-lg border border-border bg-surface-secondary px-3">
       <View className="flex-row items-center justify-between px-1 py-2">
         <Text className="font-sans text-[11px] text-muted">
           {recordCount} local records

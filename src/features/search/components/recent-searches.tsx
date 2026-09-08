@@ -12,7 +12,7 @@ export function RecentSearches({ queries, onSelect }: RecentSearchesProps) {
   return (
     <View className="gap-3">
       <View className="flex-row items-center gap-2">
-        <FilledIcon color="#a3a3a3" name="clock" size={17} />
+        <FilledIcon name="clock" size={17} tone="muted" />
         <Text className="font-manrope-bold text-sm text-foreground">
           Recent searches
         </Text>

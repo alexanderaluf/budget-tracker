@@ -7,6 +7,7 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
+import { colorWithAlpha, useAppThemeColors } from "@/shared/theme/app-theme";
 
 type SegmentValue = string | number;
 type SegmentOption<Value extends SegmentValue> = {
@@ -34,6 +35,7 @@ export function GlassSegmentedControl<Value extends SegmentValue>({
   value,
 }: GlassSegmentedControlProps<Value>) {
   const frames = useRef<Record<string, { width: number; x: number }>>({});
+  const colors = useAppThemeColors();
   const indicatorX = useSharedValue(0);
   const indicatorWidth = useSharedValue(0);
   const [isReady, setIsReady] = useState(false);
@@ -64,7 +66,13 @@ export function GlassSegmentedControl<Value extends SegmentValue>({
     <View
       accessibilityLabel={accessibilityLabel}
       accessibilityRole="tablist"
-      style={styles.container}
+      style={[
+        styles.container,
+        {
+          backgroundColor: colorWithAlpha(colors.surface, 0.72),
+          borderColor: colors.border,
+        },
+      ]}
     >
       {Platform.OS === "ios" || blurTarget ? (
         <BlurView
@@ -78,14 +86,18 @@ export function GlassSegmentedControl<Value extends SegmentValue>({
           intensity={36}
           pointerEvents="none"
           style={StyleSheet.absoluteFill}
-          tint="dark"
+          tint={colors.isDark ? "dark" : "light"}
         />
       ) : null}
       <View style={styles.track}>
         {isReady ? (
           <Animated.View
             pointerEvents="none"
-            style={[styles.indicator, indicatorStyle]}
+            style={[
+              styles.indicator,
+              { backgroundColor: colors.accent },
+              indicatorStyle,
+            ]}
           />
         ) : null}
         {options.map((option) => {
@@ -114,7 +126,9 @@ export function GlassSegmentedControl<Value extends SegmentValue>({
                 numberOfLines={1}
                 className="font-manrope-bold"
                 style={{
-                  color: isSelected ? "#073442" : "#ededed",
+                  color: isSelected
+                    ? colors.accentForeground
+                    : colors.foreground,
                   fontSize: textSize,
                 }}
               >
@@ -130,8 +144,6 @@ export function GlassSegmentedControl<Value extends SegmentValue>({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "rgba(10, 10, 10, 0.62)",
-    borderColor: "#303030",
     borderRadius: 999,
     borderWidth: 1,
     overflow: "hidden",
@@ -142,7 +154,6 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   indicator: {
-    backgroundColor: "#70d2eb",
     borderRadius: 999,
     bottom: 0,
     left: 0,
