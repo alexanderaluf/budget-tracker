@@ -113,10 +113,7 @@ test("generated Material catalog contains every installed rounded symbol", () =>
     ),
   );
   const source = fs.readFileSync(
-    path.join(
-      sourceRoot,
-      "shared/icons/material-rounded-filled-icons.ts",
-    ),
+    path.join(sourceRoot, "shared/icons/material-rounded-filled-icons.ts"),
     "utf8",
   );
   const assignment = source.indexOf("= [");
@@ -165,10 +162,7 @@ test("suggested icon categories contain 20 valid choices each", () => {
   assert.ok(ACCOUNT_ICON_GROUPS.every((group) => group.icons.length >= 20));
 
   const source = fs.readFileSync(
-    path.join(
-      sourceRoot,
-      "shared/icons/material-rounded-filled-icons.ts",
-    ),
+    path.join(sourceRoot, "shared/icons/material-rounded-filled-icons.ts"),
     "utf8",
   );
   const assignment = source.indexOf("= [");
@@ -401,7 +395,7 @@ test("JSON backup round trip preserves all new account options and unknown field
   );
   assert.deepEqual(restored.accounts, next.accounts);
   assert.deepEqual(restored.unknown, next.unknown);
-  assert.equal(restored._local.schemaVersion, 8);
+  assert.equal(restored._local.schemaVersion, 11);
   assert.equal(
     restored.accounts.at(-1).linkedBankAccountId,
     "account-checking",
@@ -996,7 +990,7 @@ test("every card company survives SQLite reopening and both backup document form
   }
 });
 
-test("SQLite v2 to v8 migration preserves imported fields, upgrades the known seed, survives reopening and rolls back failed writes", async () => {
+test("SQLite v2 to v11 migration preserves imported fields, upgrades the known seed, survives reopening and rolls back failed writes", async () => {
   const directory = fs.mkdtempSync(
     path.join(os.tmpdir(), "budget-accounts-test-"),
   );
@@ -1019,7 +1013,7 @@ test("SQLite v2 to v8 migration preserves imported fields, upgrades the known se
     );
     await migrateLocalDatabase(database);
     const migrated = await readDocument(database);
-    assert.equal(migrated._local.schemaVersion, 8);
+    assert.equal(migrated._local.schemaVersion, 11);
     assert.equal(migrated.accounts[0].accountType, "bank");
     assert.equal(migrated.accounts[0].icon, 12345);
     assert.equal(migrated.accounts[0].custom, "legacy");
@@ -1028,7 +1022,7 @@ test("SQLite v2 to v8 migration preserves imported fields, upgrades the known se
     assert.deepEqual(migrated.importedUnknown, { keep: true });
     assert.equal(
       (await database.getFirstAsync("PRAGMA user_version")).user_version,
-      8,
+      11,
     );
     const next = storeExchangeRates(add(migrated), rateTable());
     await writeDocument(database, next);

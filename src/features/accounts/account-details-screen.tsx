@@ -9,6 +9,7 @@ import {
 import { formatCurrency } from "@/shared/lib/currency";
 import { FilledIcon } from "@/shared/ui/filled-icon";
 import { LinearGradient } from "expo-linear-gradient";
+import { BlurTargetView } from "expo-blur";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { BottomSheet, Button } from "heroui-native";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -33,6 +34,7 @@ export function AccountDetailsScreen() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const deletingRef = useRef(false);
+  const blurTargetRef = useRef<View | null>(null);
   const [deleteError, setDeleteError] = useState("");
   const account = useMemo(
     () => selectAccounts(document).find((item) => item.id === id),
@@ -141,7 +143,8 @@ export function AccountDetailsScreen() {
 
   return (
     <SafeAreaView edges={["top"]} style={styles.screen}>
-      <View style={styles.header}>
+      <BlurTargetView ref={blurTargetRef} style={{ flex: 1 }}>
+        <View style={styles.header}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Back to accounts"
@@ -164,8 +167,8 @@ export function AccountDetailsScreen() {
         >
           <Text style={{ color: "#ededed", fontSize: 30 }}>⋮</Text>
         </Pressable>
-      </View>
-      <FlatList
+        </View>
+        <FlatList
         data={visible}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{
@@ -295,14 +298,16 @@ export function AccountDetailsScreen() {
               : "No transactions for this account yet."}
           </Text>
         }
-      />
-      <LinearGradient
-        pointerEvents="none"
-        colors={["transparent", "rgba(0,0,0,0.8)", "#000000"]}
-        style={[styles.scrim, { height: 110 + insets.bottom }]}
-      />
+        />
+        <LinearGradient
+          pointerEvents="none"
+          colors={["transparent", "rgba(0,0,0,0.8)", "#000000"]}
+          style={[styles.scrim, { height: 110 + insets.bottom }]}
+        />
+      </BlurTargetView>
       <View style={[styles.dock, { bottom: Math.max(insets.bottom, 10) }]}>
         <AccountPeriodSelector
+          blurTarget={blurTargetRef}
           value={period}
           onChange={(value) => {
             setPeriod(value);

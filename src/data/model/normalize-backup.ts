@@ -1,14 +1,14 @@
-import {
-  BACKUP_COLLECTION_KEYS,
-  BACKUP_VERSION,
-  LOCAL_SCHEMA_VERSION,
-  type AttachmentManifest,
-  type BackupDocument,
-} from "./backup-document";
-import { isJsonObject } from "./json";
 import { normalizeAccountRecord } from "./account-record";
+import {
+    BACKUP_COLLECTION_KEYS,
+    BACKUP_VERSION,
+    LOCAL_SCHEMA_VERSION,
+    type AttachmentManifest,
+    type BackupDocument,
+} from "./backup-document";
 import { normalizeCategoryRecord } from "./category-record";
 import { RATE_SOURCE } from "./exchange-rate";
+import { isJsonObject } from "./json";
 
 function normalizeAttachments(value: unknown): AttachmentManifest[] {
   if (!Array.isArray(value)) return [];
@@ -67,6 +67,11 @@ export function normalizeBackupDocument(value: unknown): BackupDocument {
   document._local = {
     ...local,
     schemaVersion: LOCAL_SCHEMA_VERSION,
+    defaultCategoriesRevision:
+      typeof local.defaultCategoriesRevision === "number" &&
+      Number.isInteger(local.defaultCategoriesRevision)
+        ? local.defaultCategoriesRevision
+        : 0,
     exportedAt: typeof local.exportedAt === "string" ? local.exportedAt : null,
     selectedProfileId:
       typeof local.selectedProfileId === "string"

@@ -1,4 +1,6 @@
 import Animated from "react-native-reanimated";
+import { BlurTargetView } from "expo-blur";
+import { LinearGradient } from "expo-linear-gradient";
 import {
   categoryEntrance,
   categoryLayout,
@@ -6,9 +8,19 @@ import {
 } from "./components/category-motion";
 import { useRouter } from "expo-router";
 import { Button } from "heroui-native";
-import { useMemo, useState } from "react";
-import { Alert, FlatList, Pressable, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useMemo, useRef, useState } from "react";
+import {
+  Alert,
+  FlatList,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import { useLocalData } from "@/data/local-data-provider";
 import type { CategoryType } from "@/data/model/category-record";
 import {
@@ -28,8 +40,16 @@ import {
 } from "./components/category-ui";
 import { useCategoryClock } from "./use-category-clock";
 
+const BOTTOM_SCRIM_COLORS = [
+  "rgba(0, 0, 0, 0)",
+  "rgba(0, 0, 0, 0.72)",
+  "#000000",
+] as const;
+
 export function CategoriesScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const blurTargetRef = useRef<View | null>(null);
   const { document } = useLocalData();
   const { activeProfile } = useProfiles();
   const now = useCategoryClock();
@@ -58,10 +78,11 @@ export function CategoriesScreen() {
     router.push({ pathname: "/categories/[id]", params: { id } });
   return (
     <SafeAreaView
-      edges={["top", "bottom"]}
+      edges={["top"]}
       style={{ flex: 1, backgroundColor: "#000000" }}
     >
-      <CategoryHeader title="Categories">
+      <BlurTargetView ref={blurTargetRef} style={{ flex: 1 }}>
+        <CategoryHeader title="Categories">
         <Button
           isIconOnly
           variant="ghost"
@@ -75,8 +96,8 @@ export function CategoriesScreen() {
         >
           <FilledIcon name="help" color="#ededed" size={25} />
         </Button>
-      </CategoryHeader>
-      <Animated.View
+        </CategoryHeader>
+        <Animated.View
         entering={categoryEntrance(40)}
         className="flex-row items-center justify-between px-5 py-2"
       >
@@ -108,11 +129,15 @@ export function CategoriesScreen() {
             size={26}
           />
         </Button>
-      </Animated.View>
-      <FlatList
+        </Animated.View>
+        <FlatList
         data={roots}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={{ padding: 8, paddingBottom: 88, flexGrow: 1 }}
+        contentContainerStyle={{
+          padding: 8,
+          paddingBottom: 110 + insets.bottom,
+          flexGrow: 1,
+        }}
         ItemSeparatorComponent={() => <View className="h-2" />}
         renderItem={({ item, index }) => {
           const total = totals.get(item.id)!;
@@ -213,15 +238,45 @@ export function CategoriesScreen() {
             </Text>
           </Animated.View>
         }
+        />
+      </BlurTargetView>
+      <LinearGradient
+        colors={BOTTOM_SCRIM_COLORS}
+        end={{ x: 0.5, y: 1 }}
+        locations={[0, 0.54, 1]}
+        pointerEvents="none"
+        start={{ x: 0.5, y: 0 }}
+        style={[styles.bottomScrim, { height: 128 + insets.bottom }]}
       />
       <Animated.View
         entering={categoryEntrance(180)}
-        className="relative px-4 pb-2 pt-2"
+        style={{
+          position: "absolute",
+          left: 12,
+          right: 12,
+          bottom: Math.max(insets.bottom, 10),
+          zIndex: 20,
+        }}
+      >
+        <CategoryTypeSelector
+          blurTarget={blurTargetRef}
+          value={type}
+          onChange={setType}
+        />
+      </Animated.View>
+      <Animated.View
+        entering={categoryEntrance(180)}
+        style={{
+          position: "absolute",
+          right: 20,
+          bottom: Math.max(insets.bottom, 10) + 76,
+          zIndex: 20,
+        }}
       >
         <Button
           isIconOnly
           accessibilityLabel="Add category"
-          className="absolute -top-20 right-5 size-16 rounded-full"
+          className="size-16 rounded-full bg-accent"
           onPress={() =>
             router.push({
               pathname: "/categories/create",
@@ -231,8 +286,17 @@ export function CategoriesScreen() {
         >
           <FilledIcon name="plus" color="#073442" size={32} />
         </Button>
-        <CategoryTypeSelector value={type} onChange={setType} />
       </Animated.View>
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  bottomScrim: {
+    bottom: 0,
+    left: 0,
+    position: "absolute",
+    right: 0,
+    zIndex: 10,
+  },
+});

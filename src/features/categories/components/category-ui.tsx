@@ -1,22 +1,22 @@
 import { useRouter } from "expo-router";
 import { Button } from "heroui-native";
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Pressable, Text, View, type LayoutChangeEvent } from "react-native";
-import Animated, {
-  ReduceMotion,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from "react-native-reanimated";
+import { type ReactNode, type RefObject } from "react";
+import { Pressable, Text, View } from "react-native";
+import Animated from "react-native-reanimated";
 import { categoryEntrance } from "./category-motion";
 import type { Category } from "@/data/selectors/category-selectors";
 import type { CategoryType } from "@/data/model/category-record";
 import { colorForeground } from "@/shared/icons/colors";
 import { FilledIcon } from "@/shared/ui/filled-icon";
+import { GlassSegmentedControl } from "@/shared/ui/glass-segmented-control";
 import { RecordIcon } from "@/shared/ui/record-icon";
 
 export const TYPE_LABELS = ["Expense", "Income", "Transfer"] as const;
 export const TYPE_COLORS = ["#ef666d", "#80c783", "#58b5f3"] as const;
+const TYPE_OPTIONS = TYPE_LABELS.map((label, value) => ({
+  label,
+  value: value as CategoryType,
+}));
 
 export function CategoryHeader({
   title,
@@ -57,88 +57,23 @@ export function CategoryHeader({
 }
 
 export function CategoryTypeSelector({
+  blurTarget,
   value,
   onChange,
 }: {
+  blurTarget?: RefObject<View | null>;
   value: CategoryType;
   onChange: (value: CategoryType) => void;
 }) {
-  const x = useSharedValue(0);
-  const width = useSharedValue(0);
-  const frames = useRef<
-    Partial<Record<CategoryType, { x: number; width: number }>>
-  >({});
-  const [ready, setReady] = useState(false);
-  useEffect(() => {
-    const frame = frames.current[value];
-    if (!frame) return;
-    x.value = withSpring(frame.x, {
-      damping: 20,
-      mass: 0.7,
-      stiffness: 210,
-      reduceMotion: ReduceMotion.System,
-    });
-    width.value = withSpring(frame.width, {
-      damping: 22,
-      mass: 0.7,
-      stiffness: 230,
-      reduceMotion: ReduceMotion.System,
-    });
-  }, [value, x, width]);
-  function measure(type: CategoryType, event: LayoutChangeEvent) {
-    const frame = event.nativeEvent.layout;
-    frames.current[type] = frame;
-    if (type === value) {
-      x.value = frame.x;
-      width.value = frame.width;
-      setReady(true);
-    }
-  }
-  const indicator = useAnimatedStyle(() => ({
-    width: width.value,
-    transform: [{ translateX: x.value }],
-  }));
   return (
-    <View
-      accessibilityRole="tablist"
-      className="rounded-full border border-[#303030] bg-[#171717] p-1"
-    >
-      <View style={{ flexDirection: "row", position: "relative" }}>
-        {ready && (
-          <Animated.View
-            pointerEvents="none"
-            style={[
-              {
-                position: "absolute",
-                top: 0,
-                bottom: 0,
-                left: 0,
-                borderRadius: 999,
-                backgroundColor: "#70d2eb",
-              },
-              indicator,
-            ]}
-          />
-        )}
-        {TYPE_LABELS.map((label, index) => (
-          <Pressable
-            key={label}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: value === index }}
-            onPress={() => onChange(index as CategoryType)}
-            onLayout={(event) => measure(index as CategoryType, event)}
-            className="min-h-12 flex-1 items-center justify-center rounded-full px-2"
-          >
-            <Text
-              className="font-manrope-bold text-base"
-              style={{ color: value === index ? "#073442" : "#ededed" }}
-            >
-              {label}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-    </View>
+    <GlassSegmentedControl
+      accessibilityLabel="Transaction type"
+      blurTarget={blurTarget}
+      onChange={onChange}
+      options={TYPE_OPTIONS}
+      textSize={16}
+      value={value}
+    />
   );
 }
 

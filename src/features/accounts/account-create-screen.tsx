@@ -2,7 +2,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { uuid } from "expo-modules-core";
 import { useRouter } from "expo-router";
 import { Button, Switch as HeroSwitch, Input } from "heroui-native";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import {
     Alert,
     Keyboard,
@@ -14,13 +14,7 @@ import {
     Switch,
     Text,
     View,
-    type LayoutChangeEvent,
 } from "react-native";
-import Animated, {
-    useAnimatedStyle,
-    useSharedValue,
-    withSpring,
-} from "react-native-reanimated";
 import {
     SafeAreaView,
     useSafeAreaInsets,
@@ -45,6 +39,7 @@ import { CurrencySelectorSheet } from "@/features/profile/components/currency-se
 import { currencies } from "@/features/profile/data/currencies-data";
 import { useProfiles } from "@/features/profile/profile-provider";
 import { FilledIcon, type FilledIconName } from "@/shared/ui/filled-icon";
+import { GlassSegmentedControl } from "@/shared/ui/glass-segmented-control";
 import { ACCOUNT_COLORS, colorForeground } from "./account-options";
 import {
     AccountCurrencyChangeSheet,
@@ -63,13 +58,16 @@ const defaultIcons = {
 } as const;
 
 type AccountType = (typeof ACCOUNT_TYPES)[number];
-type TypeFrame = { width: number; x: number };
 const ACCOUNT_TYPE_OPTIONS: readonly AccountType[] = [
   "bank",
   "card",
   "cash",
   "savings",
 ];
+const ACCOUNT_TYPE_SEGMENTS = ACCOUNT_TYPE_OPTIONS.map((type) => ({
+  label: `${type[0].toUpperCase()}${type.slice(1)}`,
+  value: type,
+}));
 
 function AccountTypeSelector({
   selected,
@@ -78,85 +76,14 @@ function AccountTypeSelector({
   selected: AccountType;
   onChange: (type: AccountType) => void;
 }) {
-  const indicatorX = useSharedValue(0);
-  const indicatorWidth = useSharedValue(0);
-  const typeFrames = useRef<Partial<Record<AccountType, TypeFrame>>>({});
-  const [isReady, setIsReady] = useState(false);
-
-  useEffect(() => {
-    const selectedFrame = typeFrames.current[selected];
-    if (!selectedFrame) return;
-
-    indicatorX.value = withSpring(selectedFrame.x, {
-      damping: 20,
-      mass: 0.7,
-      stiffness: 210,
-    });
-    indicatorWidth.value = withSpring(selectedFrame.width, {
-      damping: 22,
-      mass: 0.7,
-      stiffness: 230,
-    });
-  }, [indicatorWidth, indicatorX, selected]);
-
-  function handleTypeLayout(type: AccountType, event: LayoutChangeEvent) {
-    const { width, x } = event.nativeEvent.layout;
-    typeFrames.current[type] = { width, x };
-
-    if (type === selected) {
-      indicatorX.value = x;
-      indicatorWidth.value = width;
-      setIsReady(true);
-    }
-  }
-
-  const indicatorStyle = useAnimatedStyle(() => ({
-    width: indicatorWidth.value,
-    transform: [{ translateX: indicatorX.value }],
-  }));
-
   return (
-    <View
-      accessibilityRole="tablist"
-      className="border border-border"
-      style={[
-        styles.typeSelector,
-        Platform.OS === "android" && styles.androidTypeSelector,
-      ]}
-    >
-      <View style={styles.typeTrack}>
-        {isReady ? (
-          <Animated.View
-            pointerEvents="none"
-            style={[styles.typeIndicator, indicatorStyle]}
-          />
-        ) : null}
-        {ACCOUNT_TYPE_OPTIONS.map((type) => {
-          const isSelected = type === selected;
-          return (
-            <Pressable
-              key={type}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: isSelected }}
-              className="min-h-12 flex-1 items-center justify-center rounded-full"
-              onLayout={(event) => handleTypeLayout(type, event)}
-              onPress={() => onChange(type)}
-              style={({ pressed }) => [
-                styles.typeTab,
-                Platform.OS === "android" && styles.androidTypeTab,
-                pressed && styles.pressed,
-              ]}
-            >
-              <Text
-                className={`font-manrope-bold capitalize ${isSelected ? "text-accent-foreground" : "text-foreground"}`}
-              >
-                {type}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-    </View>
+    <GlassSegmentedControl
+      accessibilityLabel="Account type"
+      minHeight={Platform.OS === "android" ? 52 : 48}
+      onChange={onChange}
+      options={ACCOUNT_TYPE_SEGMENTS}
+      value={selected}
+    />
   );
 }
 
@@ -911,34 +838,6 @@ export function AccountCreateScreen({ editId }: { editId?: string }) {
 }
 
 const styles = StyleSheet.create({
-  typeSelector: {
-    borderRadius: 999,
-    overflow: "hidden",
-  },
-  typeTrack: {
-    flexDirection: "row",
-    margin: 4,
-    position: "relative",
-  },
-  typeTab: {
-    zIndex: 1,
-  },
-  androidTypeSelector: {
-    minHeight: 60,
-  },
-  androidTypeTab: {
-    height: 52,
-    minHeight: 52,
-  },
-  typeIndicator: {
-    backgroundColor: "#70d2eb",
-    borderRadius: 999,
-    bottom: 0,
-    left: 0,
-    overflow: "hidden",
-    position: "absolute",
-    top: 0,
-  },
   bottomScrim: {
     bottom: 0,
     left: 0,

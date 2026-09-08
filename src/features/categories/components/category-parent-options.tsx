@@ -5,6 +5,7 @@ import Animated, {
   ReduceMotion,
   useAnimatedStyle,
   useSharedValue,
+  withDelay,
   withTiming,
 } from "react-native-reanimated";
 
@@ -16,13 +17,21 @@ export function CategoryParentOptions({
   const height = useSharedValue(0);
   const opacity = useSharedValue(0);
   useEffect(() => {
-    const config = {
+    const heightConfig = {
       duration: 240,
       easing: Easing.inOut(Easing.cubic),
       reduceMotion: ReduceMotion.System,
     };
-    height.value = withTiming(open ? contentHeight : 0, config);
-    opacity.value = withTiming(open ? 1 : 0, { ...config, duration: 160 });
+    if (open && contentHeight > 0) {
+      height.value = withTiming(contentHeight, heightConfig);
+      opacity.value = withDelay(
+        140,
+        withTiming(1, { ...heightConfig, duration: 120 }),
+      );
+      return;
+    }
+    opacity.value = withTiming(0, { ...heightConfig, duration: 100 });
+    height.value = withTiming(0, heightConfig);
   }, [open, contentHeight, height, opacity]);
   const style = useAnimatedStyle(() => ({
     height: height.value,

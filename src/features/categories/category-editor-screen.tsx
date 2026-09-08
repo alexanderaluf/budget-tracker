@@ -18,7 +18,10 @@ import {
   Text,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import { useLocalData } from "@/data/local-data-provider";
 import {
   categoryFamily,
@@ -40,6 +43,7 @@ import {
 
 export function CategoryEditorScreen({ editId }: { editId?: string }) {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ parentId?: string; type?: string }>();
   const { document, updateDocument } = useLocalData();
   const { activeProfile } = useProfiles();
@@ -151,7 +155,11 @@ export function CategoryEditorScreen({ editId }: { editId?: string }) {
       >
         <ScrollView
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ padding: 20, gap: 22, paddingBottom: 28 }}
+          contentContainerStyle={{
+            padding: 20,
+            gap: 22,
+            paddingBottom: 108 + insets.bottom,
+          }}
         >
           {editId && !existing ? (
             <Text className="text-danger">This category no longer exists.</Text>
@@ -207,7 +215,18 @@ export function CategoryEditorScreen({ editId }: { editId?: string }) {
                 onChangeText={(value) => change("description", value)}
                 className="h-14 min-h-14 rounded-2xl bg-surface"
               />
-              <View className="flex-row items-center gap-4 py-2">
+              <Pressable
+                accessibilityRole="switch"
+                accessibilityState={{
+                  checked: draft.isDefault,
+                  disabled: isSaving,
+                }}
+                accessibilityLabel="Default category"
+                disabled={isSaving}
+                onPress={() => change("isDefault", !draft.isDefault)}
+                className="flex-row items-center gap-4 rounded-2xl py-2"
+                style={({ pressed }) => ({ opacity: pressed ? 0.72 : 1 })}
+              >
                 <View className="flex-1 gap-1">
                   <Text className="font-manrope-bold text-lg text-foreground">
                     Default category
@@ -216,16 +235,19 @@ export function CategoryEditorScreen({ editId }: { editId?: string }) {
                     Use as the preferred category for this transaction type.
                   </Text>
                 </View>
-                <HeroSwitch
-                  accessibilityLabel="Default category"
-                  isSelected={draft.isDefault}
-                  onSelectedChange={(value) => change("isDefault", value)}
-                  isDisabled={isSaving}
-                  style={{ width: 60, height: 28 }}
+                <View
+                  pointerEvents="none"
+                  importantForAccessibility="no-hide-descendants"
                 >
-                  <HeroSwitch.Thumb style={{ width: 36, height: 24 }} />
-                </HeroSwitch>
-              </View>
+                  <HeroSwitch
+                    isSelected={draft.isDefault}
+                    isDisabled={isSaving}
+                    style={{ width: 60, height: 28 }}
+                  >
+                    <HeroSwitch.Thumb style={{ width: 36, height: 24 }} />
+                  </HeroSwitch>
+                </View>
+              </Pressable>
               <View>
                 <Pressable
                   accessibilityRole="button"
@@ -354,12 +376,21 @@ export function CategoryEditorScreen({ editId }: { editId?: string }) {
             </Text>
           ) : null}
         </ScrollView>
-        <Animated.View entering={categoryEntrance(220)} className="px-5 py-3">
+        <Animated.View
+          entering={categoryEntrance(220)}
+          style={{
+            position: "absolute",
+            left: 20,
+            right: 20,
+            bottom: 12,
+            zIndex: 20,
+          }}
+        >
           <Button
             size="lg"
             isDisabled={isSaving || (!!editId && !existing)}
             onPress={save}
-            className="rounded-full"
+            className="rounded-full bg-accent"
           >
             <FilledIcon name="check" color="#073442" size={24} />
             <Button.Label>

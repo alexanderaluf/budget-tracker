@@ -1,7 +1,8 @@
 import type { JsonObject, JsonValue } from "./json";
 
 export const BACKUP_VERSION = 3;
-export const LOCAL_SCHEMA_VERSION = 8;
+export const LOCAL_SCHEMA_VERSION = 11;
+export const DEFAULT_CATEGORIES_REVISION = 1;
 
 export const BACKUP_COLLECTION_KEYS = [
   "transactions",
@@ -36,6 +37,7 @@ export interface AttachmentManifest extends JsonObject {
 
 export interface LocalBackupMetadata extends JsonObject {
   schemaVersion: number;
+  defaultCategoriesRevision: number;
   exportedAt: string | null;
   selectedProfileId: string | null;
   attachments: AttachmentManifest[];

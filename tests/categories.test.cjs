@@ -389,7 +389,7 @@ test("numeric import relationships, orphan parents and cycles remain readable", 
   assert.equal(savedViewModel.categories[0].id, 1);
 });
 
-test("v7 migration adds category defaults without replacing imported data and survives SQLite reopen", async () => {
+test("v7-to-v11 migration preserves imported category data and survives SQLite reopen", async () => {
   const os = require("node:os");
   const directory = fs.mkdtempSync(
     path.join(os.tmpdir(), "budget-categories-"),
@@ -436,8 +436,8 @@ test("v7 migration adds category defaults without replacing imported data and su
       sqlite.prepare("SELECT document_json FROM app_document").get()
         .document_json,
     );
-    assert.equal(sqlite.prepare("PRAGMA user_version").get().user_version, 8);
-    assert.equal(restored._local.schemaVersion, 8);
+    assert.equal(sqlite.prepare("PRAGMA user_version").get().user_version, 11);
+    assert.equal(restored._local.schemaVersion, 11);
     assert.equal(restored.categories.length, 1);
     assert.equal(restored.categories[0].parentId, null);
     assert.deepEqual(restored.categories[0].custom, { keep: true });
@@ -449,6 +449,278 @@ test("v7 migration adds category defaults without replacing imported data and su
       path.resolve(os.tmpdir()),
     );
     assert.ok(path.basename(directory).startsWith("budget-categories-"));
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("v9 migration refreshes an untouched legacy default category set and re-points its transactions and budgets", async () => {
+  const os = require("node:os");
+  const directory = fs.mkdtempSync(
+    path.join(os.tmpdir(), "budget-categories-refresh-"),
+  );
+  const filename = path.join(directory, "categories.db");
+  let sqlite = new DatabaseSync(filename);
+  const adapter = {
+    execAsync: async (sql) => sqlite.exec(sql),
+    getFirstAsync: async (sql, ...params) => sqlite.prepare(sql).get(...params),
+    runAsync: async (sql, ...params) => sqlite.prepare(sql).run(...params),
+    withExclusiveTransactionAsync: async (work) => {
+      sqlite.exec("BEGIN");
+      try {
+        await work(adapter);
+        sqlite.exec("COMMIT");
+      } catch (error) {
+        sqlite.exec("ROLLBACK");
+        throw error;
+      }
+    },
+  };
+  try {
+    sqlite.exec(
+      "CREATE TABLE app_document (id INTEGER PRIMARY KEY, schema_version INTEGER NOT NULL, document_json TEXT NOT NULL, updated_at TEXT NOT NULL); PRAGMA user_version = 6;",
+    );
+    const document = createDefaultBackup();
+    document._local.schemaVersion = 6;
+    // Simulate a pre-v9 install: legacy default categories, no user edits.
+    document.categories = [
+      { id: 1, uuid: "category-groceries", name: "Groceries", type: 0 },
+      { id: 2, uuid: "category-housing", name: "Housing", type: 0 },
+      { id: 3, uuid: "category-dining", name: "Dining", type: 0 },
+      { id: 4, uuid: "category-coffee", name: "Coffee", type: 0 },
+      { id: 5, uuid: "category-income", name: "Income", type: 1 },
+      { id: 6, uuid: "category-goals", name: "Savings goals", type: 0 },
+    ];
+    document.budgets = [
+      {
+        uuid: "budget-lifestyle",
+        name: "Lifestyle",
+        amount: 1400,
+        categories: ["category-dining", "category-coffee"],
+      },
+    ];
+    document.transactions = [
+      {
+        uuid: "tx-salary",
+        account: "account-checking",
+        amount: 3125,
+        type: 1,
+        category: "category-income",
+        categoryName: "Income",
+        createdAt: now,
+      },
+      {
+        uuid: "tx-coffee",
+        account: "account-checking",
+        amount: 6.75,
+        type: 0,
+        category: "category-coffee",
+        categoryName: "Coffee",
+        createdAt: now,
+      },
+    ];
+    sqlite
+      .prepare("INSERT INTO app_document VALUES (1, 6, ?, ?)")
+      .run(JSON.stringify(document), now);
+    await migrateLocalDatabase(adapter);
+    sqlite.close();
+    sqlite = new DatabaseSync(filename);
+    const restored = JSON.parse(
+      sqlite.prepare("SELECT document_json FROM app_document").get()
+        .document_json,
+    );
+    assert.equal(restored.categories.length, 18);
+    assert.ok(
+      restored.categories.some((category) => category.uuid === "category-food"),
+    );
+    assert.ok(
+      restored.categories.some(
+        (category) => category.uuid === "category-salary",
+      ),
+    );
+    const salaryTx = restored.transactions.find((t) => t.uuid === "tx-salary");
+    assert.equal(salaryTx.category, "category-salary");
+    assert.equal(salaryTx.categoryName, "Salary");
+    const coffeeTx = restored.transactions.find((t) => t.uuid === "tx-coffee");
+    assert.equal(coffeeTx.category, "category-food");
+    assert.equal(coffeeTx.categoryName, "Food");
+  } finally {
+    sqlite.close();
+    assert.equal(
+      path.dirname(path.resolve(directory)),
+      path.resolve(os.tmpdir()),
+    );
+    assert.ok(
+      path.basename(directory).startsWith("budget-categories-refresh-"),
+    );
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("v10 migration drops an untouched v9-era Project Aurora category and re-points its transactions", async () => {
+  const os = require("node:os");
+  const directory = fs.mkdtempSync(
+    path.join(os.tmpdir(), "budget-categories-aurora-"),
+  );
+  const filename = path.join(directory, "categories.db");
+  let sqlite = new DatabaseSync(filename);
+  const adapter = {
+    execAsync: async (sql) => sqlite.exec(sql),
+    getFirstAsync: async (sql, ...params) => sqlite.prepare(sql).get(...params),
+    runAsync: async (sql, ...params) => sqlite.prepare(sql).run(...params),
+    withExclusiveTransactionAsync: async (work) => {
+      sqlite.exec("BEGIN");
+      try {
+        await work(adapter);
+        sqlite.exec("COMMIT");
+      } catch (error) {
+        sqlite.exec("ROLLBACK");
+        throw error;
+      }
+    },
+  };
+  try {
+    sqlite.exec(
+      "CREATE TABLE app_document (id INTEGER PRIMARY KEY, schema_version INTEGER NOT NULL, document_json TEXT NOT NULL, updated_at TEXT NOT NULL); PRAGMA user_version = 9;",
+    );
+    const document = createDefaultBackup();
+    document._local.schemaVersion = 9;
+    // Simulate a v9 install: the previous 19-category default set, still with Project Aurora.
+    document.categories = [
+      ...document.categories,
+      {
+        id: 18,
+        uuid: "category-project-aurora",
+        name: "Project Aurora",
+        type: 1,
+        icon: "material:corporate_fare",
+        iconPath: null,
+        color: "#d32f2f",
+      },
+    ];
+    document.transactions = [
+      {
+        uuid: "tx-aurora",
+        account: "account-checking",
+        amount: 500,
+        type: 1,
+        category: "category-project-aurora",
+        categoryName: "Project Aurora",
+        createdAt: now,
+      },
+    ];
+    sqlite
+      .prepare("INSERT INTO app_document VALUES (1, 9, ?, ?)")
+      .run(JSON.stringify(document), now);
+    await migrateLocalDatabase(adapter);
+    sqlite.close();
+    sqlite = new DatabaseSync(filename);
+    const restored = JSON.parse(
+      sqlite.prepare("SELECT document_json FROM app_document").get()
+        .document_json,
+    );
+    assert.equal(restored.categories.length, 18);
+    assert.ok(
+      !restored.categories.some(
+        (category) => category.uuid === "category-project-aurora",
+      ),
+    );
+    const auroraTx = restored.transactions.find((t) => t.uuid === "tx-aurora");
+    assert.equal(auroraTx.category, "category-others");
+    assert.equal(auroraTx.categoryName, "Others");
+  } finally {
+    sqlite.close();
+    assert.equal(
+      path.dirname(path.resolve(directory)),
+      path.resolve(os.tmpdir()),
+    );
+    assert.ok(path.basename(directory).startsWith("budget-categories-aurora-"));
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("a device already stuck at the current PRAGMA user_version still gets stale default categories refreshed", async () => {
+  const os = require("node:os");
+  const directory = fs.mkdtempSync(
+    path.join(os.tmpdir(), "budget-categories-stuck-"),
+  );
+  const filename = path.join(directory, "categories.db");
+  let sqlite = new DatabaseSync(filename);
+  const adapter = {
+    execAsync: async (sql) => sqlite.exec(sql),
+    getFirstAsync: async (sql, ...params) => sqlite.prepare(sql).get(...params),
+    runAsync: async (sql, ...params) => sqlite.prepare(sql).run(...params),
+    withExclusiveTransactionAsync: async (work) => {
+      sqlite.exec("BEGIN");
+      try {
+        await work(adapter);
+        sqlite.exec("COMMIT");
+      } catch (error) {
+        sqlite.exec("ROLLBACK");
+        throw error;
+      }
+    },
+  };
+  try {
+    // No `currentVersion < N` block will run because user_version is already current.
+    sqlite.exec(
+      "CREATE TABLE app_document (id INTEGER PRIMARY KEY, schema_version INTEGER NOT NULL, document_json TEXT NOT NULL, updated_at TEXT NOT NULL); PRAGMA user_version = 11;",
+    );
+    const document = createDefaultBackup();
+    document._local.schemaVersion = 11;
+    document._local.defaultCategoriesRevision = 0;
+    document.categories = [
+      { id: 1, uuid: "category-groceries", name: "Groceries", type: 0 },
+      { id: 2, uuid: "category-housing", name: "Housing", type: 0 },
+      { id: 3, uuid: "category-dining", name: "Dining", type: 0 },
+      { id: 4, uuid: "category-coffee", name: "Coffee", type: 0 },
+      { id: 5, uuid: "category-income", name: "Income", type: 1 },
+      { id: 6, uuid: "category-goals", name: "Savings goals", type: 0 },
+      { uuid: "my-custom-category", name: "My custom category", type: 0 },
+    ];
+    document.transactions = [
+      {
+        uuid: "tx-salary",
+        account: "account-checking",
+        amount: 3125,
+        type: 1,
+        category: "category-income",
+        categoryName: "Income",
+        createdAt: now,
+      },
+    ];
+    sqlite
+      .prepare("INSERT INTO app_document VALUES (1, 11, ?, ?)")
+      .run(JSON.stringify(document), now);
+    await migrateLocalDatabase(adapter);
+    sqlite.close();
+    sqlite = new DatabaseSync(filename);
+    const restored = JSON.parse(
+      sqlite.prepare("SELECT document_json FROM app_document").get()
+        .document_json,
+    );
+    assert.equal(sqlite.prepare("PRAGMA user_version").get().user_version, 11);
+    assert.equal(restored.categories.length, 19);
+    assert.equal(restored._local.defaultCategoriesRevision, 1);
+    assert.ok(
+      !restored.categories.some(
+        (category) => category.uuid === "category-dining",
+      ),
+    );
+    assert.ok(
+      restored.categories.some(
+        (category) => category.uuid === "my-custom-category",
+      ),
+    );
+    const salaryTx = restored.transactions.find((t) => t.uuid === "tx-salary");
+    assert.equal(salaryTx.category, "category-salary");
+    assert.equal(salaryTx.categoryName, "Salary");
+  } finally {
+    sqlite.close();
+    assert.equal(
+      path.dirname(path.resolve(directory)),
+      path.resolve(os.tmpdir()),
+    );
+    assert.ok(path.basename(directory).startsWith("budget-categories-stuck-"));
     fs.rmSync(directory, { recursive: true, force: true });
   }
 });
