@@ -1,7 +1,7 @@
 import type { JsonObject, JsonValue } from "./json";
 
 export const BACKUP_VERSION = 3;
-export const LOCAL_SCHEMA_VERSION = 12;
+export const LOCAL_SCHEMA_VERSION = 13;
 export const DEFAULT_CATEGORIES_REVISION = 1;
 
 export const THEME_MODES = ["system", "light", "dark"] as const;

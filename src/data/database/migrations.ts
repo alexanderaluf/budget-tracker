@@ -5,7 +5,7 @@ import { createDefaultBackup } from "../model/default-backup";
 import type { JsonValue } from "../model/json";
 import { normalizeBackupDocument } from "../model/normalize-backup";
 
-const DATABASE_VERSION = 12;
+const DATABASE_VERSION = 13;
 // Superseded default category uuids from the pre-v9 seed (Groceries/Housing/Dining/Coffee/Income/Savings goals).
 const LEGACY_DEFAULT_CATEGORY_UUIDS = new Set([
   "category-groceries",
@@ -340,7 +340,7 @@ export async function migrateLocalDatabase(database: SQLiteDatabase) {
           new Date().toISOString(),
         );
       }
-      await transaction.execAsync(`PRAGMA user_version = ${DATABASE_VERSION};`);
+      await transaction.execAsync("PRAGMA user_version = 10;");
     });
   }
 
@@ -362,6 +362,23 @@ export async function migrateLocalDatabase(database: SQLiteDatabase) {
           document._local.schemaVersion,
           JSON.stringify(document),
           new Date().toISOString(),
+        );
+      }
+      await transaction.execAsync("PRAGMA user_version = 12;");
+    });
+  }
+
+  // v13 adds optional budget tracking settings without dropping imported fields.
+  if (currentVersion < 13) {
+    await database.withExclusiveTransactionAsync(async (transaction) => {
+      const stored = await transaction.getFirstAsync<{ document_json: string }>(
+        "SELECT document_json FROM app_document WHERE id = 1",
+      );
+      if (stored) {
+        const document = normalizeBackupDocument(JSON.parse(stored.document_json));
+        await transaction.runAsync(
+          "UPDATE app_document SET schema_version = ?, document_json = ?, updated_at = ? WHERE id = 1",
+          document._local.schemaVersion, JSON.stringify(document), new Date().toISOString(),
         );
       }
       await transaction.execAsync(`PRAGMA user_version = ${DATABASE_VERSION};`);

@@ -1,4 +1,5 @@
 import { normalizeAccountRecord } from "./account-record";
+import { normalizeBudgetRecord } from "./budget-record";
 import {
     ACCENT_COLOR_IDS,
     BACKUP_COLLECTION_KEYS,
@@ -75,6 +76,7 @@ export function normalizeBackupDocument(value: unknown): BackupDocument {
   }
   document.accounts = document.accounts.map(normalizeAccountRecord);
   document.categories = document.categories.map(normalizeCategoryRecord);
+  document.budgets = document.budgets.map(normalizeBudgetRecord);
   // Leave foreign/imported rate formats intact. Selectors validate our tables
   // before use; missing freshness metadata must never imply a current rate.
   document.exchangeRates = document.exchangeRates.map((record) =>

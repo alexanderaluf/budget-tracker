@@ -45,6 +45,9 @@ export function ProfileHubActions({
   return (
     <View className="gap-4">
       <View className="overflow-hidden rounded-3xl">
+        <ActionRow icon="wallet" label="Budgets" onPress={() => router.push("/budgets")} />
+      </View>
+      <View className="overflow-hidden rounded-3xl">
         <ActionRow
           icon="shopping"
           label="Categories"

@@ -7,6 +7,7 @@ import {
     type BackupDocument,
 } from "./backup-document";
 import { normalizeCategoryRecord } from "./category-record";
+import { normalizeBudgetRecord } from "./budget-record";
 import type { JsonObject } from "./json";
 
 const now = "2026-09-06T00:00:00.000Z";
@@ -376,7 +377,7 @@ export function createDefaultBackup(): BackupDocument {
         createdAt: now,
         updatedAt: now,
       },
-    ],
+    ].map(normalizeBudgetRecord),
     transactions: [
       {
         id: 1,

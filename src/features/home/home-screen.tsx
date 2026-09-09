@@ -6,8 +6,7 @@ import { Pressable, Text, View } from "react-native";
 import { useLocalData } from "@/data/local-data-provider";
 import {
   selectAccounts,
-  selectBudgetCategories,
-  selectMonthlySummary,
+  selectBudgets,
   selectTransactions,
 } from "@/data/selectors/document-selectors";
 import { useProfiles } from "@/features/profile/profile-provider";
@@ -16,6 +15,7 @@ import { FilledIcon } from "@/shared/ui/filled-icon";
 import { TabPage } from "@/shared/ui/tab-page";
 
 import { BudgetCard } from "./components/budget-card";
+import { useCategoryClock } from "@/features/categories/use-category-clock";
 import { PaymentCard } from "./components/payment-card";
 import { TransactionList } from "./components/transaction-list";
 import { primaryCard } from "./data/home-data";
@@ -27,9 +27,9 @@ export function HomeScreen() {
   const [isBalanceVisible, setIsBalanceVisible] = useState(true);
   const [showAllTransactions, setShowAllTransactions] = useState(false);
   const transactions = selectTransactions(document);
-  const summary = selectMonthlySummary(document);
+  useCategoryClock();
   const accounts = selectAccounts(document);
-  const persistedBudgets = selectBudgetCategories(document);
+  const persistedBudgets = selectBudgets(document).filter(b => b.showOnHome);
   const availableBalance = accounts
     .filter(
       (account) =>
@@ -86,10 +86,7 @@ export function HomeScreen() {
       />
 
       <BudgetCard
-        categories={persistedBudgets}
-        income={summary.income}
-        savingsRate={summary.savingsRate}
-        spent={summary.spent}
+        budgets={persistedBudgets}
       />
 
       <View>

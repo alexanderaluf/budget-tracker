@@ -12,6 +12,7 @@
       "icon": "./assets/expo.icon"
     },
     "android": {
+      "package": "com.plutus.budgettracker",
       "backgroundColor": "#DCE7E0",
       "predictiveBackGestureEnabled": false
     },
@@ -25,11 +26,17 @@
           "microphonePermission": false
         }
       ],
-      ["expo-navigation-bar", { "enforceContrast": false, "hidden": false }],
+      [
+        "expo-navigation-bar",
+        { "enforceContrast": false, "hidden": false, "style": "dark" }
+      ],
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#DCE7E0"
+          "backgroundColor": "#DCE7E0",
+          "android": {
+            "image": "./assets/expo.icon/Assets/expo-symbol 2.svg"
+          }
         }
       ],
       "expo-sqlite",

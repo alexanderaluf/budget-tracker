@@ -1,10 +1,12 @@
+import { BlurTargetView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { uuid } from "expo-modules-core";
 import { useRouter } from "expo-router";
 import { Button, Switch as HeroSwitch, Input } from "heroui-native";
-import { useRef, useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode, type RefObject } from "react";
 import {
     Alert,
+    Animated,
     Keyboard,
     KeyboardAvoidingView,
     Platform,
@@ -38,19 +40,19 @@ import {
 import { CurrencySelectorSheet } from "@/features/profile/components/currency-selector-sheet";
 import { currencies } from "@/features/profile/data/currencies-data";
 import { useProfiles } from "@/features/profile/profile-provider";
+import { colorWithAlpha, useAppThemeColors } from "@/shared/theme/app-theme";
 import { FilledIcon, type FilledIconName } from "@/shared/ui/filled-icon";
 import { GlassSegmentedControl } from "@/shared/ui/glass-segmented-control";
 import {
-  colorWithAlpha,
-  useAppThemeColors,
-} from "@/shared/theme/app-theme";
+    PickerModal as AccountPicker,
+    IconPicker,
+} from "@/shared/ui/icon-picker";
 import { ACCOUNT_COLORS, colorForeground } from "./account-options";
 import {
     AccountCurrencyChangeSheet,
     type CurrencyChangeRequest,
 } from "./components/account-currency-change-sheet";
 import { AccountIcon } from "./components/account-icon";
-import { IconPicker, PickerModal as AccountPicker } from "@/shared/ui/icon-picker";
 import { CardCompanyLogo } from "./components/card-company-logo";
 import { SavingsDetailsForm } from "./components/savings-details-form";
 
@@ -74,15 +76,18 @@ const ACCOUNT_TYPE_SEGMENTS = ACCOUNT_TYPE_OPTIONS.map((type) => ({
 }));
 
 function AccountTypeSelector({
+  blurTarget,
   selected,
   onChange,
 }: {
+  blurTarget: RefObject<View | null>;
   selected: AccountType;
   onChange: (type: AccountType) => void;
 }) {
   return (
     <GlassSegmentedControl
       accessibilityLabel="Account type"
+      blurTarget={blurTarget}
       minHeight={Platform.OS === "android" ? 52 : 48}
       onChange={onChange}
       options={ACCOUNT_TYPE_SEGMENTS}
@@ -168,6 +173,8 @@ export function AccountCreateScreen({ editId }: { editId?: string }) {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
   const saving = useRef(false);
+  const blurTargetRef = useRef<View | null>(null);
+  const scrollY = useRef(new Animated.Value(0)).current;
   const accountId = useRef<string | null>(null);
   const iconChosen = useRef(!!editId);
   const color = /^#[a-f\d]{6}$/i.test(draft.color)
@@ -184,6 +191,16 @@ export function AccountCreateScreen({ editId }: { editId?: string }) {
   const savingsBalance = Number.isFinite(parsedDraftBalance)
     ? parsedDraftBalance
     : 0;
+  const topControlsTranslateY = scrollY.interpolate({
+    inputRange: [0, 56],
+    outputRange: [0, -56],
+    extrapolate: "clamp",
+  });
+  const headerOpacity = scrollY.interpolate({
+    inputRange: [0, 40],
+    outputRange: [1, 0],
+    extrapolate: "clamp",
+  });
   function change<K extends keyof AccountDraft>(
     key: K,
     value: AccountDraft[K],
@@ -259,31 +276,399 @@ export function AccountCreateScreen({ editId }: { editId?: string }) {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
       >
-        <View className="flex-row items-center gap-3 px-4 py-2">
-          <Button
-            isIconOnly
-            isDisabled={isSaving}
-            variant="ghost"
-            accessibilityLabel="Go back"
-            onPress={goBack}
+        <View style={styles.formArea}>
+          <BlurTargetView ref={blurTargetRef} style={styles.scrollTarget}>
+            <Animated.ScrollView
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={{
+                paddingBottom: 104 + insets.bottom,
+              }}
+              onScroll={Animated.event(
+                [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+                { useNativeDriver: true },
+              )}
+              scrollEventThrottle={16}
+              showsVerticalScrollIndicator={false}
+            >
+              <View style={styles.headerSpace} />
+              <View style={styles.selectorSpace} />
+              <View
+                pointerEvents={isSaving ? "none" : "auto"}
+                className="gap-5 px-5"
+              >
+                <View className="gap-2">
+                  <Text className="font-manrope-medium text-sm text-muted">
+                    Account name
+                  </Text>
+                  <View className="flex-row items-center gap-3">
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Choose account icon"
+                      onPress={() => openPicker("icon")}
+                      className="size-16 items-center justify-center rounded-2xl"
+                      style={{ backgroundColor: color }}
+                    >
+                      <AccountIcon
+                        name={draft.icon}
+                        pathData={draft.iconPath}
+                        color={colorForeground(color)}
+                        size={30}
+                      />
+                      <View className="absolute -bottom-1 -right-1 rounded-full border-2 border-background bg-surface p-1">
+                        <FilledIcon name="pencil" size={13} />
+                      </View>
+                    </Pressable>
+                    <Input
+                      accessibilityLabel="Account name"
+                      placeholder={
+                        draft.accountType === "bank"
+                          ? "e.g. Main bank account"
+                          : draft.accountType === "savings"
+                            ? "e.g. Retirement fund"
+                            : "e.g. Everyday card"
+                      }
+                      maxLength={100}
+                      value={draft.name}
+                      onChangeText={(value) => change("name", value)}
+                      containerClassName="flex-1"
+                      className="h-16 rounded-2xl bg-surface font-manrope-semibold"
+                    />
+                  </View>
+                </View>
+                <View className="gap-2">
+                  <Text className="font-manrope-medium text-sm text-muted">
+                    {draft.accountType === "savings" ? "Current" : "Opening"}{" "}
+                    balance ({draft.currencyCode})
+                  </Text>
+                  <View className="flex-row items-center gap-2">
+                    <Button
+                      variant="secondary"
+                      accessibilityLabel="Toggle negative balance"
+                      onPress={() =>
+                        change(
+                          "amount",
+                          draft.amount.startsWith("-")
+                            ? draft.amount.slice(1)
+                            : `-${draft.amount}`,
+                        )
+                      }
+                    >
+                      <Button.Label>+/−</Button.Label>
+                    </Button>
+                    <Input
+                      accessibilityLabel="Opening balance"
+                      placeholder="0.00"
+                      keyboardType="decimal-pad"
+                      value={draft.amount}
+                      onChangeText={(value) => change("amount", value)}
+                      containerClassName="flex-1"
+                      className="h-14 rounded-2xl bg-surface"
+                    />
+                  </View>
+                  {(draft.accountType === "card" ||
+                    draft.accountType === "bank") && (
+                    <Text className="font-sans text-xs leading-5 text-muted">
+                      Use a negative balance for money owed or an overdraft.
+                    </Text>
+                  )}
+                </View>
+                <View className="gap-2">
+                  <Text className="font-manrope-medium text-sm text-muted">
+                    Account number (optional)
+                  </Text>
+                  <Input
+                    accessibilityLabel="Account number"
+                    placeholder="Account number"
+                    autoCorrect={false}
+                    maxLength={64}
+                    value={draft.accountNumber}
+                    onChangeText={(value) => change("accountNumber", value)}
+                    className="h-14 rounded-2xl bg-surface"
+                  />
+                </View>
+                {draft.accountType === "bank" && (
+                  <View className="gap-3 pt-1">
+                    <View className="flex-row items-center gap-3">
+                      <FilledIcon name="bank" size={24} tone="accent" />
+                      <Text className="font-manrope-semibold text-base text-foreground">
+                        Bank details
+                      </Text>
+                    </View>
+                    <View className="gap-2">
+                      <Text className="font-manrope-medium text-sm text-muted">
+                        Bank name
+                      </Text>
+                      <Input
+                        accessibilityLabel="Bank name"
+                        placeholder="e.g. Bank Hapoalim"
+                        maxLength={100}
+                        value={draft.bankName}
+                        onChangeText={(value) => change("bankName", value)}
+                        className="h-14 rounded-2xl bg-surface"
+                      />
+                    </View>
+                  </View>
+                )}
+                {draft.accountType === "savings" && (
+                  <SavingsDetailsForm
+                    balance={savingsBalance}
+                    currencyCode={draft.currencyCode}
+                    value={draft.savingsDetails}
+                    onChange={(savingsDetails) =>
+                      change("savingsDetails", savingsDetails)
+                    }
+                  />
+                )}
+                {draft.accountType === "card" && (
+                  <View className="gap-3 pt-1">
+                    <View className="flex-row items-center gap-3">
+                      <FilledIcon name="credit-card" size={24} tone="accent" />
+                      <Text className="font-manrope-semibold text-base text-foreground">
+                        Card details
+                      </Text>
+                    </View>
+                    <View className="gap-2">
+                      <Text className="font-manrope-medium text-sm text-muted">
+                        Last four digits
+                      </Text>
+                      <Input
+                        accessibilityLabel="Card last four digits"
+                        placeholder="1234"
+                        keyboardType="number-pad"
+                        maxLength={4}
+                        value={draft.cardLastFour}
+                        onChangeText={(value) => change("cardLastFour", value)}
+                        className="h-14 rounded-2xl bg-surface"
+                      />
+                    </View>
+                    <View>
+                      <OptionRow
+                        icon="credit-card"
+                        title="Card company"
+                        description={draft.cardCompany || "Select company"}
+                        leading={
+                          draft.cardCompany ? (
+                            <CardCompanyLogo company={draft.cardCompany} />
+                          ) : undefined
+                        }
+                        onPress={() => openPicker("company")}
+                        hasDivider
+                      />
+                      <OptionRow
+                        icon="clock"
+                        title="Monthly payment day"
+                        description={
+                          draft.paymentDay
+                            ? `Day ${String(draft.paymentDay).padStart(2, "0")} of every month`
+                            : "Choose a day"
+                        }
+                        onPress={() => openPicker("day")}
+                        hasDivider
+                      />
+                      <OptionRow
+                        icon="bank"
+                        title="Bank account"
+                        description={
+                          linkedBankAccount
+                            ? `${linkedBankAccount.name} · ${linkedBankAccount.bankName}`
+                            : bankAccounts.length
+                              ? "Select the account that pays this card"
+                              : "Create a bank account first"
+                        }
+                        onPress={() => openPicker("bank")}
+                      />
+                    </View>
+                    <Text className="font-sans text-xs leading-5 text-muted">
+                      On the payment day, the card debt is paid from the linked
+                      bank account. Both accounts may go into overdraft. Days
+                      29–31 use the last day in shorter months.
+                      {linkedBankAccount &&
+                      linkedBankAccount.currencyCode !== draft.currencyCode
+                        ? ` Payments convert ${draft.currencyCode} to ${linkedBankAccount.currencyCode} at the daily rate when processed.`
+                        : ""}
+                    </Text>
+                  </View>
+                )}
+                <OptionRow
+                  icon="currency-exchange"
+                  title="Account currency"
+                  description={`${draft.currencyCode} (${currency?.symbol ?? draft.currencyCode})`}
+                  onPress={() => openPicker("currency")}
+                />
+                {!!currencyChangeNote && (
+                  <Text className="font-sans text-sm text-muted">
+                    {currencyChangeNote} Past transactions retain their original
+                    currency.
+                  </Text>
+                )}
+                {(
+                  [
+                    {
+                      key: "isDefault",
+                      icon: "check",
+                      title: "Set as default account",
+                      description:
+                        "Use this account by default for this profile.",
+                    },
+                    {
+                      key: "isExcluded",
+                      icon: "eye-off",
+                      title: "Exclude account",
+                      description:
+                        "Keep this account and its transactions out of balances and spending summaries.",
+                    },
+                  ] as const
+                ).map((option) => (
+                  <Pressable
+                    key={option.key}
+                    accessibilityRole="switch"
+                    accessibilityLabel={option.title}
+                    accessibilityHint={option.description}
+                    accessibilityState={{
+                      checked: draft[option.key],
+                      disabled: isSaving,
+                    }}
+                    disabled={isSaving}
+                    onPress={() => change(option.key, !draft[option.key])}
+                    className="flex-row items-center gap-4 py-2"
+                  >
+                    <FilledIcon
+                      name={option.icon}
+                      tone={option.key === "isExcluded" ? "danger" : "accent"}
+                      size={26}
+                    />
+                    <View className="flex-1 gap-1">
+                      <Text className="font-manrope-semibold text-base text-foreground">
+                        {option.title}
+                      </Text>
+                      <Text className="font-sans text-sm leading-5 text-muted">
+                        {option.description}
+                      </Text>
+                    </View>
+                    <View
+                      pointerEvents="none"
+                      accessibilityElementsHidden
+                      importantForAccessibility="no-hide-descendants"
+                      className="shrink-0"
+                    >
+                      {Platform.OS === "android" ? (
+                        <HeroSwitch
+                          isSelected={draft[option.key]}
+                          isDisabled={isSaving}
+                          style={{ width: 60, height: 28 }}
+                        >
+                          <HeroSwitch.Thumb style={{ width: 36, height: 24 }} />
+                        </HeroSwitch>
+                      ) : (
+                        <Switch
+                          value={draft[option.key]}
+                          disabled={isSaving}
+                          trackColor={{
+                            false: theme.surfaceTertiary,
+                            true: theme.accent,
+                          }}
+                          thumbColor={
+                            draft[option.key]
+                              ? theme.accentForeground
+                              : theme.muted
+                          }
+                        />
+                      )}
+                    </View>
+                  </Pressable>
+                ))}
+                <View className="gap-3">
+                  <Text className="font-manrope-semibold text-base text-foreground">
+                    Account color
+                  </Text>
+                  <View className="flex-row flex-wrap gap-3">
+                    {ACCOUNT_COLORS.map((swatch) => (
+                      <Pressable
+                        key={swatch}
+                        accessibilityRole="radio"
+                        accessibilityLabel={`Color ${swatch}`}
+                        accessibilityState={{
+                          checked: draft.color.toLowerCase() === swatch,
+                        }}
+                        onPress={() => change("color", swatch)}
+                        className="size-11 items-center justify-center rounded-xl border border-white/10"
+                        style={{ backgroundColor: swatch }}
+                      >
+                        {draft.color.toLowerCase() === swatch && (
+                          <FilledIcon
+                            name="check"
+                            color={colorForeground(swatch)}
+                            size={24}
+                          />
+                        )}
+                      </Pressable>
+                    ))}
+                  </View>
+                  <Input
+                    accessibilityLabel="Custom hex color"
+                    placeholder="#70d2eb"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    maxLength={7}
+                    value={draft.color}
+                    onChangeText={(value) => change("color", value)}
+                    className="rounded-xl bg-surface"
+                  />
+                  <Text className="font-sans text-xs text-muted">
+                    Choose a swatch or enter a custom hex color.
+                  </Text>
+                </View>
+              </View>
+            </Animated.ScrollView>
+          </BlurTargetView>
+          <LinearGradient
+            colors={[
+              theme.background,
+              colorWithAlpha(theme.background, 0.82),
+              colorWithAlpha(theme.background, 0),
+            ]}
+            end={{ x: 0.5, y: 1 }}
+            locations={[0, 0.58, 1]}
+            pointerEvents="none"
+            start={{ x: 0.5, y: 0 }}
+            style={styles.topScrim}
+          />
+          <Animated.View
+            style={[
+              styles.headerDock,
+              {
+                opacity: headerOpacity,
+                transform: [{ translateY: topControlsTranslateY }],
+              },
+            ]}
           >
-            <FilledIcon name="arrow-left" size={24} />
-          </Button>
-          <Text
-            accessibilityRole="header"
-            className="font-manrope-bold text-xl text-foreground"
+            <Button
+              isIconOnly
+              isDisabled={isSaving}
+              variant="ghost"
+              accessibilityLabel="Go back"
+              onPress={goBack}
+            >
+              <FilledIcon name="arrow-left" size={24} />
+            </Button>
+            <Text
+              accessibilityRole="header"
+              className="font-manrope-bold text-xl text-foreground"
+            >
+              {editId ? "Edit account" : "New account"}
+            </Text>
+          </Animated.View>
+          <Animated.View
+            pointerEvents={isSaving ? "none" : "auto"}
+            style={[
+              styles.selectorDock,
+              {
+                transform: [{ translateY: topControlsTranslateY }],
+              },
+            ]}
           >
-            {editId ? "Edit account" : "New account"}
-          </Text>
-        </View>
-        <ScrollView
-          keyboardShouldPersistTaps="handled"
-          contentContainerClassName="gap-5 px-5 pt-3"
-          contentContainerStyle={{ paddingBottom: 104 + insets.bottom }}
-          showsVerticalScrollIndicator={false}
-        >
-          <View pointerEvents={isSaving ? "none" : "auto"} className="gap-5">
             <AccountTypeSelector
+              blurTarget={blurTargetRef}
               selected={draft.accountType}
               onChange={(type) => {
                 change("accountType", type);
@@ -297,426 +682,114 @@ export function AccountCreateScreen({ editId }: { editId?: string }) {
                 }
               }}
             />
-            <View className="gap-2">
-              <Text className="font-manrope-medium text-sm text-muted">
-                Account name
-              </Text>
-              <View className="flex-row items-center gap-3">
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Choose account icon"
-                  onPress={() => openPicker("icon")}
-                  className="size-16 items-center justify-center rounded-2xl"
-                  style={{ backgroundColor: color }}
-                >
-                  <AccountIcon
-                    name={draft.icon}
-                    pathData={draft.iconPath}
-                    color={colorForeground(color)}
-                    size={30}
-                  />
-                  <View className="absolute -bottom-1 -right-1 rounded-full border-2 border-background bg-surface p-1">
-                    <FilledIcon name="pencil" size={13} />
-                  </View>
-                </Pressable>
-                <Input
-                  accessibilityLabel="Account name"
-                  placeholder={
-                    draft.accountType === "bank"
-                      ? "e.g. Main bank account"
-                      : draft.accountType === "savings"
-                        ? "e.g. Retirement fund"
-                        : "e.g. Everyday card"
-                  }
-                  maxLength={100}
-                  value={draft.name}
-                  onChangeText={(value) => change("name", value)}
-                  containerClassName="flex-1"
-                  className="h-16 rounded-2xl bg-surface font-manrope-semibold"
-                />
-              </View>
-            </View>
-            <View className="gap-2">
-              <Text className="font-manrope-medium text-sm text-muted">
-                {draft.accountType === "savings" ? "Current" : "Opening"}{" "}
-                balance ({draft.currencyCode})
-              </Text>
-              <View className="flex-row items-center gap-2">
-                <Button
-                  variant="secondary"
-                  accessibilityLabel="Toggle negative balance"
-                  onPress={() =>
-                    change(
-                      "amount",
-                      draft.amount.startsWith("-")
-                        ? draft.amount.slice(1)
-                        : `-${draft.amount}`,
-                    )
-                  }
-                >
-                  <Button.Label>+/−</Button.Label>
-                </Button>
-                <Input
-                  accessibilityLabel="Opening balance"
-                  placeholder="0.00"
-                  keyboardType="decimal-pad"
-                  value={draft.amount}
-                  onChangeText={(value) => change("amount", value)}
-                  containerClassName="flex-1"
-                  className="h-14 rounded-2xl bg-surface"
-                />
-              </View>
-              {(draft.accountType === "card" ||
-                draft.accountType === "bank") && (
-                <Text className="font-sans text-xs leading-5 text-muted">
-                  Use a negative balance for money owed or an overdraft.
-                </Text>
-              )}
-            </View>
-            <View className="gap-2">
-              <Text className="font-manrope-medium text-sm text-muted">
-                Account number (optional)
-              </Text>
-              <Input
-                accessibilityLabel="Account number"
-                placeholder="Account number"
-                autoCorrect={false}
-                maxLength={64}
-                value={draft.accountNumber}
-                onChangeText={(value) => change("accountNumber", value)}
-                className="h-14 rounded-2xl bg-surface"
-              />
-            </View>
-            {draft.accountType === "bank" && (
-              <View className="gap-3 pt-1">
-                <View className="flex-row items-center gap-3">
-                  <FilledIcon name="bank" size={24} tone="accent" />
-                  <Text className="font-manrope-semibold text-base text-foreground">
-                    Bank details
-                  </Text>
-                </View>
-                <View className="gap-2">
-                  <Text className="font-manrope-medium text-sm text-muted">
-                    Bank name
-                  </Text>
-                  <Input
-                    accessibilityLabel="Bank name"
-                    placeholder="e.g. Bank Hapoalim"
-                    maxLength={100}
-                    value={draft.bankName}
-                    onChangeText={(value) => change("bankName", value)}
-                    className="h-14 rounded-2xl bg-surface"
-                  />
-                </View>
-              </View>
-            )}
-            {draft.accountType === "savings" && (
-              <SavingsDetailsForm
-                balance={savingsBalance}
-                currencyCode={draft.currencyCode}
-                value={draft.savingsDetails}
-                onChange={(savingsDetails) =>
-                  change("savingsDetails", savingsDetails)
-                }
-              />
-            )}
-            {draft.accountType === "card" && (
-              <View className="gap-3 pt-1">
-                <View className="flex-row items-center gap-3">
-                  <FilledIcon name="credit-card" size={24} tone="accent" />
-                  <Text className="font-manrope-semibold text-base text-foreground">
-                    Card details
-                  </Text>
-                </View>
-                <View className="gap-2">
-                  <Text className="font-manrope-medium text-sm text-muted">
-                    Last four digits
-                  </Text>
-                  <Input
-                    accessibilityLabel="Card last four digits"
-                    placeholder="1234"
-                    keyboardType="number-pad"
-                    maxLength={4}
-                    value={draft.cardLastFour}
-                    onChangeText={(value) => change("cardLastFour", value)}
-                    className="h-14 rounded-2xl bg-surface"
-                  />
-                </View>
-                <View>
-                  <OptionRow
-                    icon="credit-card"
-                    title="Card company"
-                    description={draft.cardCompany || "Select company"}
-                    leading={
-                      draft.cardCompany ? (
-                        <CardCompanyLogo company={draft.cardCompany} />
-                      ) : undefined
-                    }
-                    onPress={() => openPicker("company")}
-                    hasDivider
-                  />
-                  <OptionRow
-                    icon="clock"
-                    title="Monthly payment day"
-                    description={
-                      draft.paymentDay
-                        ? `Day ${String(draft.paymentDay).padStart(2, "0")} of every month`
-                        : "Choose a day"
-                    }
-                    onPress={() => openPicker("day")}
-                    hasDivider
-                  />
-                  <OptionRow
-                    icon="bank"
-                    title="Bank account"
-                    description={
-                      linkedBankAccount
-                        ? `${linkedBankAccount.name} · ${linkedBankAccount.bankName}`
-                        : bankAccounts.length
-                          ? "Select the account that pays this card"
-                          : "Create a bank account first"
-                    }
-                    onPress={() => openPicker("bank")}
-                  />
-                </View>
-                <Text className="font-sans text-xs leading-5 text-muted">
-                  On the payment day, the card debt is paid from the linked bank
-                  account. Both accounts may go into overdraft. Days 29–31 use
-                  the last day in shorter months.
-                  {linkedBankAccount &&
-                  linkedBankAccount.currencyCode !== draft.currencyCode
-                    ? ` Payments convert ${draft.currencyCode} to ${linkedBankAccount.currencyCode} at the daily rate when processed.`
-                    : ""}
-                </Text>
-              </View>
-            )}
-            <OptionRow
-              icon="currency-exchange"
-              title="Account currency"
-              description={`${draft.currencyCode} (${currency?.symbol ?? draft.currencyCode})`}
-              onPress={() => openPicker("currency")}
-            />
-            {!!currencyChangeNote && (
-              <Text className="font-sans text-sm text-muted">
-                {currencyChangeNote} Past transactions retain their original
-                currency.
-              </Text>
-            )}
-            {(
-              [
-                {
-                  key: "isDefault",
-                  icon: "check",
-                  title: "Set as default account",
-                  description: "Use this account by default for this profile.",
-                },
-                {
-                  key: "isExcluded",
-                  icon: "eye-off",
-                  title: "Exclude account",
-                  description:
-                    "Keep this account and its transactions out of balances and spending summaries.",
-                },
-              ] as const
-            ).map((option) => (
-              <Pressable
-                key={option.key}
-                accessibilityRole="switch"
-                accessibilityLabel={option.title}
-                accessibilityHint={option.description}
-                accessibilityState={{
-                  checked: draft[option.key],
-                  disabled: isSaving,
-                }}
-                disabled={isSaving}
-                onPress={() => change(option.key, !draft[option.key])}
-                className="flex-row items-center gap-4 py-2"
-              >
-                <FilledIcon
-                  name={option.icon}
-                  tone={option.key === "isExcluded" ? "danger" : "accent"}
-                  size={26}
-                />
-                <View className="flex-1 gap-1">
-                  <Text className="font-manrope-semibold text-base text-foreground">
-                    {option.title}
-                  </Text>
-                  <Text className="font-sans text-sm leading-5 text-muted">
-                    {option.description}
-                  </Text>
-                </View>
-                <View
-                  pointerEvents="none"
-                  accessibilityElementsHidden
-                  importantForAccessibility="no-hide-descendants"
-                  className="shrink-0"
-                >
-                  {Platform.OS === "android" ? (
-                    <HeroSwitch
-                      isSelected={draft[option.key]}
-                      isDisabled={isSaving}
-                      style={{ width: 60, height: 28 }}
-                    >
-                      <HeroSwitch.Thumb style={{ width: 36, height: 24 }} />
-                    </HeroSwitch>
-                  ) : (
-                    <Switch
-                      value={draft[option.key]}
-                      disabled={isSaving}
-                      trackColor={{
-                        false: theme.surfaceTertiary,
-                        true: theme.accent,
-                      }}
-                      thumbColor={
-                        draft[option.key]
-                          ? theme.accentForeground
-                          : theme.muted
-                      }
-                    />
-                  )}
-                </View>
-              </Pressable>
-            ))}
-            <View className="gap-3">
-              <Text className="font-manrope-semibold text-base text-foreground">
-                Account color
-              </Text>
-              <View className="flex-row flex-wrap gap-3">
-                {ACCOUNT_COLORS.map((swatch) => (
-                  <Pressable
-                    key={swatch}
-                    accessibilityRole="radio"
-                    accessibilityLabel={`Color ${swatch}`}
-                    accessibilityState={{
-                      checked: draft.color.toLowerCase() === swatch,
-                    }}
-                    onPress={() => change("color", swatch)}
-                    className="size-11 items-center justify-center rounded-xl border border-white/10"
-                    style={{ backgroundColor: swatch }}
-                  >
-                    {draft.color.toLowerCase() === swatch && (
-                      <FilledIcon
-                        name="check"
-                        color={colorForeground(swatch)}
-                        size={24}
-                      />
-                    )}
-                  </Pressable>
-                ))}
-              </View>
-              <Input
-                accessibilityLabel="Custom hex color"
-                placeholder="#70d2eb"
-                autoCapitalize="none"
-                autoCorrect={false}
-                maxLength={7}
-                value={draft.color}
-                onChangeText={(value) => change("color", value)}
-                className="rounded-xl bg-surface"
-              />
-              <Text className="font-sans text-xs text-muted">
-                Choose a swatch or enter a custom hex color.
-              </Text>
-            </View>
-          </View>
-        </ScrollView>
-        <LinearGradient
-          colors={[
-            colorWithAlpha(theme.background, 0),
-            colorWithAlpha(theme.background, 0.78),
-            theme.background,
-          ]}
-          end={{ x: 0.5, y: 1 }}
-          locations={[0, 0.58, 1]}
-          pointerEvents="none"
-          start={{ x: 0.5, y: 0 }}
-          style={[styles.bottomScrim, { height: 104 + insets.bottom }]}
-        />
-        <View
-          pointerEvents="box-none"
-          style={[styles.actionDock, { bottom: Math.max(insets.bottom, 10) }]}
-        >
-          {!!error && (
-            <Text
-              accessibilityRole="alert"
-              accessibilityLiveRegion="polite"
-              className="font-sans text-sm text-danger"
-            >
-              {error}
-            </Text>
-          )}
-          <Pressable
-            accessibilityLabel={
-              isSaving
-                ? "Saving account"
-                : editId
-                  ? "Save changes"
-                  : "Add account"
-            }
-            accessibilityRole="button"
-            accessibilityState={{ busy: isSaving, disabled: isSaving }}
-            disabled={isSaving}
-            onPress={save}
-            style={({ pressed }) => [
-              styles.addButton,
-              { backgroundColor: theme.accent },
-              pressed && styles.pressed,
-              isSaving && styles.disabled,
+          </Animated.View>
+          <LinearGradient
+            colors={[
+              colorWithAlpha(theme.background, 0),
+              colorWithAlpha(theme.background, 0.72),
+              theme.background,
+              theme.background,
             ]}
+            end={{ x: 0.5, y: 1 }}
+            locations={[
+              0,
+              (128 * 0.54) / (128 + insets.bottom),
+              128 / (128 + insets.bottom),
+              1,
+            ]}
+            pointerEvents="none"
+            start={{ x: 0.5, y: 0 }}
+            style={[styles.bottomScrim, { height: 128 + insets.bottom }]}
+          />
+          <View
+            pointerEvents="box-none"
+            style={[styles.actionDock, { bottom: Math.max(insets.bottom, 10) }]}
           >
-            <FilledIcon
-              name="credit-card-plus"
-              size={24}
-              tone="accent-foreground"
-            />
-            <Text className="font-manrope-bold text-base text-accent-foreground">
-              {isSaving ? "Saving…" : editId ? "Save changes" : "Add account"}
-            </Text>
-          </Pressable>
+            {!!error && (
+              <Text
+                accessibilityRole="alert"
+                accessibilityLiveRegion="polite"
+                className="font-sans text-sm text-danger"
+              >
+                {error}
+              </Text>
+            )}
+            <Pressable
+              accessibilityLabel={
+                isSaving
+                  ? "Saving account"
+                  : editId
+                    ? "Save changes"
+                    : "Add account"
+              }
+              accessibilityRole="button"
+              accessibilityState={{ busy: isSaving, disabled: isSaving }}
+              disabled={isSaving}
+              onPress={save}
+              style={({ pressed }) => [
+                styles.addButton,
+                { backgroundColor: theme.accent },
+                pressed && styles.pressed,
+                isSaving && styles.disabled,
+              ]}
+            >
+              <FilledIcon
+                name="credit-card-plus"
+                size={24}
+                tone="accent-foreground"
+              />
+              <Text className="font-manrope-bold text-base text-accent-foreground">
+                {isSaving ? "Saving…" : editId ? "Save changes" : "Add account"}
+              </Text>
+            </Pressable>
+          </View>
         </View>
       </KeyboardAvoidingView>
-      <CurrencySelectorSheet
-        currencies={currencies}
-        isOpen={picker === "currency"}
-        selectedCode={draft.currencyCode}
-        onOpenChange={(open) => {
-          if (!open) setPicker(null);
-        }}
-        onSelect={(item) => {
-          if (item.code === draft.currencyCode) return;
-          try {
-            const amount = draft.amount.trim()
-              ? parseAccountAmount(draft.amount)
-              : 0;
-            setCurrencyChange({
-              from: draft.currencyCode,
-              to: item.code,
-              amount,
-            });
-            setError("");
-          } catch (reason) {
-            setError(
-              reason instanceof Error
-                ? reason.message
-                : "Enter a valid balance first.",
-            );
-          }
-        }}
-      />
-      <AccountCurrencyChangeSheet
-        request={currencyChange}
-        onClose={() => setCurrencyChange(null)}
-        onApply={(amount, explanation) => {
-          if (!currencyChange) return;
-          setDraft((current) => ({
-            ...current,
-            currencyCode: currencyChange.to,
-            amount: String(amount),
-          }));
-          setCurrencyChangeNote(explanation);
-          setCurrencyChange(null);
-        }}
-      />
+      {picker === "currency" && (
+        <CurrencySelectorSheet
+          currencies={currencies}
+          isOpen
+          selectedCode={draft.currencyCode}
+          onOpenChange={(open) => {
+            if (!open) setPicker(null);
+          }}
+          onSelect={(item) => {
+            if (item.code === draft.currencyCode) return;
+            try {
+              const amount = draft.amount.trim()
+                ? parseAccountAmount(draft.amount)
+                : 0;
+              setCurrencyChange({
+                from: draft.currencyCode,
+                to: item.code,
+                amount,
+              });
+              setError("");
+            } catch (reason) {
+              setError(
+                reason instanceof Error
+                  ? reason.message
+                  : "Enter a valid balance first.",
+              );
+            }
+          }}
+        />
+      )}
+      {currencyChange && (
+        <AccountCurrencyChangeSheet
+          request={currencyChange}
+          onClose={() => setCurrencyChange(null)}
+          onApply={(amount, explanation) => {
+            setDraft((current) => ({
+              ...current,
+              currencyCode: currencyChange.to,
+              amount: String(amount),
+            }));
+            setCurrencyChangeNote(explanation);
+            setCurrencyChange(null);
+          }}
+        />
+      )}
       {picker === "icon" && (
         <IconPicker
           selected={{ name: draft.icon, pathData: draft.iconPath }}
@@ -859,6 +932,43 @@ export function AccountCreateScreen({ editId }: { editId?: string }) {
 }
 
 const styles = StyleSheet.create({
+  formArea: {
+    flex: 1,
+  },
+  scrollTarget: {
+    flex: 1,
+  },
+  topScrim: {
+    height: 80,
+    left: 0,
+    position: "absolute",
+    right: 0,
+    top: 0,
+    zIndex: 10,
+  },
+  headerDock: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 12,
+    left: 16,
+    position: "absolute",
+    right: 16,
+    top: 0,
+    zIndex: 20,
+  },
+  headerSpace: {
+    height: 56,
+  },
+  selectorSpace: {
+    height: 84,
+  },
+  selectorDock: {
+    left: 12,
+    position: "absolute",
+    right: 12,
+    top: 64,
+    zIndex: 20,
+  },
   bottomScrim: {
     bottom: 0,
     left: 0,

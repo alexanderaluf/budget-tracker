@@ -1,4 +1,6 @@
 import { ACCOUNT_ICONS } from "@/features/accounts/account-options";
+import { selectBudgets } from "./budget-selectors";
+export { selectBudgets, selectBudgetCurrency } from "./budget-selectors";
 export { selectCategories, selectCategoryMonthlyTotals, selectCategoryTransactions } from "./category-selectors";
 import type {
     Account,
@@ -423,29 +425,9 @@ export function selectMonthlySummary(document: BackupDocument) {
 export function selectBudgetCategories(
   document: BackupDocument,
 ): BudgetCategory[] {
-  if (document.budgets.length === 0) return [];
-
-  return document.budgets.slice(0, 4).map((budget, index) => {
-    const categoryIds = Array.isArray(budget.categories)
-      ? budget.categories
-      : [];
-    const spent = includedTransactions(document)
-      .filter((transaction) =>
-        categoryIds.some((id) => id === transaction.category),
-      )
-      .reduce(
-        (total, transaction) =>
-          total + Math.abs(transactionAmount(transaction)),
-        0,
-      );
-    return {
-      id: recordId(budget, index),
-      label: text(budget.name, `Budget ${index + 1}`),
-      spent,
-      limit: Math.max(number(budget.amount), 1),
-      color: colors[index % colors.length],
-    };
-  });
+  return selectBudgets(document).filter(b => b.showOnHome).map(b => ({
+    id: b.id, label: b.name, spent: b.tracked, limit: b.limit, color: b.color,
+  }));
 }
 
 export function selectSpendingCategories(
