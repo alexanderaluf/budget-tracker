@@ -1,15 +1,11 @@
-const currencyFormatter = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  minimumFractionDigits: 2,
-});
+import { i18n } from "@/localization/i18n";
 
 export function formatCurrency(value: number, currency = "USD") {
-  return currency === "USD"
-    ? currencyFormatter.format(Math.abs(value))
-    : new Intl.NumberFormat("en-US", { style: "currency", currency }).format(
-        Math.abs(value),
-      );
+  return new Intl.NumberFormat(i18n.resolvedLanguage ?? "en", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: currency === "USD" ? 2 : undefined,
+  }).format(Math.abs(value));
 }
 
 export function formatSignedCurrency(value: number, currency = "USD") {

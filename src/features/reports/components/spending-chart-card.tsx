@@ -1,5 +1,8 @@
 import { Card, Chip } from "heroui-native";
-import { Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
+import { View } from "react-native";
+
+import { Text } from "@/shared/ui/app-text";
 
 import { formatCurrency } from "@/shared/lib/currency";
 import { FilledIcon } from "@/shared/ui/filled-icon";
@@ -11,6 +14,7 @@ type SpendingChartCardProps = {
   changePercent: number;
   dailyAverage: number;
   dailySpending: DailySpend[];
+  currencyCode: string;
 };
 
 export function SpendingChartCard({
@@ -18,24 +22,35 @@ export function SpendingChartCard({
   changePercent,
   dailyAverage,
   dailySpending,
+  currencyCode,
 }: SpendingChartCardProps) {
+  const { i18n, t } = useTranslation();
   const maximum = Math.max(...dailySpending.map((item) => item.amount), 1);
+  const percentage = new Intl.NumberFormat(i18n.resolvedLanguage, {
+    style: "percent",
+    maximumFractionDigits: 1,
+  }).format(Math.abs(changePercent) / 100);
 
   return (
     <Card className="border border-border bg-surface p-0">
       <Card.Header className="flex-row items-start justify-between px-5 pt-5">
         <View>
           <Card.Description className="font-sans text-muted">
-            Total spent this month
+            {t("reports.chart.totalSpent")}
           </Card.Description>
           <Card.Title className="mt-1 font-manrope-bold text-[32px] text-foreground">
-            {formatCurrency(totalSpent)}
+            {formatCurrency(totalSpent, currencyCode)}
           </Card.Title>
         </View>
-        <Chip color="success" size="sm" variant="soft">
+        <Chip
+          accessibilityLabel={t("reports.chart.change", { percentage })}
+          color="success"
+          size="sm"
+          variant="soft"
+        >
           <FilledIcon name="trending-down" size={15} tone="accent" />
           <Chip.Label className="font-manrope-bold">
-            {Math.abs(changePercent)}%
+            {percentage}
           </Chip.Label>
         </Chip>
       </Card.Header>
@@ -45,6 +60,11 @@ export function SpendingChartCard({
           {dailySpending.map((item, index) => (
             <View
               key={`${item.day}-${index}`}
+              accessible
+              accessibilityLabel={t("reports.chart.dayAccessibility", {
+                day: item.day,
+                amount: formatCurrency(item.amount, currencyCode),
+              })}
               className="flex-1 items-center gap-2"
             >
               <View className="h-24 w-full justify-end overflow-hidden rounded-md bg-surface-tertiary">
@@ -63,9 +83,11 @@ export function SpendingChartCard({
         </View>
 
         <View className="flex-row items-center justify-between border-t border-border pt-4">
-          <Text className="font-sans text-xs text-muted">Daily average</Text>
+          <Text className="font-sans text-xs text-muted">
+            {t("reports.chart.dailyAverage")}
+          </Text>
           <Text className="font-manrope-bold text-sm text-foreground">
-            {formatCurrency(dailyAverage)}
+            {formatCurrency(dailyAverage, currencyCode)}
           </Text>
         </View>
       </Card.Body>

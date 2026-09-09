@@ -1,34 +1,39 @@
 import { useRouter } from "expo-router";
 import { Button } from "heroui-native";
-import { Pressable, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
+import { Pressable, View } from "react-native";
+
+import { Text } from "@/shared/ui/app-text";
 import type { Budget } from "@/data/selectors/budget-selectors";
 import {
   BudgetProgress,
-  TYPE_LABELS,
+  useBudgetLabels,
 } from "@/features/budgets/components/budget-ui";
 import { formatCurrency } from "@/shared/lib/currency";
 
 export function BudgetCard({ budgets }: { budgets: Budget[] }) {
   const router = useRouter();
+  const { t } = useTranslation();
+  const labels = useBudgetLabels();
   return (
     <View className="gap-4 rounded-3xl border border-border bg-surface p-5">
       <View className="flex-row items-center justify-between">
         <Text className="font-manrope-bold text-lg text-foreground">
-          Your budgets
+          {t("home.budgets.title")}
         </Text>
         <Button
           variant="ghost"
           size="sm"
           onPress={() => router.push("/budgets")}
         >
-          See all
+          {t("home.budgets.seeAll")}
         </Button>
       </View>
       {budgets.map((b) => (
         <Pressable
           key={b.id}
           accessibilityRole="button"
-          accessibilityLabel={`Open ${b.name} budget`}
+          accessibilityLabel={t("home.budgets.open", { name: b.name })}
           onPress={() =>
             router.push({ pathname: "/budgets/[id]", params: { id: b.id } })
           }
@@ -40,7 +45,7 @@ export function BudgetCard({ budgets }: { budgets: Budget[] }) {
                 {b.name}
               </Text>
               <Text className="mt-1 text-xs text-muted">
-                {TYPE_LABELS[b.transactionType]} · {b.period}
+                {labels.types[b.transactionType]} · {labels.periods[b.period]}
               </Text>
             </View>
             <Text className="text-xs text-muted">
@@ -57,8 +62,7 @@ export function BudgetCard({ budgets }: { budgets: Budget[] }) {
           onPress={() => router.push("/budgets")}
         >
           <Text className="text-sm leading-6 text-muted">
-            Set a budget for the things that matter. Enable “Show budget” in its
-            details to follow it here.
+            {t("home.budgets.empty")}
           </Text>
         </Pressable>
       )}

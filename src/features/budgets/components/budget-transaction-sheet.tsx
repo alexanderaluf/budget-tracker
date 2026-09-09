@@ -1,10 +1,11 @@
 import { useRef, useState } from "react";
 import { uuid } from "expo-modules-core";
 import { Button } from "heroui-native";
-import { Text } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useLocalData } from "@/data/local-data-provider";
 import { addBudgetTransaction } from "@/data/model/budget-record";
 import type { Budget } from "@/data/selectors/budget-selectors";
+import { Text } from "@/shared/ui/app-text";
 import {
   selectAccounts,
   selectCategories,
@@ -13,7 +14,7 @@ import {
   BudgetField,
   BudgetOption,
   BudgetSheet,
-  TYPE_LABELS,
+  useBudgetLabels,
 } from "./budget-ui";
 
 export function BudgetTransactionSheet({
@@ -23,6 +24,8 @@ export function BudgetTransactionSheet({
   budget: Budget;
   onClose: () => void;
 }) {
+  const { t, i18n } = useTranslation();
+  const labels = useBudgetLabels();
   const { document, updateDocument } = useLocalData();
   const accounts = selectAccounts(document).filter(
     (a) => a.currencyCode === budget.currencyCode,
@@ -71,7 +74,7 @@ export function BudgetTransactionSheet({
       setError(
         reason instanceof Error
           ? reason.message
-          : "Unable to save transaction.",
+          : t("budgets.transaction.saveError"),
       );
       saving.current = false;
       setBusy(false);
@@ -79,35 +82,41 @@ export function BudgetTransactionSheet({
   }
   return (
     <BudgetSheet
-      title={`Add ${TYPE_LABELS[budget.transactionType].toLowerCase()}`}
+      title={t("budgets.transaction.add", {
+        type: labels.types[budget.transactionType].toLocaleLowerCase(
+          i18n.resolvedLanguage,
+        ),
+      })}
       onClose={onClose}
       busy={busy}
     >
       <BudgetField
         editable={!busy}
-        accessibilityLabel="Transaction name"
-        placeholder="Transaction name"
+        accessibilityLabel={t("budgets.transaction.name")}
+        placeholder={t("budgets.transaction.name")}
         value={draft.name}
         onChangeText={(name) => setDraft((d) => ({ ...d, name }))}
         maxLength={100}
       />
       <BudgetField
         editable={!busy}
-        accessibilityLabel="Transaction amount"
-        placeholder={`Amount · ${budget.currencyCode}`}
+        accessibilityLabel={t("budgets.transaction.amount")}
+        placeholder={t("budgets.transaction.amountPlaceholder", {
+          currency: budget.currencyCode,
+        })}
         keyboardType="decimal-pad"
         value={draft.amount}
         onChangeText={(amount) => setDraft((d) => ({ ...d, amount }))}
       />
       <BudgetField
         editable={!busy}
-        accessibilityLabel="Transaction date"
-        placeholder="YYYY-MM-DD"
+        accessibilityLabel={t("budgets.transaction.date")}
+        placeholder={t("budgets.transaction.datePlaceholder")}
         value={draft.date}
         onChangeText={(date) => setDraft((d) => ({ ...d, date }))}
       />
       <Text className="mt-3 font-manrope-semibold text-lg text-foreground">
-        Category
+        {t("budgets.transaction.category")}
       </Text>
       {categories.map((c) => (
         <BudgetOption
@@ -119,11 +128,13 @@ export function BudgetTransactionSheet({
       ))}
       {!categories.length && (
         <Text className="text-muted">
-          Add a matching category in Profile → Categories first.
+          {t("budgets.transaction.noCategories")}
         </Text>
       )}
       <Text className="mt-3 font-manrope-semibold text-lg text-foreground">
-        {budget.transactionType === 2 ? "From account" : "Account"}
+        {budget.transactionType === 2
+          ? t("budgets.transaction.fromAccount")
+          : t("budgets.transaction.account")}
       </Text>
       {sourceAccounts.map((a) => (
         <BudgetOption
@@ -135,14 +146,15 @@ export function BudgetTransactionSheet({
       ))}
       {!sourceAccounts.length && (
         <Text className="text-muted">
-          Create an account in {budget.currencyCode} or update this budget’s
-          account filter first.
+          {t("budgets.transaction.noAccounts", {
+            currency: budget.currencyCode,
+          })}
         </Text>
       )}
       {budget.transactionType === 2 && (
         <>
           <Text className="mt-3 font-manrope-semibold text-lg text-foreground">
-            To account
+            {t("budgets.transaction.toAccount")}
           </Text>
           {accounts
             .filter((a) => a.id !== draft.accountId)
@@ -157,8 +169,7 @@ export function BudgetTransactionSheet({
               />
             ))}
           <Text className="text-sm text-muted">
-            Transfers move money between two accounts in the same currency and
-            count once, under the source account.
+            {t("budgets.transaction.transferHelp")}
           </Text>
         </>
       )}
@@ -171,7 +182,9 @@ export function BudgetTransactionSheet({
         isDisabled={busy || !sourceAccounts.length || !categories.length}
         onPress={save}
       >
-        {busy ? "Saving…" : "Save transaction"}
+        {busy
+          ? t("budgets.transaction.saving")
+          : t("budgets.transaction.save")}
       </Button>
     </BudgetSheet>
   );

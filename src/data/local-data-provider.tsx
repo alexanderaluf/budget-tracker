@@ -10,6 +10,8 @@ import {
 import { ActivityIndicator, AppState, View } from "react-native";
 import { useThemeColor } from "heroui-native";
 
+import { i18n } from "@/localization/i18n";
+
 import { readDocument, writeDocument } from "./database/document-repository";
 import type {
     BackupCollectionKey,
@@ -71,7 +73,7 @@ export function LocalDataProvider({ children }: PropsWithChildren) {
   }, [isHydrated, document]);
 
   function reportPaymentError() {
-    setPaymentError("Card payments could not be saved. Please retry.");
+    setPaymentError(i18n.t("errors.cardPayments.save"));
   }
 
   useEffect(() => {
@@ -144,7 +146,7 @@ export function LocalDataProvider({ children }: PropsWithChildren) {
       await writeQueue.current;
       const pending = selectDueCardPayments(documentRef.current).some(({ card }) => Number(card.amount) < 0);
       setPaymentError(pending
-        ? "Card payment pending: today's exchange rate is unavailable. Connect to the internet and retry."
+        ? i18n.t("errors.cardPayments.rateUnavailable")
         : "");
     };
     settlementWork.current = work().finally(() => { settlementWork.current = null; });

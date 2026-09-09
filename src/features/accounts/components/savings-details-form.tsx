@@ -1,11 +1,11 @@
 import { Switch as HeroSwitch, Input } from "heroui-native";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
     Platform,
     Pressable,
     StyleSheet,
     Switch,
-    Text,
     TextInput,
     View,
 } from "react-native";
@@ -21,6 +21,7 @@ import {
 } from "@/data/model/savings-account";
 import { formatCurrency } from "@/shared/lib/currency";
 import { useAppThemeColors } from "@/shared/theme/app-theme";
+import { Text } from "@/shared/ui/app-text";
 import { FilledIcon } from "@/shared/ui/filled-icon";
 
 type SavingsDetailsFormProps = {
@@ -36,9 +37,31 @@ export function SavingsDetailsForm({
   value,
   onChange,
 }: SavingsDetailsFormProps) {
+  const { t } = useTranslation();
   const theme = useAppThemeColors();
   const [showProducts, setShowProducts] = useState(false);
-  const product = SAVINGS_PRODUCT_OPTIONS.find(
+  const productOptions = SAVINGS_PRODUCT_OPTIONS.map((option) => ({
+    value: option.value,
+    label: t(`accounts.savings.products.${option.value}.label`),
+    description: t(`accounts.savings.products.${option.value}.description`),
+  }));
+  const contributionModeOptions = CONTRIBUTION_MODE_OPTIONS.map((option) => ({
+    value: option.value,
+    label: t(`accounts.savings.contributionModes.${option.value}`),
+  }));
+  const liquidityOptions = LIQUIDITY_OPTIONS.map((option) => ({
+    value: option.value,
+    label: t(`accounts.savings.liquidity.${option.value}`),
+  }));
+  const taxTreatmentOptions = TAX_TREATMENT_OPTIONS.map((option) => ({
+    value: option.value,
+    label: t(`accounts.savings.taxTreatments.${option.value}`),
+  }));
+  const taxBasisOptions = TAX_BASIS_OPTIONS.map((option) => ({
+    value: option.value,
+    label: t(`accounts.savings.taxBases.${option.value}`),
+  }));
+  const product = productOptions.find(
     (option) => option.value === value.productType,
   )!;
   const estimate = estimateSavingsDraftWithdrawal(balance, value);
@@ -69,7 +92,7 @@ export function SavingsDetailsForm({
       />
 
       <View className="gap-2">
-        <FieldLabel>Product type</FieldLabel>
+        <FieldLabel>{t("accounts.savings.productType")}</FieldLabel>
         <Pressable
           accessibilityRole="button"
           accessibilityState={{ expanded: showProducts }}
@@ -88,7 +111,7 @@ export function SavingsDetailsForm({
         </Pressable>
         {showProducts && (
           <View className="overflow-hidden rounded-2xl border border-border bg-surface">
-            {SAVINGS_PRODUCT_OPTIONS.map((option, index) => {
+            {productOptions.map((option, index) => {
               const selected = option.value === value.productType;
               return (
                 <Pressable
@@ -99,7 +122,7 @@ export function SavingsDetailsForm({
                     change("productType", option.value);
                     setShowProducts(false);
                   }}
-                  className={`min-h-16 flex-row items-center gap-3 px-4 py-3 ${index < SAVINGS_PRODUCT_OPTIONS.length - 1 ? "border-b border-border" : ""}`}
+                  className={`min-h-16 flex-row items-center gap-3 px-4 py-3 ${index < productOptions.length - 1 ? "border-b border-border" : ""}`}
                 >
                   <View className="flex-1 gap-1">
                     <Text className="font-manrope-semibold text-sm text-foreground">
@@ -120,22 +143,22 @@ export function SavingsDetailsForm({
       </View>
 
       <TextField
-        label="Provider or institution"
-        placeholder="e.g. Bank Leumi, pension fund, broker"
+        label={t("accounts.savings.provider")}
+        placeholder={t("accounts.savings.providerPlaceholder")}
         value={value.providerName}
         onChange={(next) => change("providerName", next)}
       />
 
-      <Section title="Ownership and contributions">
+      <Section title={t("accounts.savings.ownershipSection")}>
         <MoneyField
           currencyCode={currencyCode}
-          label="Your contributed principal"
+          label={t("accounts.savings.contributedPrincipal")}
           value={value.contributedPrincipal}
           onChange={(next) => change("contributedPrincipal", next)}
         />
         <ChoiceGroup
-          label="Contribution method"
-          options={CONTRIBUTION_MODE_OPTIONS}
+          label={t("accounts.savings.contributionMethod")}
+          options={contributionModeOptions}
           value={value.contributionMode}
           onChange={(next) => change("contributionMode", next)}
         />
@@ -144,7 +167,7 @@ export function SavingsDetailsForm({
             <View className="flex-1">
               <MoneyField
                 currencyCode={currencyCode}
-                label="Your monthly deposit"
+                label={t("accounts.savings.monthlyDeposit")}
                 value={value.monthlyContribution}
                 onChange={(next) => change("monthlyContribution", next)}
               />
@@ -154,7 +177,7 @@ export function SavingsDetailsForm({
               <View className="flex-1">
                 <MoneyField
                   currencyCode={currencyCode}
-                  label="Employer monthly"
+                  label={t("accounts.savings.employerMonthly")}
                   value={value.employerMonthlyContribution}
                   onChange={(next) =>
                     change("employerMonthlyContribution", next)
@@ -165,23 +188,23 @@ export function SavingsDetailsForm({
           </View>
         )}
         <RateField
-          label="Expected annual return"
+          label={t("accounts.savings.expectedReturn")}
           value={value.expectedAnnualReturnRate}
           onChange={(next) => change("expectedAnnualReturnRate", next)}
         />
         <View className="flex-row gap-3">
           <View className="flex-1">
             <TextField
-              label="Start date"
-              placeholder="YYYY-MM-DD"
+              label={t("accounts.savings.startDate")}
+              placeholder={t("accounts.savings.datePlaceholder")}
               value={value.startDate}
               onChange={(next) => change("startDate", next)}
             />
           </View>
           <View className="flex-1">
             <TextField
-              label="Maturity date"
-              placeholder="YYYY-MM-DD"
+              label={t("accounts.savings.maturityDate")}
+              placeholder={t("accounts.savings.datePlaceholder")}
               value={value.maturityDate}
               onChange={(next) => change("maturityDate", next)}
             />
@@ -189,39 +212,38 @@ export function SavingsDetailsForm({
         </View>
       </Section>
 
-      <Section title="Withdrawal access">
+      <Section title={t("accounts.savings.withdrawalSection")}>
         <ChoiceGroup
-          label="When can you access the money?"
-          options={LIQUIDITY_OPTIONS}
+          label={t("accounts.savings.withdrawalQuestion")}
+          options={liquidityOptions}
           value={value.liquidity}
           onChange={(next) => change("liquidity", next)}
         />
         {value.liquidity === "notice" && (
           <NumberField
-            label="Notice period (days)"
-            placeholder="30"
+            label={t("accounts.savings.noticePeriod")}
+            placeholder={t("accounts.savings.noticePlaceholder")}
             value={value.withdrawalNoticeDays}
             onChange={(next) => change("withdrawalNoticeDays", next)}
           />
         )}
       </Section>
 
-      <Section title="Provider fees">
+      <Section title={t("accounts.savings.feesSection")}>
         <Text className="font-sans text-xs leading-5 text-muted">
-          Enter the rates shown in your plan documents. Leave a fee at 0 when it
-          does not apply.
+          {t("accounts.savings.feesHelp")}
         </Text>
         <View className="flex-row gap-3">
           <View className="flex-1">
             <RateField
-              label="Annual management"
+              label={t("accounts.savings.annualManagement")}
               value={value.annualManagementFeeRate}
               onChange={(next) => change("annualManagementFeeRate", next)}
             />
           </View>
           <View className="flex-1">
             <RateField
-              label="Deposit fee"
+              label={t("accounts.savings.depositFee")}
               value={value.contributionFeeRate}
               onChange={(next) => change("contributionFeeRate", next)}
             />
@@ -230,14 +252,14 @@ export function SavingsDetailsForm({
         <View className="flex-row gap-3">
           <View className="flex-1">
             <RateField
-              label="Performance fee"
+              label={t("accounts.savings.performanceFee")}
               value={value.performanceFeeRate}
               onChange={(next) => change("performanceFeeRate", next)}
             />
           </View>
           <View className="flex-1">
             <RateField
-              label="Early withdrawal"
+              label={t("accounts.savings.earlyWithdrawal")}
               value={value.earlyWithdrawalFeeRate}
               onChange={(next) => change("earlyWithdrawalFeeRate", next)}
             />
@@ -245,28 +267,27 @@ export function SavingsDetailsForm({
         </View>
       </Section>
 
-      <Section title="Withdrawal tax estimate">
+      <Section title={t("accounts.savings.taxSection")}>
         <Text className="font-sans text-xs leading-5 text-muted">
-          Tax rules change by residency, product and date. Use rates from your
-          current official guidance or adviser; this estimate is not tax advice.
+          {t("accounts.savings.taxHelp")}
         </Text>
         <TextField
-          label="Tax jurisdiction"
-          placeholder="e.g. Israel, United Kingdom, Ontario"
+          label={t("accounts.savings.taxJurisdiction")}
+          placeholder={t("accounts.savings.taxJurisdictionPlaceholder")}
           value={value.taxJurisdiction}
           onChange={(next) => change("taxJurisdiction", next)}
         />
         <ChoiceGroup
-          label="Tax treatment"
-          options={TAX_TREATMENT_OPTIONS}
+          label={t("accounts.savings.taxTreatment")}
+          options={taxTreatmentOptions}
           value={value.taxTreatment}
           onChange={(next) => change("taxTreatment", next)}
         />
         {value.taxTreatment !== "tax_exempt" && (
           <>
             <ChoiceGroup
-              label="Taxable amount"
-              options={TAX_BASIS_OPTIONS}
+              label={t("accounts.savings.taxableAmount")}
+              options={taxBasisOptions}
               value={value.taxBasis}
               onChange={(next) => change("taxBasis", next)}
             />
@@ -275,8 +296,8 @@ export function SavingsDetailsForm({
                 <RateField
                   label={
                     value.taxTreatment === "progressive"
-                      ? "Estimated effective tax"
-                      : "Estimated tax rate"
+                      ? t("accounts.savings.estimatedEffectiveTax")
+                      : t("accounts.savings.estimatedTaxRate")
                   }
                   value={value.estimatedTaxRate}
                   onChange={(next) => change("estimatedTaxRate", next)}
@@ -285,7 +306,7 @@ export function SavingsDetailsForm({
               <View className="flex-1">
                 <MoneyField
                   currencyCode={currencyCode}
-                  label="Tax-free allowance"
+                  label={t("accounts.savings.taxFreeAllowance")}
                   value={value.taxFreeAllowance}
                   onChange={(next) => change("taxFreeAllowance", next)}
                 />
@@ -298,61 +319,68 @@ export function SavingsDetailsForm({
       <View className="gap-3 rounded-2xl border border-border bg-surface p-4">
         <View className="flex-row items-center justify-between">
           <Text className="font-manrope-bold text-base text-foreground">
-            Full withdrawal estimate
+            {t("accounts.savings.fullWithdrawalEstimate")}
           </Text>
           <Text className="font-manrope-bold text-base text-accent">
             {formatCurrency(estimate.estimatedNetWithdrawal, currencyCode)}
           </Text>
         </View>
         <EstimateRow
-          label="Current balance"
+          label={t("accounts.savings.currentBalance")}
           value={estimate.balance}
           currencyCode={currencyCode}
         />
         <EstimateRow
-          label="Your principal"
+          label={t("accounts.cards.yourPrincipal")}
           value={estimate.principal}
           currencyCode={currencyCode}
         />
         <EstimateRow
-          label="Investment earnings"
+          label={t("accounts.savings.investmentEarnings")}
           value={estimate.earnings}
           currencyCode={currencyCode}
         />
         <EstimateRow
-          label="Performance fee"
+          label={t("accounts.savings.performanceFee")}
           value={-estimate.performanceFee}
           currencyCode={currencyCode}
         />
         <EstimateRow
-          label="Early withdrawal fee"
+          label={t("accounts.savings.earlyWithdrawal")}
           value={-estimate.earlyWithdrawalFee}
           currencyCode={currencyCode}
         />
         <EstimateRow
-          label="Estimated tax"
+          label={t("accounts.savings.estimatedTax")}
           value={-estimate.estimatedTax}
           currencyCode={currencyCode}
         />
         <Text className="font-sans text-[11px] leading-4 text-muted">
-          Annual management cost at the entered rate:{" "}
-          {formatCurrency(estimate.estimatedAnnualManagementFee, currencyCode)}.
-          Actual provider and tax calculations may differ.
+          {t("accounts.savings.annualManagementEstimate", {
+            amount: formatCurrency(
+              estimate.estimatedAnnualManagementFee,
+              currencyCode,
+            ),
+          })}
         </Text>
       </View>
 
       <View className="gap-2">
-        <FieldLabel>Notes (optional)</FieldLabel>
+        <FieldLabel>{t("accounts.savings.notesOptional")}</FieldLabel>
         <TextInput
-          accessibilityLabel="Savings notes"
+          accessibilityLabel={t("accounts.savings.notesAccessibility")}
           multiline
           maxLength={500}
           onChangeText={(next) => change("notes", next)}
-          placeholder="Access conditions, guarantees, beneficiary notes..."
+          placeholder={t("accounts.savings.notesPlaceholder")}
           placeholderTextColor={theme.muted}
           style={[
             styles.notes,
-            { backgroundColor: theme.surface, color: theme.foreground },
+            {
+              backgroundColor: theme.surface,
+              color: theme.foreground,
+              textAlign: "left",
+            },
           ]}
           textAlignVertical="top"
           value={value.notes}
@@ -369,13 +397,14 @@ function SavingsModeToggle({
   isDetailed: boolean;
   onChange: (value: boolean) => void;
 }) {
+  const { t } = useTranslation();
   const theme = useAppThemeColors();
 
   return (
     <Pressable
       accessibilityRole="switch"
-      accessibilityLabel="Detailed savings tracking"
-      accessibilityHint="Adds product, contribution, access, fee and tax fields."
+      accessibilityLabel={t("accounts.savings.detailedTracking")}
+      accessibilityHint={t("accounts.savings.detailedTrackingHint")}
       accessibilityState={{ checked: isDetailed }}
       className="flex-row items-center gap-4 rounded-2xl border border-border bg-surface px-4 py-4"
       onPress={() => onChange(!isDetailed)}
@@ -385,12 +414,12 @@ function SavingsModeToggle({
       </View>
       <View className="flex-1 gap-1">
         <Text className="font-manrope-semibold text-base text-foreground">
-          Detailed savings tracking
+          {t("accounts.savings.detailedTracking")}
         </Text>
         <Text className="font-sans text-xs leading-5 text-muted">
           {isDetailed
-            ? "Product terms, contributions, fees and tax estimates are enabled."
-            : "Keep it simple with only the name, balance and account number above."}
+            ? t("accounts.savings.detailedEnabled")
+            : t("accounts.savings.detailedDisabled")}
         </Text>
       </View>
       <View
@@ -454,7 +483,7 @@ function TextField({
       <FieldLabel>{label}</FieldLabel>
       <Input
         accessibilityLabel={label}
-        className="h-14 rounded-2xl bg-surface"
+        className="h-14 rounded-2xl bg-surface text-left"
         onChangeText={onChange}
         placeholder={placeholder}
         value={value}
@@ -479,7 +508,7 @@ function NumberField({
       <FieldLabel>{label}</FieldLabel>
       <Input
         accessibilityLabel={label}
-        className="h-14 rounded-2xl bg-surface"
+        className="h-14 rounded-2xl bg-surface text-left"
         keyboardType="decimal-pad"
         onChangeText={onChange}
         placeholder={placeholder}
@@ -500,11 +529,16 @@ function MoneyField({
   onChange: (value: string) => void;
   value: string;
 }) {
+  const { t } = useTranslation();
+
   return (
     <NumberField
-      label={`${label} (${currencyCode})`}
+      label={t("accounts.savings.moneyLabel", {
+        label,
+        currency: currencyCode,
+      })}
       onChange={onChange}
-      placeholder="0.00"
+      placeholder={t("accounts.savings.zeroAmountPlaceholder")}
       value={value}
     />
   );
@@ -519,11 +553,13 @@ function RateField({
   onChange: (value: string) => void;
   value: string;
 }) {
+  const { t } = useTranslation();
+
   return (
     <NumberField
-      label={`${label} (%)`}
+      label={t("accounts.savings.rateLabel", { label })}
       onChange={onChange}
-      placeholder="0"
+      placeholder={t("accounts.savings.zeroRatePlaceholder")}
       value={value}
     />
   );

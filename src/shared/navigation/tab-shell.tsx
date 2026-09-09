@@ -1,6 +1,7 @@
 import { BlurTargetView } from "expo-blur";
 import { Slot, usePathname, useRouter } from "expo-router";
 import { useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { Alert, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -9,14 +10,8 @@ import { getTabFromPathname, navigationItems } from "./navigation-config";
 import type { TabId } from "./types";
 import { useAppThemeColors } from "@/shared/theme/app-theme";
 
-const actionLabels: Record<TabId, string> = {
-  home: "Add transaction",
-  accounts: "Add account",
-  reports: "Filter reports",
-  search: "Search transactions",
-};
-
 export function TabShell() {
+  const { t } = useTranslation();
   const blurTargetRef = useRef<View | null>(null);
   const theme = useAppThemeColors();
   const pathname = usePathname();
@@ -40,8 +35,14 @@ export function TabShell() {
       router.push("/accounts/create");
       return;
     }
-    const action = actionLabels[tabId];
-    Alert.alert(action, `${action} is ready for its dedicated flow.`);
+    const action =
+      tabId === "reports"
+        ? t("navigation.actions.filterReports")
+        : t("navigation.actions.searchTransactions");
+    Alert.alert(
+      action,
+      t("navigation.actions.unavailable", { action }),
+    );
   }
 
   return (

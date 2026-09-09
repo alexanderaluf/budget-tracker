@@ -1,5 +1,7 @@
 import { Directory, File, Paths } from "expo-file-system";
 
+import { i18n } from "@/localization/i18n";
+
 import type { AttachmentManifest } from "../model/backup-document";
 
 const APP_DIRECTORY_NAME = "budget-manager";
@@ -51,7 +53,7 @@ export function getAttachmentFile(relativePath: string) {
     relativePath.startsWith("/") ||
     relativePath.includes("\\")
   ) {
-    throw new Error("Attachment path is not safe.");
+    throw new Error(i18n.t("errors.attachments.unsafePath"));
   }
 
   return new File(getAttachmentsDirectory(), relativePath);
@@ -81,7 +83,7 @@ export function stageAttachments(attachments: ArchivedAttachment[]) {
       attachment.relativePath.startsWith("/") ||
       attachment.relativePath.includes("\\")
     ) {
-      throw new Error("Backup contains an unsafe attachment path.");
+      throw new Error(i18n.t("errors.attachments.unsafeBackupPath"));
     }
 
     const file = new File(staging, attachment.relativePath);
@@ -104,7 +106,7 @@ export function commitStagedAttachments() {
   const previous = new Directory(appDirectory, PREVIOUS_DIRECTORY_NAME);
 
   if (!staging.exists) {
-    throw new Error("No staged attachments are available to restore.");
+    throw new Error(i18n.t("errors.attachments.noStaged"));
   }
 
   if (previous.exists) previous.delete();

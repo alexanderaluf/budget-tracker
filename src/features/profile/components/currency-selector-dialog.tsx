@@ -1,5 +1,8 @@
 import { Dialog } from "heroui-native";
-import { Pressable, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
+import { Pressable, View } from "react-native";
+
+import { Text } from "@/shared/ui/app-text";
 
 import { FilledIcon } from "@/shared/ui/filled-icon";
 
@@ -20,6 +23,8 @@ export function CurrencySelectorDialog({
   onOpenChange,
   onSelect,
 }: CurrencySelectorDialogProps) {
+  const { t } = useTranslation();
+
   return (
     <Dialog isOpen={isOpen} onOpenChange={onOpenChange}>
       <Dialog.Portal>
@@ -28,12 +33,12 @@ export function CurrencySelectorDialog({
           <Dialog.Close variant="ghost">
             <FilledIcon name="close" size={19} />
           </Dialog.Close>
-          <View className="gap-1 pr-8">
+          <View className="gap-1 pe-8">
             <Dialog.Title className="font-manrope-bold">
-              Select currency
+              {t("currency.selectTitle")}
             </Dialog.Title>
             <Dialog.Description>
-              Choose the default currency for this profile.
+              {t("currency.selectDescription")}
             </Dialog.Description>
           </View>
 
@@ -44,6 +49,12 @@ export function CurrencySelectorDialog({
               return (
                 <Pressable
                   key={currency.code}
+                  accessibilityLabel={t("currency.optionAccessibility", {
+                    name: currency.name,
+                    code: currency.code,
+                  })}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: isSelected }}
                   className={`flex-row items-center bg-surface-secondary px-4 py-3 ${
                     index < currencies.length - 1
                       ? "border-b border-border"
@@ -56,7 +67,7 @@ export function CurrencySelectorDialog({
                       {currency.symbol}
                     </Text>
                   </View>
-                  <View className="ml-3 flex-1">
+                  <View className="ms-3 flex-1">
                     <Text className="font-manrope-semibold text-sm text-foreground">
                       {currency.name}
                     </Text>

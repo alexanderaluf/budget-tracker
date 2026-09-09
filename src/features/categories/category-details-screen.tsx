@@ -7,7 +7,8 @@ import { ReceiptLongFill } from "@material-symbols-svg/react-native/rounded/icon
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Button } from "heroui-native";
 import { useMemo, useState } from "react";
-import { FlatList, ScrollView, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
+import { FlatList, ScrollView, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalData } from "@/data/local-data-provider";
 import { categoryFamily } from "@/data/model/category-record";
@@ -19,6 +20,7 @@ import {
 import { AccountPeriodSelector } from "@/features/accounts/components/account-period-selector";
 import type { AccountPeriod } from "@/features/accounts/types";
 import { formatCurrency } from "@/shared/lib/currency";
+import { Text } from "@/shared/ui/app-text";
 import { FilledIcon } from "@/shared/ui/filled-icon";
 import { useAppThemeColors } from "@/shared/theme/app-theme";
 import {
@@ -30,6 +32,7 @@ import {
 import { useCategoryClock } from "./use-category-clock";
 
 export function CategoryDetailsScreen() {
+  const { t, i18n } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const theme = useAppThemeColors();
@@ -79,7 +82,7 @@ export function CategoryDetailsScreen() {
       style={{ flex: 1, backgroundColor: theme.background }}
     >
       <CategoryHeader
-        title={category?.name ?? "Category"}
+        title={category?.name ?? t("categories.details.title")}
         disabled={isDeleting}
       >
         {category && (
@@ -88,7 +91,7 @@ export function CategoryDetailsScreen() {
               isIconOnly
               variant="ghost"
               isDisabled={isDeleting}
-              accessibilityLabel="Add child category"
+              accessibilityLabel={t("categories.details.addChild")}
               onPress={() =>
                 router.push({
                   pathname: "/categories/create",
@@ -102,7 +105,7 @@ export function CategoryDetailsScreen() {
               isIconOnly
               variant="ghost"
               isDisabled={isDeleting}
-              accessibilityLabel="Delete category"
+              accessibilityLabel={t("categories.details.deleteAccessibility")}
               onPress={() => setDeleteTarget(category)}
             >
               <DeleteFill color="#ef666d" size={26} />
@@ -112,7 +115,7 @@ export function CategoryDetailsScreen() {
       </CategoryHeader>
       {!category ? (
         <Text className="p-6 font-sans text-base text-muted">
-          This category is no longer available.
+          {t("categories.details.unavailable")}
         </Text>
       ) : (
         <>
@@ -146,7 +149,7 @@ export function CategoryDetailsScreen() {
             <Button
               isIconOnly
               variant="ghost"
-              accessibilityLabel="Previous period"
+              accessibilityLabel={t("categories.details.previousPeriod")}
               onPress={() => movePeriod(-1)}
             >
               <FilledIcon name="arrow-left" size={20} tone="muted" />
@@ -158,14 +161,14 @@ export function CategoryDetailsScreen() {
             >
               <Button.Label className="text-sm text-muted">
                 {allTime
-                  ? "All transaction history"
-                  : `${start.toLocaleDateString()} – ${new Date(end.getTime() - 1).toLocaleDateString()}`}
+                  ? t("categories.details.allHistory")
+                  : `${start.toLocaleDateString(i18n.resolvedLanguage)} – ${new Date(end.getTime() - 1).toLocaleDateString(i18n.resolvedLanguage)}`}
               </Button.Label>
             </Button>
             <Button
               isIconOnly
               variant="ghost"
-              accessibilityLabel="Next period"
+              accessibilityLabel={t("categories.details.nextPeriod")}
               onPress={() => movePeriod(1)}
             >
               <FilledIcon name="chevron-right" size={22} tone="muted" />
@@ -173,8 +176,8 @@ export function CategoryDetailsScreen() {
           </Animated.View>
           <Text className="px-5 pb-2 font-sans text-xs text-muted">
             {selectedId
-              ? "Transactions assigned directly to this category"
-              : "Includes this category and all children"}
+              ? t("categories.details.directTransactions")
+              : t("categories.details.includesChildren")}
           </Text>
           <FlatList
             data={visible}
@@ -207,8 +210,10 @@ export function CategoryDetailsScreen() {
                   </Text>
                   <Text className="font-sans text-xs text-muted">
                     {item.timestamp == null
-                      ? "Unknown date"
-                      : new Date(item.timestamp).toLocaleDateString()}
+                      ? t("categories.details.unknownDate")
+                      : new Date(item.timestamp).toLocaleDateString(
+                          i18n.resolvedLanguage,
+                        )}
                   </Text>
                 </View>
                 <Text
@@ -227,10 +232,10 @@ export function CategoryDetailsScreen() {
               >
                 <ReceiptLongFill color="#555555" size={70} />
                 <Text className="font-manrope-semibold text-xl text-foreground">
-                  No transactions found
+                  {t("categories.details.emptyTitle")}
                 </Text>
                 <Text className="px-8 text-center font-sans text-base text-muted">
-                  Transactions assigned to this category will appear here.
+                  {t("categories.details.emptyDescription")}
                 </Text>
               </Animated.View>
             }
@@ -250,7 +255,7 @@ export function CategoryDetailsScreen() {
                   })
                 }
               >
-                <Button.Label>Open child</Button.Label>
+                <Button.Label>{t("categories.details.openChild")}</Button.Label>
               </Button>
             )}
             <Button
@@ -269,7 +274,9 @@ export function CategoryDetailsScreen() {
                 tone="accent-foreground"
               />
               <Button.Label>
-                {selectedId && selectedId !== id ? "Edit child" : "Edit"}
+                {selectedId && selectedId !== id
+                  ? t("categories.details.editChild")
+                  : t("categories.details.edit")}
               </Button.Label>
             </Button>
           </Animated.View>

@@ -3,7 +3,8 @@ import { useRouter } from "expo-router";
 import { BlurTargetView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { Button } from "heroui-native";
-import { FlatList, Pressable, Text, View } from "react-native";
+import { FlatList, I18nManager, Pressable, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -13,6 +14,7 @@ import { selectBudgets } from "@/data/selectors/document-selectors";
 import { useCategoryClock } from "@/features/categories/use-category-clock";
 import { useAppThemeColors } from "@/shared/theme/app-theme";
 import { formatCurrency } from "@/shared/lib/currency";
+import { Text } from "@/shared/ui/app-text";
 import { FilledIcon } from "@/shared/ui/filled-icon";
 import { GlassSegmentedControl } from "@/shared/ui/glass-segmented-control";
 import {
@@ -22,11 +24,12 @@ import {
   BudgetRing,
   BudgetSheet,
   BudgetSummary,
-  TYPE_LABELS,
-  trackedLabel,
+  useBudgetLabels,
 } from "./components/budget-ui";
 
 export function BudgetsScreen() {
+  const { t, i18n } = useTranslation();
+  const labels = useBudgetLabels();
   const { document } = useLocalData(),
     now = useCategoryClock();
   const router = useRouter(),
@@ -35,15 +38,15 @@ export function BudgetsScreen() {
   const target = useRef<View | null>(null);
   const [type, setType] = useState(0),
     [compact, setCompact] = useState(false);
-  const [sort, setSort] = useState("Newest"),
+  const [sort, setSort] = useState<"newest" | "name" | "mostUsed">("newest"),
     [sheet, setSheet] = useState<"info" | "sort" | null>(null);
   const all = useMemo(() => selectBudgets(document, new Date()), [document, now]);
   const budgets = all
     .filter((b) => b.transactionType === type)
     .sort((a, b) =>
-      sort === "Name"
+      sort === "name"
         ? a.name.localeCompare(b.name)
-        : sort === "Most used"
+        : sort === "mostUsed"
           ? b.percent - a.percent
           : String(b.record.createdAt).localeCompare(
               String(a.record.createdAt),
@@ -65,11 +68,11 @@ export function BudgetsScreen() {
       style={{ flex: 1, backgroundColor: c.background }}
     >
       <BlurTargetView ref={target} style={{ flex: 1 }}>
-        <BudgetHeader title="Budgets">
+        <BudgetHeader title={t("budgets.list.title")}>
           <Button
             isIconOnly
             variant="ghost"
-            accessibilityLabel="About budgets"
+            accessibilityLabel={t("budgets.list.about")}
             onPress={() => setSheet("info")}
           >
             <FilledIcon name="help" size={25} />
@@ -86,7 +89,9 @@ export function BudgetsScreen() {
           renderItem={({ item }) => (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={`Open ${item.name} budget`}
+              accessibilityLabel={t("budgets.list.openBudget", {
+                name: item.name,
+              })}
               onPress={() =>
                 router.push({
                   pathname: "/budgets/[id]",
@@ -99,17 +104,25 @@ export function BudgetsScreen() {
           )}
           ListHeaderComponent={
             <View className="gap-5 pb-2 pt-4">
-              {totals.map((t) => (
-                <View key={t.currency} className="flex-row items-center gap-4">
+              {totals.map((total) => (
+                <View
+                  key={total.currency}
+                  className="flex-row items-center gap-4"
+                >
                   <BudgetRing
-                    percent={t.limit ? (t.tracked / t.limit) * 100 : 0}
+                    percent={
+                      total.limit ? (total.tracked / total.limit) * 100 : 0
+                    }
                     color={c.accent}
                   />
                   <View className="flex-1 gap-2">
                     {[
-                      ["Total", t.limit],
-                      [trackedLabel(type), t.tracked],
-                      ["Remaining", t.limit - t.tracked],
+                      [t("budgets.list.total"), total.limit],
+                      [labels.tracked[type], total.tracked],
+                      [
+                        t("budgets.list.remaining"),
+                        total.limit - total.tracked,
+                      ],
                     ].map(([label, value]) => (
                       <View
                         key={String(label)}
@@ -118,7 +131,7 @@ export function BudgetsScreen() {
                         <Text className="text-xs text-muted">{label}</Text>
                         <Text className="font-manrope-bold text-base text-foreground">
                           {Number(value) < 0 ? "−" : ""}
-                          {formatCurrency(Number(value), t.currency)}
+                          {formatCurrency(Number(value), total.currency)}
                         </Text>
                       </View>
                     ))}
@@ -127,14 +140,16 @@ export function BudgetsScreen() {
               ))}
               <View className="flex-row items-center justify-between">
                 <Text className="font-manrope-semibold text-lg text-accent">
-                  {budgets.length} {budgets.length === 1 ? "budget" : "budgets"}
+                  {t("budgets.list.count", { count: budgets.length })}
                 </Text>
                 <View className="flex-row gap-1">
                   <Button
                     isIconOnly
                     variant="secondary"
                     accessibilityLabel={
-                      compact ? "Show expanded cards" : "Show compact cards"
+                      compact
+                        ? t("budgets.list.showExpandedCards")
+                        : t("budgets.list.showCompactCards")
                     }
                     onPress={() => setCompact((v) => !v)}
                   >
@@ -143,7 +158,7 @@ export function BudgetsScreen() {
                   <Button
                     isIconOnly
                     variant="secondary"
-                    accessibilityLabel="Sort budgets"
+                    accessibilityLabel={t("budgets.list.sortAccessibility")}
                     onPress={() => setSheet("sort")}
                   >
                     <FilledIcon name="filter" size={22} />
@@ -155,15 +170,17 @@ export function BudgetsScreen() {
           ListEmptyComponent={
             <BudgetPanel>
               <Text className="font-manrope-bold text-xl text-foreground">
-                Make room for what matters
+                {t("budgets.list.emptyTitle")}
               </Text>
               <Text className="text-base leading-6 text-muted">
-                Create your first {TYPE_LABELS[type].toLowerCase()} budget.
-                Choose a category, set an amount, and your transactions will
-                keep it up to date.
+                {t("budgets.list.emptyDescription", {
+                  type: labels.types[type].toLocaleLowerCase(
+                    i18n.resolvedLanguage,
+                  ),
+                })}
               </Text>
               <Button onPress={() => router.push("/budgets/create")}>
-                Create budget
+                {t("budgets.list.create")}
               </Button>
             </BudgetPanel>
           }
@@ -194,23 +211,23 @@ export function BudgetsScreen() {
         }}
       >
         <GlassSegmentedControl
-          accessibilityLabel="Budget transaction type"
+          accessibilityLabel={t("budgets.list.transactionType")}
           blurTarget={target}
           value={type}
           onChange={setType}
-          options={TYPE_LABELS.map((label, value) => ({ label, value }))}
+          options={labels.types.map((label, value) => ({ label, value }))}
         />
       </View>
       <View
         style={{
           position: "absolute",
-          right: 20,
+          ...(I18nManager.isRTL ? { left: 20 } : { right: 20 }),
           bottom: Math.max(insets.bottom, 10) + 76,
         }}
       >
         <Button
           isIconOnly
-          accessibilityLabel="Add budget"
+          accessibilityLabel={t("budgets.list.add")}
           className="size-16 rounded-full"
           onPress={() => router.push("/budgets/create")}
         >
@@ -219,33 +236,34 @@ export function BudgetsScreen() {
       </View>
       {sheet && (
         <BudgetSheet
-          title={sheet === "info" ? "How budgets work" : "Sort budgets"}
+          title={
+            sheet === "info"
+              ? t("budgets.list.howItWorks")
+              : t("budgets.list.sortTitle")
+          }
           onClose={() => setSheet(null)}
         >
           {sheet === "info" ? (
             <>
               <Text className="text-base leading-7 text-foreground">
-                Each budget independently tracks matching transactions for its
-                current period. You can create multiple budgets for any category
-                or subcategory.
+                {t("budgets.list.infoTracking")}
               </Text>
               <Text className="text-base leading-7 text-muted">
-                Overview totals add budget amounts, so overlapping budgets may
-                include the same transaction. Different currencies are shown
-                separately. Future-dated transactions enter the totals when
-                their date arrives.
+                {t("budgets.list.infoTotals")}
               </Text>
               <Text className="text-base leading-7 text-muted">
-                Weekly periods start on Monday. Automatic mode follows
-                descendants as you add subcategories. Manual mode tracks your
-                exact selections unless you enable subcategories.
+                {t("budgets.list.infoPeriods")}
               </Text>
             </>
           ) : (
-            ["Newest", "Name", "Most used"].map((value) => (
+            ([
+              ["newest", t("budgets.list.sort.newest")],
+              ["name", t("budgets.list.sort.name")],
+              ["mostUsed", t("budgets.list.sort.mostUsed")],
+            ] as const).map(([value, title]) => (
               <BudgetOption
                 key={value}
-                title={value}
+                title={title}
                 selected={sort === value}
                 onPress={() => {
                   setSort(value);

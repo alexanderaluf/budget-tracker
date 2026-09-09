@@ -1,4 +1,7 @@
-import { Pressable, Text, View } from "react-native";
+import { Pressable, View } from "react-native";
+
+import { Text } from "@/shared/ui/app-text";
+import { useTranslation } from "react-i18next";
 
 import { formatSignedCurrency } from "@/shared/lib/currency";
 import { colorWithAlpha } from "@/shared/theme/app-theme";
@@ -16,6 +19,16 @@ export function TransactionList({
   transactions,
   onPress,
 }: TransactionListProps) {
+  const { t } = useTranslation();
+
+  if (transactions.length === 0) {
+    return (
+      <Text className="py-5 text-center font-sans text-sm text-muted">
+        {t("home.recentActivity.empty")}
+      </Text>
+    );
+  }
+
   return (
     <View className="gap-1">
       {transactions.map((transaction, index) => {
@@ -26,7 +39,9 @@ export function TransactionList({
           <Pressable
             key={transaction.id}
             accessibilityRole="button"
-            accessibilityLabel={`Open ${transaction.merchant} transaction`}
+            accessibilityLabel={t("home.transactionAccessibility", {
+              merchant: transaction.merchant,
+            })}
             onPress={() => onPress(transaction)}
             className={`flex-row items-center py-3 ${
               index < transactions.length - 1 ? "border-b border-border" : ""
@@ -47,7 +62,7 @@ export function TransactionList({
               />
             </View>
 
-            <View className="ml-3 flex-1 gap-0.5">
+            <View className="ms-3 flex-1 gap-0.5">
               <Text className="font-manrope-semibold text-[14px] text-foreground">
                 {transaction.merchant}
               </Text>
@@ -56,7 +71,7 @@ export function TransactionList({
               </Text>
             </View>
 
-            <View className="ml-2 items-end gap-1">
+            <View className="ms-2 items-end gap-1">
               <Text
                 className={`font-manrope-bold text-[14px] ${
                   transaction.amount >= 0 ? "text-accent" : "text-foreground"

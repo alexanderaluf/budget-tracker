@@ -6,9 +6,11 @@ import {
   useThemeColor,
 } from "heroui-native";
 import { useEffect, useMemo, useRef, useState, type ComponentRef } from "react";
-import { Keyboard, Pressable, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
+import { Keyboard, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { Text } from "@/shared/ui/app-text";
 import { FilledIcon } from "@/shared/ui/filled-icon";
 
 import type { CurrencyOption } from "../data/currencies-data";
@@ -21,11 +23,11 @@ type CurrencySelectorSheetProps = {
   onSelect: (currency: CurrencyOption) => void;
 };
 
-function normalizeSearch(value: string) {
+function normalizeSearch(value: string, locale: string) {
   return value
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
+    .toLocaleLowerCase(locale)
     .trim();
 }
 
@@ -36,6 +38,7 @@ function CurrencySearch({
   value: string;
   onChange: (value: string) => void;
 }) {
+  const { t } = useTranslation();
   const { onFocus, onBlur } = useBottomSheetAwareHandlers();
 
   return (
@@ -43,15 +46,17 @@ function CurrencySearch({
       <SearchField.Group>
         <SearchField.SearchIcon />
         <SearchField.Input
-          accessibilityLabel="Search currencies by name or code"
-          placeholder="Search name or code"
+          accessibilityLabel={t("currency.searchAccessibility")}
+          placeholder={t("currency.searchPlaceholder")}
           autoCapitalize="none"
           autoCorrect={false}
-          className="rounded-2xl border border-border bg-surface-secondary font-sans"
+          className="rounded-2xl border border-border bg-surface-secondary text-left font-sans"
           onFocus={onFocus}
           onBlur={onBlur}
         />
-        <SearchField.ClearButton accessibilityLabel="Clear currency search" />
+        <SearchField.ClearButton
+          accessibilityLabel={t("currency.clearSearch")}
+        />
       </SearchField.Group>
     </SearchField>
   );
@@ -66,6 +71,7 @@ function CurrencyList({
   CurrencySelectorSheetProps,
   "currencies" | "isOpen" | "selectedCode" | "onSelect"
 >) {
+  const { t, i18n } = useTranslation();
   const [query, setQuery] = useState("");
   const listRef = useRef<ComponentRef<typeof BottomSheetFlatList>>(null);
   useEffect(() => {
@@ -79,13 +85,14 @@ function CurrencyList({
     "accent-foreground",
     "muted",
   ]);
+  const locale = i18n.resolvedLanguage ?? i18n.language;
   const normalizedCode = selectedCode.toUpperCase();
   const results = useMemo(() => {
-    const search = normalizeSearch(query);
+    const search = normalizeSearch(query, locale);
     return currencies.filter((item) =>
-      normalizeSearch(`${item.code} ${item.name}`).includes(search),
+      normalizeSearch(`${item.code} ${item.name}`, locale).includes(search),
     );
-  }, [currencies, query]);
+  }, [currencies, locale, query]);
 
   return (
     <>
@@ -120,7 +127,10 @@ function CurrencyList({
             <Pressable
               accessibilityRole="radio"
               accessibilityState={{ checked: isSelected }}
-              accessibilityLabel={`${item.name}, ${item.code}`}
+              accessibilityLabel={t("currency.optionAccessibility", {
+                name: item.name,
+                code: item.code,
+              })}
               className={`my-0.5 min-h-18 flex-row items-center gap-3 rounded-2xl px-3 py-3 active:bg-surface-tertiary ${
                 isSelected ? "bg-accent/10" : "bg-surface"
               }`}
@@ -163,10 +173,10 @@ function CurrencyList({
           <View className="items-center gap-2 px-4 py-10">
             <FilledIcon color={muted} name="magnify-close" size={32} />
             <Text className="font-manrope-semibold text-base text-foreground">
-              No currencies found
+              {t("currency.emptyTitle")}
             </Text>
             <Text className="text-center font-sans text-sm text-muted">
-              Try a different currency name or code.
+              {t("currency.emptyDescription")}
             </Text>
           </View>
         }

@@ -7,5 +7,6 @@ export type SearchResult = {
   account: string;
   date: string;
   amount: number;
+  currencyCode: string;
   icon: FilledIconName;
 };

@@ -1,3 +1,5 @@
+import { i18n } from "@/localization/i18n";
+
 import type { BackupDocument } from "./backup-document";
 import type { JsonObject, JsonValue } from "./json";
 import {
@@ -42,51 +44,51 @@ export function parseAccountAmount(value: string): number {
   const input = value.trim();
   // A comma is accepted as a decimal separator, never as ambiguous grouping.
   if (!/^-?(?:\d+(?:[.,]\d{1,3})?|[.,]\d{1,3})$/.test(input)) {
-    throw new Error(
-      "Enter a valid amount without thousands separators, for example 1250.50.",
-    );
+    throw new Error(i18n.t("validation.account.invalidAmount"));
   }
   const amount = Number(input.replace(",", "."));
   if (
     !Number.isFinite(amount) ||
     Math.abs(amount) > Number.MAX_SAFE_INTEGER / 1000
   ) {
-    throw new Error("The amount is too large to store accurately.");
+    throw new Error(i18n.t("validation.account.amountTooLarge"));
   }
   return amount;
 }
 
 export function validateAccountDraft(draft: AccountDraft) {
-  if (!draft.name.trim()) throw new Error("Enter an account name.");
+  if (!draft.name.trim())
+    throw new Error(i18n.t("validation.account.name"));
   if (!ACCOUNT_TYPES.includes(draft.accountType))
-    throw new Error("Select an account type.");
+    throw new Error(i18n.t("validation.account.type"));
   const amount = parseAccountAmount(draft.amount);
   if (!/^[A-Z]{3}$/.test(draft.currencyCode))
-    throw new Error("Select an account currency.");
+    throw new Error(i18n.t("validation.account.currency"));
   if (!/^#[a-f\d]{6}$/i.test(draft.color))
-    throw new Error("Choose a color or enter a six-digit hex color.");
-  if (!draft.icon.trim()) throw new Error("Choose an account icon.");
+    throw new Error(i18n.t("validation.account.color"));
+  if (!draft.icon.trim())
+    throw new Error(i18n.t("validation.account.icon"));
   if (
     draft.icon.startsWith("material:") &&
     (typeof draft.iconPath !== "string" ||
       !/^[Mm]/.test(draft.iconPath) ||
       draft.iconPath.length > 20_000)
   )
-    throw new Error("Choose a valid Material account icon.");
+    throw new Error(i18n.t("validation.account.materialIcon"));
   if (draft.accountType === "card") {
     if (!/^\d{4}$/.test(draft.cardLastFour))
-      throw new Error("Enter exactly the last four digits of your card.");
+      throw new Error(i18n.t("validation.account.cardLastFour"));
     if (!CARD_COMPANIES.some((company) => company === draft.cardCompany))
-      throw new Error("Select a card company.");
+      throw new Error(i18n.t("validation.account.cardCompany"));
     if (
       !Number.isInteger(draft.paymentDay) ||
       draft.paymentDay! < 1 ||
       draft.paymentDay! > 31
     )
-      throw new Error("Select the monthly card payment day.");
+      throw new Error(i18n.t("validation.account.paymentDay"));
   }
   if (draft.accountType === "bank" && !draft.bankName.trim())
-    throw new Error("Enter the bank name.");
+    throw new Error(i18n.t("validation.account.bankName"));
   if (draft.accountType === "savings")
     validateSavingsDetails(draft.savingsDetails, amount);
   return amount;
@@ -105,13 +107,13 @@ export function addAccountToDocument(
     (user) => String(user.uuid ?? user.id) === profileId,
   );
   if (!owner)
-    throw new Error("Choose an existing profile before creating an account.");
+    throw new Error(i18n.t("validation.account.profile"));
   if (
     current.accounts.some(
       (account) => String(account.uuid ?? account.id) === uuid,
     )
   )
-    throw new Error("This account has already been saved.");
+    throw new Error(i18n.t("validation.account.alreadySaved"));
   let linkedBankAccount: JsonObject | undefined;
   if (draft.accountType === "card") {
     linkedBankAccount = current.accounts.find(
@@ -120,12 +122,12 @@ export function addAccountToDocument(
         account.accountType === "bank",
     );
     if (!linkedBankAccount)
-      throw new Error("Select an existing bank account for this card.");
+      throw new Error(i18n.t("validation.account.linkedBank"));
     if (
       linkedBankAccount.user !== owner.uuid &&
       linkedBankAccount.user !== owner.id
     )
-      throw new Error("The selected bank account belongs to another profile.");
+      throw new Error(i18n.t("validation.account.linkedBankProfile"));
   }
   const record: JsonObject = {
     uuid,
@@ -194,7 +196,7 @@ function editableAccount(document: BackupDocument, id: string) {
   const account = document.accounts.find(
     (item) => String(item.uuid ?? item.id) === id,
   );
-  if (!account) throw new Error("This account no longer exists.");
+  if (!account) throw new Error(i18n.t("validation.account.missing"));
   const profileId = document._local.selectedProfileId;
   const owner = document.users.find(
     (user) => String(user.uuid ?? user.id) === profileId,
@@ -205,7 +207,7 @@ function editableAccount(document: BackupDocument, id: string) {
     account.user !== profileId &&
     account.user !== owner?.id
   )
-    throw new Error("Switch to this account's profile first.");
+    throw new Error(i18n.t("validation.account.wrongProfile"));
   return account;
 }
 
@@ -226,9 +228,7 @@ export function updateAccountInDocument(
       ids.includes(account.linkedBankAccountId),
   );
   if (linkedCards.length && draft.accountType !== "bank")
-    throw new Error(
-      "Disconnect linked cards before changing this bank account type.",
-    );
+    throw new Error(i18n.t("validation.account.linkedCards"));
   const owner = current.users.find(
     (user) => user.uuid === previous.user || user.id === previous.user,
   );

@@ -1,4 +1,5 @@
-import { Pressable, Text, View } from "react-native";
+import { Pressable, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import Animated, {
   FadeInDown,
   FadeOutUp,
@@ -7,6 +8,7 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { colorWithAlpha, useAppThemeColors } from "@/shared/theme/app-theme";
+import { Text } from "@/shared/ui/app-text";
 import { FilledIcon, type FilledIconName } from "@/shared/ui/filled-icon";
 import { RecordIcon } from "@/shared/ui/record-icon";
 
@@ -48,6 +50,7 @@ export function TransactionSelectionSection({
   onSelect,
   onAdd,
 }: TransactionSelectionSectionProps) {
+  const { t } = useTranslation();
   const theme = useAppThemeColors();
   const selected = options.find((option) => option.id === selectedId);
 
@@ -58,7 +61,11 @@ export function TransactionSelectionSection({
     >
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`${expanded ? "Collapse" : "Expand"} ${title}`}
+        accessibilityLabel={
+          expanded
+            ? t("transactions.selection.collapse", { title })
+            : t("transactions.selection.expand", { title })
+        }
         accessibilityState={{ expanded, disabled }}
         disabled={disabled}
         onPress={onToggle}
@@ -79,7 +86,9 @@ export function TransactionSelectionSection({
             className={`font-manrope-semibold text-foreground ${compact ? "text-sm" : "text-base"}`}
           >
             {title}
-            {optional ? " (optional)" : ""}
+            {optional
+              ? t("transactions.selection.optional", { title: "" })
+              : ""}
           </Text>
           <Text
             numberOfLines={1}
@@ -114,11 +123,15 @@ export function TransactionSelectionSection({
                 key={option.id}
                 accessibilityRole="radio"
                 accessibilityLabel={
-                  isSelected ? `Deselect ${option.name}` : option.name
+                  isSelected
+                    ? t("transactions.selection.deselect", {
+                        name: option.name,
+                      })
+                    : option.name
                 }
                 accessibilityHint={
                   isSelected
-                    ? "Removes the current selection"
+                    ? t("transactions.selection.removeSelection")
                     : option.description
                 }
                 accessibilityState={{ checked: isSelected, disabled }}
@@ -155,14 +168,17 @@ export function TransactionSelectionSection({
 
           {!options.length ? (
             <Text className="py-2 font-sans text-sm text-muted">
-              No {title.toLowerCase()} options are available yet.
+              {t("transactions.selection.empty", { title })}
             </Text>
           ) : null}
 
           {onAdd ? (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={`Add ${title.toLowerCase()}`}
+              accessibilityLabel={t(
+                "transactions.selection.addAccessibility",
+                { title },
+              )}
               disabled={disabled}
               onPress={onAdd}
               className={`${compact ? "h-9" : "h-11"} flex-row items-center gap-2 rounded-full border border-border bg-surface px-3`}
@@ -178,7 +194,7 @@ export function TransactionSelectionSection({
                 />
               </View>
               <Text className="font-manrope-medium text-sm text-foreground">
-                Add
+                {t("transactions.selection.add")}
               </Text>
             </Pressable>
           ) : null}

@@ -1,3 +1,5 @@
+import { i18n } from "@/localization/i18n";
+
 import type { BackupDocument } from "./backup-document";
 import type { JsonObject, JsonValue } from "./json";
 
@@ -113,25 +115,23 @@ export function saveCategory(
     (record) => identity(record) === id,
   );
   if (!id || (editing && !existing))
-    throw new Error(
-      "This category no longer exists. Reopen Categories and try again.",
-    );
+    throw new Error(i18n.t("validation.category.missingReopen"));
   if (existing && !belongsToProfile(document, existing, profileId))
-    throw new Error("This category belongs to another profile.");
+    throw new Error(i18n.t("validation.category.wrongProfile"));
   if (!draft.name.trim() || draft.name.trim().length > 100)
-    throw new Error("Enter a category name (up to 100 characters).");
+    throw new Error(i18n.t("validation.category.name"));
   if (draft.description.length > 500)
-    throw new Error("Keep the description under 500 characters.");
+    throw new Error(i18n.t("validation.category.description"));
   if (![0, 1, 2].includes(draft.type))
-    throw new Error("Choose expense, income, or transfer.");
+    throw new Error(i18n.t("validation.category.type"));
   if (!/^#[a-f\d]{6}$/i.test(draft.color))
-    throw new Error("Choose a valid color, such as #70D2EB.");
+    throw new Error(i18n.t("validation.category.color"));
   if (
     !draft.icon ||
     (draft.iconPath &&
       (!/^[Mm]/.test(draft.iconPath) || draft.iconPath.length > 20_000))
   )
-    throw new Error("Choose a valid icon.");
+    throw new Error(i18n.t("validation.category.icon"));
   const family = categoryFamily(document.categories, id);
   const parent = draft.parentId
     ? document.categories.find((record) => identity(record) === draft.parentId)
@@ -142,13 +142,9 @@ export function saveCategory(
       !belongsToProfile(document, parent, profileId) ||
       Number(parent.type ?? 0) !== draft.type)
   )
-    throw new Error(
-      "Choose a parent of the same transaction type in this profile.",
-    );
+    throw new Error(i18n.t("validation.category.parent"));
   if (parent && family.has(identity(parent)))
-    throw new Error(
-      "A category cannot be its own parent or belong to one of its children.",
-    );
+    throw new Error(i18n.t("validation.category.parentCycle"));
   if (existing && Number(existing.type ?? 0) !== draft.type) {
     const linked = [
       ...document.transactions,
@@ -156,13 +152,11 @@ export function saveCategory(
       ...document.recurrings,
     ].some((record) => references(existing, record.category));
     if (linked || family.size > 1)
-      throw new Error(
-        "A category with transactions or children must keep its transaction type.",
-      );
+      throw new Error(i18n.t("validation.category.typeLocked"));
   }
   const owner = existing?.user ?? (existing ? null : profileId);
   if (parent && owner == null && parent.user != null)
-    throw new Error("A shared category needs a shared parent.");
+    throw new Error(i18n.t("validation.category.sharedParent"));
   const record = withParent(
     {
       ...existing,
@@ -215,9 +209,9 @@ export function deleteCategory(
   const category = document.categories.find(
     (record) => identity(record) === id,
   );
-  if (!category) throw new Error("This category no longer exists.");
+  if (!category) throw new Error(i18n.t("validation.category.missing"));
   if (!belongsToProfile(document, category))
-    throw new Error("This category belongs to another profile.");
+    throw new Error(i18n.t("validation.category.wrongProfile"));
   const detach = (records: JsonObject[]) =>
     records.map((record) =>
       references(category, record.category)

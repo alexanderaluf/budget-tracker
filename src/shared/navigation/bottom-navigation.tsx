@@ -1,10 +1,10 @@
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useRef, useState, type RefObject } from "react";
+import { useTranslation } from "react-i18next";
 import {
     Pressable,
     StyleSheet,
-    Text,
     View,
     type LayoutChangeEvent,
 } from "react-native";
@@ -18,6 +18,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { Text } from "@/shared/ui/app-text";
 import { FilledIcon, type FilledIconName } from "@/shared/ui/filled-icon";
 import {
   colorWithAlpha,
@@ -49,10 +50,12 @@ export function BottomNavigation({
   onChange,
   onActionPress,
 }: BottomNavigationProps) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const colors = useAppThemeColors();
   const indicatorX = useSharedValue(0);
   const indicatorWidth = useSharedValue(0);
+  const [trackWidth, setTrackWidth] = useState(0);
   const actionOpacity = useSharedValue(1);
   const actionTranslateY = useSharedValue(0);
   const [isIndicatorReady, setIsIndicatorReady] = useState(false);
@@ -63,10 +66,22 @@ export function BottomNavigation({
   );
   const targetActionItem = useRef(activeItem);
   const actionIcon = actionIcons[displayedActionItem];
+  const tabLabels: Record<TabId, string> = {
+    home: t("navigation.tabs.home"),
+    accounts: t("navigation.tabs.accounts"),
+    reports: t("navigation.tabs.reports"),
+    search: t("navigation.tabs.search"),
+  };
+  const actionLabels: Record<TabId, string> = {
+    home: t("navigation.actions.addTransaction"),
+    accounts: t("navigation.actions.addAccount"),
+    reports: t("navigation.actions.filterReports"),
+    search: t("navigation.actions.openSearch"),
+  };
 
   useEffect(() => {
     const activeFrame = tabFrames[activeItem];
-    if (!activeFrame) return;
+    if (!activeFrame || trackWidth === 0) return;
 
     setIsIndicatorReady(true);
     indicatorX.value = withSpring(activeFrame.x, {
@@ -79,7 +94,7 @@ export function BottomNavigation({
       mass: 0.7,
       stiffness: 230,
     });
-  }, [activeItem, indicatorWidth, indicatorX, tabFrames]);
+  }, [activeItem, indicatorWidth, indicatorX, tabFrames, trackWidth]);
 
   useEffect(() => {
     if (activeItem === displayedActionItem) return;
@@ -168,7 +183,13 @@ export function BottomNavigation({
             tint={colors.isDark ? "dark" : "light"}
           />
 
-          <View accessibilityRole="tablist" style={styles.tabsTrack}>
+          <View
+            accessibilityRole="tablist"
+            onLayout={({ nativeEvent: { layout } }) =>
+              setTrackWidth(layout.width)
+            }
+            style={styles.tabsTrack}
+          >
             {isIndicatorReady ? (
               <Animated.View
                 pointerEvents="none"
@@ -186,7 +207,7 @@ export function BottomNavigation({
               return (
                 <Pressable
                   key={item.id}
-                  accessibilityLabel={item.label}
+                  accessibilityLabel={tabLabels[item.id]}
                   accessibilityRole="tab"
                   accessibilityState={{ selected: isActive }}
                   hitSlop={4}
@@ -214,7 +235,7 @@ export function BottomNavigation({
                       { color: isActive ? colors.accent : colors.foreground },
                     ]}
                   >
-                    {item.label}
+                    {tabLabels[item.id]}
                   </Text>
                 </Pressable>
               );
@@ -223,15 +244,7 @@ export function BottomNavigation({
         </View>
 
         <Pressable
-          accessibilityLabel={
-            activeItem === "home"
-              ? "Add transaction"
-              : activeItem === "accounts"
-                ? "Add account"
-                : activeItem === "reports"
-                  ? "Filter reports"
-                  : "Open search"
-          }
+          accessibilityLabel={actionLabels[activeItem]}
           accessibilityRole="button"
           onPress={() => onActionPress(activeItem)}
           style={({ pressed }) => [

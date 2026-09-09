@@ -6,11 +6,13 @@ import {
 } from "@material-symbols-svg/react-native/rounded/icons/add";
 import { AddCardFill } from "@material-symbols-svg/react-native/rounded/icons/add-card";
 import { ArrowBackFill } from "@material-symbols-svg/react-native/rounded/icons/arrow-back";
+import { ArrowForwardFill } from "@material-symbols-svg/react-native/rounded/icons/arrow-forward";
 import { ArrowOutwardFill } from "@material-symbols-svg/react-native/rounded/icons/arrow-outward";
 import { BackupFill } from "@material-symbols-svg/react-native/rounded/icons/backup";
 import { CallReceivedFill } from "@material-symbols-svg/react-native/rounded/icons/call-received";
 import { CameraFill } from "@material-symbols-svg/react-native/rounded/icons/camera";
 import { CheckFill } from "@material-symbols-svg/react-native/rounded/icons/check";
+import { ChevronLeftFill } from "@material-symbols-svg/react-native/rounded/icons/chevron-left";
 import { ChevronRightFill } from "@material-symbols-svg/react-native/rounded/icons/chevron-right";
 import { CloseFill } from "@material-symbols-svg/react-native/rounded/icons/close";
 import { ContactlessFill } from "@material-symbols-svg/react-native/rounded/icons/contactless";
@@ -56,6 +58,7 @@ import { ShoppingBagFill } from "@material-symbols-svg/react-native/rounded/icon
 import { SwapHorizFill } from "@material-symbols-svg/react-native/rounded/icons/swap-horiz";
 import { TrendingDownFill } from "@material-symbols-svg/react-native/rounded/icons/trending-down";
 import { TrendingUpFill } from "@material-symbols-svg/react-native/rounded/icons/trending-up";
+import { TranslateFill } from "@material-symbols-svg/react-native/rounded/icons/translate";
 import { TrophyFill } from "@material-symbols-svg/react-native/rounded/icons/trophy";
 import { TuneFill } from "@material-symbols-svg/react-native/rounded/icons/tune";
 import { VerifiedUserFill } from "@material-symbols-svg/react-native/rounded/icons/verified-user";
@@ -66,6 +69,8 @@ import type {
     MaterialSymbolsComponent,
 } from "@material-symbols-svg/react-native/rounded/w400";
 import { useThemeColor } from "heroui-native";
+
+import { useAppLocalization } from "@/localization/localization-provider";
 
 const icons = {
   account: PersonFill,
@@ -122,6 +127,7 @@ const icons = {
   "swap-horizontal": SwapHorizFill,
   "trending-down": TrendingDownFill,
   "trending-up": TrendingUpFill,
+  translate: TranslateFill,
   trophy: TrophyFill,
   tune: TuneFill,
   wallet: AccountBalanceWalletFill,
@@ -136,6 +142,11 @@ const boldIcons = {
   "plus-thick": AddFillW600,
 } satisfies Partial<Record<FilledIconName, MaterialSymbolsComponent>>;
 
+const rtlIcons = {
+  "arrow-left": ArrowForwardFill,
+  "chevron-right": ChevronLeftFill,
+} satisfies Partial<Record<FilledIconName, MaterialSymbolsComponent>>;
+
 type FilledIconProps = Omit<IconProps, "color"> & {
   color?: string;
   name: FilledIconName;
@@ -146,10 +157,12 @@ type FilledIconProps = Omit<IconProps, "color"> & {
 export function FilledIcon({
   color,
   name,
+  style,
   tone = "foreground",
   weight = 400,
   ...props
 }: FilledIconProps) {
+  const { isRTL } = useAppLocalization();
   const [accent, accentForeground, danger, foreground, muted, success] =
     useThemeColor([
       "accent",
@@ -168,9 +181,17 @@ export function FilledIcon({
     success,
   };
   const Icon =
-    weight === 600 && name in boldIcons
+    isRTL && name in rtlIcons
+      ? rtlIcons[name as keyof typeof rtlIcons]
+      : weight === 600 && name in boldIcons
       ? boldIcons[name as keyof typeof boldIcons]
       : icons[name];
 
-  return <Icon color={color ?? themeColors[tone]} {...props} />;
+  return (
+    <Icon
+      color={color ?? themeColors[tone]}
+      style={style}
+      {...props}
+    />
+  );
 }

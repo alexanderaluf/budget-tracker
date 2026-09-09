@@ -1,7 +1,8 @@
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "expo-router";
 import { Button } from "heroui-native";
-import { FlatList, Text, View } from "react-native";
+import { FlatList, I18nManager, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -12,6 +13,7 @@ import { selectBudgets } from "@/data/selectors/document-selectors";
 import { useCategoryClock } from "@/features/categories/use-category-clock";
 import { useAppThemeColors } from "@/shared/theme/app-theme";
 import { formatCurrency } from "@/shared/lib/currency";
+import { Text } from "@/shared/ui/app-text";
 import { FilledIcon } from "@/shared/ui/filled-icon";
 import {
   BudgetBadge,
@@ -26,6 +28,7 @@ import {
 import { BudgetTransactionSheet } from "./components/budget-transaction-sheet";
 
 export function BudgetDetailsScreen({ id }: { id: string }) {
+  const { t, i18n } = useTranslation();
   const { document, updateDocument } = useLocalData(),
     now = useCategoryClock();
   const router = useRouter(),
@@ -48,7 +51,7 @@ export function BudgetDetailsScreen({ id }: { id: string }) {
       await updateDocument((current) => {
         const record = current.budgets.find((b) => identity(b) === id);
         if (!record || !belongsToProfile(current, record))
-          throw new Error("This budget is unavailable.");
+          throw new Error(t("budgets.details.unavailableError"));
         return {
           ...current,
           budgets:
@@ -71,7 +74,9 @@ export function BudgetDetailsScreen({ id }: { id: string }) {
       }
     } catch (reason) {
       setError(
-        reason instanceof Error ? reason.message : "Unable to update budget.",
+        reason instanceof Error
+          ? reason.message
+          : t("budgets.details.updateError"),
       );
     } finally {
       saving.current = false;
@@ -81,8 +86,10 @@ export function BudgetDetailsScreen({ id }: { id: string }) {
   if (!budget)
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: c.background }}>
-        <BudgetHeader title="Budget details" />
-        <Text className="p-5 text-muted">This budget is unavailable.</Text>
+        <BudgetHeader title={t("budgets.details.title")} />
+        <Text className="p-5 text-muted">
+          {t("budgets.details.unavailableError")}
+        </Text>
       </SafeAreaView>
     );
   const b = budget;
@@ -91,12 +98,12 @@ export function BudgetDetailsScreen({ id }: { id: string }) {
       edges={["top"]}
       style={{ flex: 1, backgroundColor: c.background }}
     >
-      <BudgetHeader title="Budget details" disabled={busy}>
+      <BudgetHeader title={t("budgets.details.title")} disabled={busy}>
         <Button
           isDisabled={busy}
           variant="ghost"
           isIconOnly
-          accessibilityLabel="Add budget transaction"
+          accessibilityLabel={t("budgets.details.addTransaction")}
           onPress={() => setSheet("transaction")}
         >
           <FilledIcon name="plus" size={26} />
@@ -104,10 +111,12 @@ export function BudgetDetailsScreen({ id }: { id: string }) {
         <Button
           isDisabled={busy}
           variant="ghost"
-          accessibilityLabel="Delete budget"
+          accessibilityLabel={t("budgets.details.deleteAccessibility")}
           onPress={() => setSheet("delete")}
         >
-          <Text className="font-manrope-semibold text-danger">Delete</Text>
+          <Text className="font-manrope-semibold text-danger">
+            {t("budgets.details.delete")}
+          </Text>
         </Button>
       </BudgetHeader>
       <FlatList
@@ -123,8 +132,8 @@ export function BudgetDetailsScreen({ id }: { id: string }) {
             <BudgetSummary budget={b} />
             <BudgetPanel>
               <BudgetToggle
-                title="Show budget"
-                description="Track this budget on the home screen"
+                title={t("budgets.details.showBudget")}
+                description={t("budgets.details.showBudgetHelp")}
                 value={b.showOnHome}
                 disabled={busy}
                 onChange={(v) => mutate("home", v)}
@@ -141,7 +150,7 @@ export function BudgetDetailsScreen({ id }: { id: string }) {
                 className="font-manrope-semibold text-lg"
                 style={{ color: b.color }}
               >
-                Category breakdown
+                {t("budgets.details.categoryBreakdown")}
               </Text>
               {b.breakdown.map((cat) => (
                 <View key={cat.id} className="flex-row items-center gap-3 py-2">
@@ -170,22 +179,28 @@ export function BudgetDetailsScreen({ id }: { id: string }) {
               ))}
               {!b.breakdown.length && (
                 <Text className="text-muted">
-                  No category activity in this period.
+                  {t("budgets.details.noCategoryActivity")}
                 </Text>
               )}
             </BudgetPanel>
             <BudgetPanel>
               <Text className="font-manrope-semibold text-foreground">
-                {b.range.start.toLocaleDateString()} –{" "}
-                {new Date(b.range.end.getTime() - 1).toLocaleDateString()}
+                {b.range.start.toLocaleDateString(i18n.resolvedLanguage)} –{" "}
+                {new Date(b.range.end.getTime() - 1).toLocaleDateString(
+                  i18n.resolvedLanguage,
+                )}
               </Text>
               <Text className="text-sm leading-6 text-muted">
-                {b.transactions.length} matching transactions · {b.currencyCode}
+                {t("budgets.details.matchingTransactions", {
+                  count: b.transactions.length,
+                  currency: b.currencyCode,
+                })}
               </Text>
               {b.excludedCurrencyCount > 0 && (
                 <Text className="text-sm text-muted">
-                  {b.excludedCurrencyCount} matching transactions use another
-                  currency and are excluded.
+                  {t("budgets.details.excludedCurrency", {
+                    count: b.excludedCurrencyCount,
+                  })}
                 </Text>
               )}
               {b.notes.length > 0 && (
@@ -195,7 +210,7 @@ export function BudgetDetailsScreen({ id }: { id: string }) {
               )}
             </BudgetPanel>
             <Text className="px-2 pt-4 font-manrope-bold text-xl text-foreground">
-              Transactions
+              {t("budgets.details.transactions")}
             </Text>
           </View>
         }
@@ -209,7 +224,9 @@ export function BudgetDetailsScreen({ id }: { id: string }) {
                 {t.categoryName} · {t.accountName}
               </Text>
               <Text className="mt-1 text-xs text-muted">
-                {new Date(t.timestamp).toLocaleDateString()}
+                {new Date(t.timestamp).toLocaleDateString(
+                  i18n.resolvedLanguage,
+                )}
               </Text>
             </View>
             <Text className="font-manrope-semibold text-foreground">
@@ -219,14 +236,14 @@ export function BudgetDetailsScreen({ id }: { id: string }) {
         )}
         ListEmptyComponent={
           <Text className="px-3 py-6 text-muted">
-            No matching transactions yet. Use + to add one.
+            {t("budgets.details.noTransactions")}
           </Text>
         }
       />
       <View
         style={{
           position: "absolute",
-          right: 20,
+          ...(I18nManager.isRTL ? { left: 20 } : { right: 20 }),
           bottom: Math.max(insets.bottom, 12),
         }}
       >
@@ -238,7 +255,7 @@ export function BudgetDetailsScreen({ id }: { id: string }) {
           }
         >
           <FilledIcon name="pencil" size={22} tone="accent-foreground" />
-          <Button.Label>Edit</Button.Label>
+          <Button.Label>{t("budgets.details.edit")}</Button.Label>
         </Button>
       </View>
       {sheet === "transaction" && (
@@ -246,13 +263,12 @@ export function BudgetDetailsScreen({ id }: { id: string }) {
       )}
       {sheet === "delete" && (
         <BudgetSheet
-          title="Delete budget?"
+          title={t("budgets.details.deleteTitle")}
           busy={busy}
           onClose={() => setSheet(null)}
         >
           <Text className="text-base leading-6 text-foreground">
-            Delete “{b.name}”? Your transactions and account balances will be
-            kept.
+            {t("budgets.details.deleteDescription", { name: b.name })}
           </Text>
           {!!error && (
             <Text accessibilityRole="alert" className="text-danger">
@@ -264,7 +280,9 @@ export function BudgetDetailsScreen({ id }: { id: string }) {
             isDisabled={busy}
             onPress={() => mutate("delete")}
           >
-            {busy ? "Deleting…" : "Delete budget"}
+            {busy
+              ? t("budgets.details.deleting")
+              : t("budgets.details.deleteBudget")}
           </Button>
         </BudgetSheet>
       )}

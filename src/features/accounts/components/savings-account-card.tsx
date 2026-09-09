@@ -1,7 +1,9 @@
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
+import { useTranslation } from "react-i18next";
 
 import { formatCurrency } from "@/shared/lib/currency";
 import { useAppThemeColors } from "@/shared/theme/app-theme";
+import { Text } from "@/shared/ui/app-text";
 import { FilledIcon } from "@/shared/ui/filled-icon";
 
 import { colorForeground } from "../account-options";
@@ -12,6 +14,7 @@ import { AccountIcon } from "./account-icon";
 const GROWTH = "#82d6a1";
 
 export function SavingsAccountCard({ account }: { account: Account }) {
+  const { t } = useTranslation();
   const theme = useAppThemeColors();
   const summary = account.savingsSummary;
   if (summary && !summary.isDetailed) {
@@ -49,7 +52,9 @@ export function SavingsAccountCard({ account }: { account: Account }) {
             className="font-manrope-semibold text-[10px]"
             style={[styles.overline, { color: account.color }]}
           >
-            Savings · {account.currencyCode}
+            {t("accounts.cards.savings", {
+              currency: account.currencyCode,
+            })}
           </Text>
           <Text
             className="font-manrope-bold text-lg text-foreground"
@@ -69,7 +74,7 @@ export function SavingsAccountCard({ account }: { account: Account }) {
               className="font-manrope-semibold text-[10px]"
               style={{ color: account.color }}
             >
-              Excluded
+              {t("accounts.common.badges.excluded")}
             </Text>
           </View>
         )}
@@ -79,21 +84,24 @@ export function SavingsAccountCard({ account }: { account: Account }) {
         style={[styles.details, { borderColor: withAlpha(account.color, 0.2) }]}
       >
         <Detail
-          label="Product"
-          value={summary?.productLabel ?? "Savings account"}
+          label={t("accounts.cards.product")}
+          value={summary?.productLabel ?? t("accounts.common.kinds.savings")}
         />
         <Detail
-          label="Provider"
-          value={summary?.providerName || "Not specified"}
+          label={t("accounts.cards.provider")}
+          value={summary?.providerName || t("accounts.cards.notSpecified")}
         />
         {!!summary?.maturityDate && (
-          <Detail label="Matures" value={summary.maturityDate} />
+          <Detail
+            label={t("accounts.cards.matures")}
+            value={summary.maturityDate}
+          />
         )}
       </View>
 
       <View style={styles.balanceBlock}>
         <Text className="font-manrope-medium text-xs text-muted">
-          Current savings value
+          {t("accounts.cards.currentSavingsValue")}
         </Text>
         <Text
           adjustsFontSizeToFit
@@ -110,14 +118,16 @@ export function SavingsAccountCard({ account }: { account: Account }) {
           className="font-manrope-medium text-[10px] text-muted"
           style={styles.overline}
         >
-          Value composition
+          {t("accounts.cards.valueComposition")}
         </Text>
         {!!summary?.expectedAnnualReturnRate && (
           <Text
             className="font-manrope-semibold text-xs"
             style={{ color: GROWTH }}
           >
-            {summary.expectedAnnualReturnRate}% expected / year
+            {t("accounts.cards.expectedPerYear", {
+              rate: summary.expectedAnnualReturnRate,
+            })}
           </Text>
         )}
       </View>
@@ -140,7 +150,7 @@ export function SavingsAccountCard({ account }: { account: Account }) {
         <Stat
           color={account.color}
           currencyCode={account.currencyCode}
-          label="Your principal"
+          label={t("accounts.cards.yourPrincipal")}
           value={principal}
         />
         <View
@@ -152,7 +162,7 @@ export function SavingsAccountCard({ account }: { account: Account }) {
         <Stat
           color={GROWTH}
           currencyCode={account.currencyCode}
-          label="Earned growth"
+          label={t("accounts.cards.earnedGrowth")}
           value={earnings}
         />
         <View
@@ -164,7 +174,7 @@ export function SavingsAccountCard({ account }: { account: Account }) {
         <Stat
           color={theme.foreground}
           currencyCode={account.currencyCode}
-          label="Est. withdrawal"
+          label={t("accounts.cards.estimatedWithdrawal")}
           value={
             summary?.estimatedNetWithdrawal ?? Math.max(account.balance, 0)
           }
@@ -175,12 +185,14 @@ export function SavingsAccountCard({ account }: { account: Account }) {
         <View style={styles.footerItem}>
           <FilledIcon name="clock" size={15} tone="muted" />
           <Text className="font-sans text-xs text-muted" numberOfLines={1}>
-            {summary?.liquidityLabel ?? "Access not specified"}
+            {summary?.liquidityLabel ?? t("accounts.cards.accessNotSpecified")}
           </Text>
         </View>
         {monthlyFunding > 0 && (
           <Text className="font-manrope-semibold text-xs text-foreground">
-            {formatCurrency(monthlyFunding, account.currencyCode)} / month
+            {t("accounts.cards.perMonth", {
+              amount: formatCurrency(monthlyFunding, account.currencyCode),
+            })}
           </Text>
         )}
       </View>
@@ -189,6 +201,8 @@ export function SavingsAccountCard({ account }: { account: Account }) {
 }
 
 function SimpleSavingsAccountCard({ account }: { account: Account }) {
+  const { t } = useTranslation();
+
   return (
     <View
       style={[
@@ -213,7 +227,9 @@ function SimpleSavingsAccountCard({ account }: { account: Account }) {
             className="font-manrope-semibold text-[10px]"
             style={[styles.overline, { color: account.color }]}
           >
-            Simple savings · {account.currencyCode}
+            {t("accounts.cards.simpleSavings", {
+              currency: account.currencyCode,
+            })}
           </Text>
           <Text
             className="font-manrope-bold text-lg text-foreground"
@@ -233,7 +249,7 @@ function SimpleSavingsAccountCard({ account }: { account: Account }) {
               className="font-manrope-semibold text-[10px]"
               style={{ color: account.color }}
             >
-              Excluded
+              {t("accounts.common.badges.excluded")}
             </Text>
           </View>
         )}
@@ -248,19 +264,22 @@ function SimpleSavingsAccountCard({ account }: { account: Account }) {
         >
           {!!account.accountNumber && (
             <Detail
-              label="Account"
+              label={t("accounts.common.details.account")}
               value={`•••• ${account.accountNumber.slice(-4)}`}
             />
           )}
           {!!account.ownerName && (
-            <Detail label="Owner" value={account.ownerName} />
+            <Detail
+              label={t("accounts.common.details.owner")}
+              value={account.ownerName}
+            />
           )}
         </View>
       )}
 
       <View style={styles.balanceBlock}>
         <Text className="font-manrope-medium text-xs text-muted">
-          Current savings balance
+          {t("accounts.cards.currentSavingsBalance")}
         </Text>
         <Text
           adjustsFontSizeToFit

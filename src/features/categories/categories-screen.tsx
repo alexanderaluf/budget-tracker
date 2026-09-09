@@ -9,12 +9,13 @@ import {
 import { useRouter } from "expo-router";
 import { Button } from "heroui-native";
 import { useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Alert,
   FlatList,
+  I18nManager,
   Pressable,
   StyleSheet,
-  Text,
   View,
 } from "react-native";
 import {
@@ -29,6 +30,7 @@ import {
 } from "@/data/selectors/document-selectors";
 import { useProfiles } from "@/features/profile/profile-provider";
 import { formatCurrency } from "@/shared/lib/currency";
+import { Text } from "@/shared/ui/app-text";
 import { FilledIcon } from "@/shared/ui/filled-icon";
 import { RecordIcon } from "@/shared/ui/record-icon";
 import {
@@ -40,11 +42,11 @@ import {
   CategoryHeader,
   CategoryTypeSelector,
   TYPE_COLORS,
-  TYPE_LABELS,
 } from "./components/category-ui";
 import { useCategoryClock } from "./use-category-clock";
 
 export function CategoriesScreen() {
+  const { t, i18n } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const theme = useAppThemeColors();
@@ -54,6 +56,11 @@ export function CategoriesScreen() {
   const now = useCategoryClock();
   const [type, setType] = useState<CategoryType>(0);
   const [alphabetical, setAlphabetical] = useState(false);
+  const typeLabels = [
+    t("categories.common.types.expense"),
+    t("categories.common.types.income"),
+    t("categories.common.types.transfer"),
+  ] as const;
   const categories = useMemo(() => selectCategories(document), [document]);
   const totals = useMemo(
     () => selectCategoryMonthlyTotals(document, now),
@@ -81,15 +88,15 @@ export function CategoriesScreen() {
       style={{ flex: 1, backgroundColor: theme.background }}
     >
       <BlurTargetView ref={blurTargetRef} style={{ flex: 1 }}>
-        <CategoryHeader title="Categories">
+        <CategoryHeader title={t("categories.list.title")}>
         <Button
           isIconOnly
           variant="ghost"
-          accessibilityLabel="About categories"
+          accessibilityLabel={t("categories.list.about")}
           onPress={() =>
             Alert.alert(
-              "Categories",
-              "Organize expense, income, and transfer transactions. Monthly totals include children. Open a category to view its history or manage its children.",
+              t("categories.list.title"),
+              t("categories.list.aboutDescription"),
             )
           }
         >
@@ -102,11 +109,10 @@ export function CategoriesScreen() {
       >
         <View>
           <Text className="font-manrope-bold text-lg text-accent">
-            {matching.length}{" "}
-            {matching.length === 1 ? "category" : "categories"}
+            {t("categories.list.count", { count: matching.length })}
           </Text>
           <Text className="font-sans text-sm text-muted">
-            {now.toLocaleDateString(undefined, {
+            {now.toLocaleDateString(i18n.resolvedLanguage, {
               month: "long",
               year: "numeric",
             })}
@@ -117,8 +123,8 @@ export function CategoriesScreen() {
           variant="ghost"
           accessibilityLabel={
             alphabetical
-              ? "Use original category order"
-              : "Sort categories alphabetically"
+              ? t("categories.list.originalOrder")
+              : t("categories.list.alphabeticalOrder")
           }
           onPress={() => setAlphabetical((value) => !value)}
         >
@@ -154,7 +160,10 @@ export function CategoriesScreen() {
             >
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={`Open ${item.name}, ${total.count} transactions this month`}
+                accessibilityLabel={t("categories.list.openWithTransactions", {
+                  name: item.name,
+                  count: total.count,
+                })}
                 onPress={() => openCategory(item.id)}
                 className="flex-row items-center gap-3"
               >
@@ -173,8 +182,10 @@ export function CategoriesScreen() {
                   ) : null}
                   <Text className="font-sans text-sm text-muted">
                     {total.count === 0
-                      ? "No transactions"
-                      : `${total.count} ${total.count === 1 ? "transaction" : "transactions"}`}
+                      ? t("categories.list.noTransactions")
+                      : t("categories.list.transactionCount", {
+                          count: total.count,
+                        })}
                   </Text>
                 </View>
                 <View style={{ maxWidth: "40%" }}>
@@ -193,12 +204,20 @@ export function CategoriesScreen() {
                 </View>
               </Pressable>
               {children.length > 0 && (
-                <View className="ml-[68px] mt-3 flex-row flex-wrap gap-2">
+                <View
+                  className="mt-3 flex-row flex-wrap gap-2"
+                  style={{
+                    marginLeft: I18nManager.isRTL ? 0 : 68,
+                    marginRight: I18nManager.isRTL ? 68 : 0,
+                  }}
+                >
                   {children.map((child) => (
                     <Pressable
                       key={child.id}
                       accessibilityRole="button"
-                      accessibilityLabel={`Open ${child.name}`}
+                      accessibilityLabel={t("categories.list.open", {
+                        name: child.name,
+                      })}
                       onPress={() => openCategory(child.id)}
                       className="min-h-9 flex-row items-center gap-1.5 rounded-lg px-2 py-1"
                       style={{ backgroundColor: `${child.color}18` }}
@@ -229,11 +248,14 @@ export function CategoriesScreen() {
           >
             <FilledIcon name="shopping" size={64} tone="muted" />
             <Text className="font-manrope-bold text-xl text-foreground">
-              No {TYPE_LABELS[type].toLowerCase()} categories yet
+              {t("categories.list.emptyTitle", {
+                type: typeLabels[type].toLocaleLowerCase(
+                  i18n.resolvedLanguage,
+                ),
+              })}
             </Text>
             <Text className="text-center font-sans text-base text-muted">
-              Create a category, then add children to organize your
-              transactions.
+              {t("categories.list.emptyDescription")}
             </Text>
           </Animated.View>
         }
@@ -271,14 +293,15 @@ export function CategoriesScreen() {
         entering={categoryEntrance(180)}
         style={{
           position: "absolute",
-          right: 20,
+          left: I18nManager.isRTL ? 20 : undefined,
+          right: I18nManager.isRTL ? undefined : 20,
           bottom: Math.max(insets.bottom, 10) + 76,
           zIndex: 20,
         }}
       >
         <Button
           isIconOnly
-          accessibilityLabel="Add category"
+          accessibilityLabel={t("categories.list.add")}
           className="size-16 rounded-full bg-accent"
           onPress={() =>
             router.push({

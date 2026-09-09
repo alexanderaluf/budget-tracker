@@ -1,12 +1,14 @@
 import { useRouter } from "expo-router";
 import { Button } from "heroui-native";
 import { type ReactNode, type RefObject } from "react";
-import { Pressable, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
+import { Pressable, View } from "react-native";
 import Animated from "react-native-reanimated";
 import { categoryEntrance } from "./category-motion";
 import type { Category } from "@/data/selectors/category-selectors";
 import type { CategoryType } from "@/data/model/category-record";
 import { colorForeground } from "@/shared/icons/colors";
+import { Text } from "@/shared/ui/app-text";
 import { FilledIcon } from "@/shared/ui/filled-icon";
 import { GlassSegmentedControl } from "@/shared/ui/glass-segmented-control";
 import { RecordIcon } from "@/shared/ui/record-icon";
@@ -15,12 +17,7 @@ import {
   useAppThemeColors,
 } from "@/shared/theme/app-theme";
 
-export const TYPE_LABELS = ["Expense", "Income", "Transfer"] as const;
 export const TYPE_COLORS = ["#ef666d", "#80c783", "#58b5f3"] as const;
-const TYPE_OPTIONS = TYPE_LABELS.map((label, value) => ({
-  label,
-  value: value as CategoryType,
-}));
 
 export function CategoryHeader({
   title,
@@ -32,6 +29,7 @@ export function CategoryHeader({
   disabled?: boolean;
 }) {
   const router = useRouter();
+  const { t } = useTranslation();
   return (
     <Animated.View
       entering={categoryEntrance()}
@@ -41,7 +39,7 @@ export function CategoryHeader({
         isIconOnly
         isDisabled={disabled}
         variant="ghost"
-        accessibilityLabel="Go back"
+        accessibilityLabel={t("categories.common.back")}
         onPress={() =>
           router.canGoBack() ? router.back() : router.replace("/")
         }
@@ -69,12 +67,21 @@ export function CategoryTypeSelector({
   value: CategoryType;
   onChange: (value: CategoryType) => void;
 }) {
+  const { t } = useTranslation();
+  const options = [
+    t("categories.common.types.expense"),
+    t("categories.common.types.income"),
+    t("categories.common.types.transfer"),
+  ].map((label, optionValue) => ({
+    label,
+    value: optionValue as CategoryType,
+  }));
   return (
     <GlassSegmentedControl
-      accessibilityLabel="Transaction type"
+      accessibilityLabel={t("categories.common.transactionType")}
       blurTarget={blurTarget}
       onChange={onChange}
-      options={TYPE_OPTIONS}
+      options={options}
       textSize={16}
       value={value}
     />
@@ -121,6 +128,7 @@ export function CategoryChip({
   onLongPress?: () => void;
 }) {
   const theme = useAppThemeColors();
+  const { t } = useTranslation();
 
   return (
     <Pressable
@@ -130,11 +138,11 @@ export function CategoryChip({
       onLongPress={onLongPress}
       delayLongPress={450}
       accessibilityHint={
-        onLongPress ? "Press and hold to delete this subcategory" : undefined
+        onLongPress ? t("categories.chip.deleteHint") : undefined
       }
       accessibilityActions={
         onLongPress
-          ? [{ name: "delete", label: "Delete subcategory" }]
+          ? [{ name: "delete", label: t("categories.chip.deleteAction") }]
           : undefined
       }
       onAccessibilityAction={(event) => {
@@ -162,7 +170,7 @@ export function CategoryChip({
         className="font-manrope-medium text-sm"
         style={{ color: selected ? theme.accent : theme.foreground }}
       >
-        {category?.name ?? "All"}
+        {category?.name ?? t("categories.common.all")}
       </Text>
     </Pressable>
   );

@@ -1,4 +1,5 @@
 import { Avatar } from "heroui-native";
+import { useTranslation } from "react-i18next";
 
 import { colorForeground } from "@/shared/icons/colors";
 import { useAppThemeColors } from "@/shared/theme/app-theme";
@@ -18,12 +19,13 @@ export function ProfileAvatar({
   size = "md",
   dimension,
 }: ProfileAvatarProps) {
+  const { t } = useTranslation();
   const theme = useAppThemeColors();
   const backgroundColor = imageUri ? theme.surfaceTertiary : color ?? theme.accent;
 
   return (
     <Avatar
-      accessibilityLabel={`Profile ${initials}`}
+      accessibilityLabel={t("profile.avatarAccessibility", { initials })}
       color="accent"
       size={size}
       style={{

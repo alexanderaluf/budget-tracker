@@ -1,10 +1,12 @@
 import { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import { BottomSheet, Button } from "heroui-native";
 import { useEffect, useRef, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { colorWithAlpha, useAppThemeColors } from "@/shared/theme/app-theme";
+import { Text } from "@/shared/ui/app-text";
 import { FilledIcon } from "@/shared/ui/filled-icon";
 import { RecordIcon } from "@/shared/ui/record-icon";
 
@@ -75,6 +77,7 @@ export function TransactionCategorySheet({
   onSelect: (id: string) => void;
   onDismiss: () => void;
 }) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [isOpen, setIsOpen] = useState(false);
   const opened = useRef(false);
@@ -132,7 +135,9 @@ export function TransactionCategorySheet({
           >
             <View className="gap-3 border-b border-border px-5 pb-4">
               <BottomSheet.Title>
-                Select a {parent.name} subcategory
+                {t("transactions.categorySheet.title", {
+                  name: parent.name,
+                })}
               </BottomSheet.Title>
               <View className="flex-row items-center gap-3">
                 <View
@@ -149,7 +154,11 @@ export function TransactionCategorySheet({
                   />
                 </View>
                 <BottomSheet.Description className="flex-1">
-                  Choose one of the subcategories below to continue.
+                  {options.length
+                    ? t("transactions.categorySheet.description", {
+                        count: options.length,
+                      })
+                    : t("transactions.categorySheet.empty")}
                 </BottomSheet.Description>
               </View>
             </View>
@@ -176,7 +185,9 @@ export function TransactionCategorySheet({
               style={{ paddingBottom: Math.max(insets.bottom, 16) + 12 }}
             >
               <Button variant="outline" onPress={close}>
-                <Button.Label>Cancel</Button.Label>
+                <Button.Label>
+                  {t("transactions.categorySheet.cancel")}
+                </Button.Label>
               </Button>
             </View>
           </View>

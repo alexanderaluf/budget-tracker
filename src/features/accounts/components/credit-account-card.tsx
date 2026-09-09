@@ -1,7 +1,9 @@
 import { LinearGradient } from "expo-linear-gradient";
-import { StyleSheet, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
+import { StyleSheet, View } from "react-native";
 
 import { formatCurrency } from "@/shared/lib/currency";
+import { Text } from "@/shared/ui/app-text";
 import { FilledIcon } from "@/shared/ui/filled-icon";
 
 import { cardPalette, withAlpha } from "../lib/card-color";
@@ -12,9 +14,10 @@ const INCOME = "#82d6a1";
 const EXPENSE = "#ef8175";
 
 export function CreditAccountCard({ account }: { account: Account }) {
+  const { t, i18n } = useTranslation();
   const palette = cardPalette(account.color);
   const owed = account.balance < 0;
-  const monthLabel = new Date().toLocaleDateString(undefined, {
+  const monthLabel = new Date().toLocaleDateString(i18n.resolvedLanguage, {
     month: "long",
   });
 
@@ -65,7 +68,7 @@ export function CreditAccountCard({ account }: { account: Account }) {
               numberOfLines={1}
               style={[styles.overline, { color: palette.inkMuted }]}
             >
-              {account.cardCompany || "Credit card"}
+              {account.cardCompany || t("accounts.cards.creditCard")}
               {account.linkedBankAccountName
                 ? ` · ${account.linkedBankAccountName}`
                 : ""}
@@ -84,7 +87,9 @@ export function CreditAccountCard({ account }: { account: Account }) {
             className="font-manrope-medium text-[10px]"
             style={[styles.overline, { color: palette.inkMuted }]}
           >
-            {owed ? "Current debt" : "Available"}
+            {owed
+              ? t("accounts.cards.currentDebt")
+              : t("accounts.cards.available")}
           </Text>
           <Text
             className="font-manrope-bold text-3xl"
@@ -124,7 +129,7 @@ export function CreditAccountCard({ account }: { account: Account }) {
             numberOfLines={1}
             style={[styles.overline, { color: palette.inkMuted, flex: 1 }]}
           >
-            {account.ownerName || "Cardholder"}
+            {account.ownerName || t("accounts.cards.cardholder")}
           </Text>
           <Text
             className="font-manrope-semibold text-[11px]"
@@ -132,7 +137,9 @@ export function CreditAccountCard({ account }: { account: Account }) {
           >
             {account.currencyCode}
             {account.paymentDay != null
-              ? ` · pays ${String(account.paymentDay).padStart(2, "0")}`
+              ? ` · ${t("accounts.cards.paysDay", {
+                  day: String(account.paymentDay).padStart(2, "0"),
+                })}`
               : ""}
           </Text>
         </View>
@@ -144,7 +151,7 @@ export function CreditAccountCard({ account }: { account: Account }) {
           color={INCOME}
           currencyCode={account.currencyCode}
           icon="arrow-bottom-left"
-          label={`${monthLabel} income`}
+          label={t("accounts.cards.monthIncome", { month: monthLabel })}
         />
         <View
           style={[
@@ -157,7 +164,7 @@ export function CreditAccountCard({ account }: { account: Account }) {
           color={EXPENSE}
           currencyCode={account.currencyCode}
           icon="arrow-top-right"
-          label={`${monthLabel} spend`}
+          label={t("accounts.cards.monthSpend", { month: monthLabel })}
         />
       </View>
     </View>

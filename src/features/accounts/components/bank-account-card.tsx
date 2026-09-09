@@ -1,6 +1,8 @@
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
+import { useTranslation } from "react-i18next";
 
 import { formatCurrency } from "@/shared/lib/currency";
+import { Text } from "@/shared/ui/app-text";
 import { FilledIcon } from "@/shared/ui/filled-icon";
 
 import { colorForeground } from "../account-options";
@@ -11,22 +13,22 @@ import { AccountIcon } from "./account-icon";
 const INCOME = "#82d6a1";
 const EXPENSE = "#ef8175";
 
-const kindLabels: Record<Account["kind"], string> = {
-  bank: "Bank account",
-  checking: "Checking account",
-  savings: "Savings account",
-  cash: "Cash",
-  credit: "Credit card",
-};
-
 export function BankAccountCard({ account }: { account: Account }) {
+  const { t } = useTranslation();
   const net = account.income - account.expense;
   const flow = account.income + account.expense;
   const incomeShare = flow > 0 ? account.income / flow : 0.5;
   const badges = [
-    account.isDefault ? "Default" : "",
-    account.isExcluded ? "Excluded" : "",
+    account.isDefault ? t("accounts.common.badges.default") : "",
+    account.isExcluded ? t("accounts.common.badges.excluded") : "",
   ].filter(Boolean);
+  const kindLabels: Record<Account["kind"], string> = {
+    bank: t("accounts.common.kinds.bank"),
+    checking: t("accounts.common.kinds.checking"),
+    savings: t("accounts.common.kinds.savings"),
+    cash: t("accounts.common.kinds.cash"),
+    credit: t("accounts.common.kinds.credit"),
+  };
 
   return (
     <View
@@ -85,23 +87,30 @@ export function BankAccountCard({ account }: { account: Account }) {
         style={[styles.details, { borderColor: withAlpha(account.color, 0.2) }]}
       >
         <Detail
-          label="Institution"
-          value={account.bankName || account.institution || "Local account"}
+          label={t("accounts.common.details.institution")}
+          value={
+            account.bankName ||
+            account.institution ||
+            t("accounts.common.details.localAccount")
+          }
         />
         {!!account.accountNumber && (
           <Detail
-            label="Account"
+            label={t("accounts.common.details.account")}
             value={`•••• ${account.accountNumber.slice(-4)}`}
           />
         )}
         {!!account.ownerName && (
-          <Detail label="Owner" value={account.ownerName} />
+          <Detail
+            label={t("accounts.common.details.owner")}
+            value={account.ownerName}
+          />
         )}
       </View>
 
       <View style={styles.balanceBlock}>
         <Text className="font-manrope-medium text-xs text-muted">
-          Current balance
+          {t("accounts.cards.currentBalance")}
         </Text>
         <Text
           adjustsFontSizeToFit
@@ -119,7 +128,7 @@ export function BankAccountCard({ account }: { account: Account }) {
         className="font-manrope-medium text-[10px] text-muted"
         style={styles.overline}
       >
-        All-time activity
+        {t("accounts.cards.allTimeActivity")}
       </Text>
       <View style={styles.flowBar}>
         <View
@@ -144,7 +153,7 @@ export function BankAccountCard({ account }: { account: Account }) {
           color={INCOME}
           currencyCode={account.currencyCode}
           icon="arrow-bottom-left"
-          label="Income"
+          label={t("accounts.cards.income")}
           value={account.income}
         />
         <View
@@ -157,7 +166,7 @@ export function BankAccountCard({ account }: { account: Account }) {
           color={EXPENSE}
           currencyCode={account.currencyCode}
           icon="arrow-top-right"
-          label="Expenses"
+          label={t("accounts.cards.expenses")}
           value={account.expense}
         />
         <View
@@ -170,7 +179,7 @@ export function BankAccountCard({ account }: { account: Account }) {
           color={net < 0 ? EXPENSE : INCOME}
           currencyCode={account.currencyCode}
           icon={net < 0 ? "trending-down" : "trending-up"}
-          label="Net"
+          label={t("accounts.cards.net")}
           prefix={net < 0 ? "−" : "+"}
           value={net}
         />

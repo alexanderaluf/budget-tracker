@@ -1,3 +1,5 @@
+import { i18n } from "@/localization/i18n";
+
 import type { BackupDocument } from "./backup-document";
 import type { JsonObject } from "./json";
 import { convertCurrency } from "./exchange-rate";
@@ -93,7 +95,7 @@ export function settleDueCardPayments(
       ? convertCurrency(amount, quote!.rate, currencyCode(bank)) : amount;
     const remaining = bankBalance - bankAmount;
     if (!Number.isFinite(remaining) || Math.abs(remaining) > Number.MAX_SAFE_INTEGER / 1000)
-      throw new Error("The bank balance after payment is too large to store accurately.");
+      throw new Error(i18n.t("errors.cardPayments.balanceTooLarge"));
     const nextCard = {
       ...card,
       amount: amount > 0 ? 0 : card.amount,

@@ -1,3 +1,5 @@
+import { i18n } from "@/localization/i18n";
+
 import type { JsonObject, JsonValue } from "./json";
 
 export const SAVINGS_PRODUCT_OPTIONS = [
@@ -172,11 +174,13 @@ function optionalNumber(
   const input = value.trim();
   if (!input) return 0;
   if (!/^(?:\d+(?:[.,]\d{1,4})?|[.,]\d{1,4})$/.test(input)) {
-    throw new Error(`Enter a valid ${label}.`);
+    throw new Error(i18n.t("validation.savings.invalidNumber", { label }));
   }
   const parsed = Number(input.replace(",", "."));
   if (!Number.isFinite(parsed) || parsed < minimum || parsed > maximum) {
-    throw new Error(`${label} must be between ${minimum} and ${maximum}.`);
+    throw new Error(
+      i18n.t("validation.savings.outOfRange", { label, minimum, maximum }),
+    );
   }
   return parsed;
 }
@@ -192,7 +196,7 @@ function optionalDate(value: string, label: string) {
     !/^\d{4}-\d{2}-\d{2}$/.test(input) ||
     Number.isNaN(new Date(`${input}T00:00:00Z`).getTime())
   ) {
-    throw new Error(`${label} must use YYYY-MM-DD.`);
+    throw new Error(i18n.t("validation.savings.invalidDate", { label }));
   }
   return input;
 }
@@ -232,74 +236,80 @@ export function validateSavingsDetails(
       (option) => option.value === draft.productType,
     )
   )
-    throw new Error("Select a valid savings product.");
+    throw new Error(i18n.t("validation.savings.product"));
   if (!draft.providerName.trim())
-    throw new Error("Enter the savings provider or institution.");
+    throw new Error(i18n.t("validation.savings.provider"));
   if (
     !CONTRIBUTION_MODE_OPTIONS.some(
       (option) => option.value === draft.contributionMode,
     )
   )
-    throw new Error("Select a valid contribution method.");
+    throw new Error(i18n.t("validation.savings.contributionMethod"));
   if (!LIQUIDITY_OPTIONS.some((option) => option.value === draft.liquidity))
-    throw new Error("Select valid withdrawal access.");
+    throw new Error(i18n.t("validation.savings.withdrawalAccess"));
   if (
     !TAX_TREATMENT_OPTIONS.some((option) => option.value === draft.taxTreatment)
   )
-    throw new Error("Select a valid tax treatment.");
+    throw new Error(i18n.t("validation.savings.taxTreatment"));
   if (!TAX_BASIS_OPTIONS.some((option) => option.value === draft.taxBasis))
-    throw new Error("Select a valid taxable amount.");
+    throw new Error(i18n.t("validation.savings.taxableAmount"));
 
-  const startDate = optionalDate(draft.startDate, "Start date");
-  const maturityDate = optionalDate(draft.maturityDate, "Maturity date");
+  const startDate = optionalDate(
+    draft.startDate,
+    i18n.t("validation.savings.fields.startDate"),
+  );
+  const maturityDate = optionalDate(
+    draft.maturityDate,
+    i18n.t("validation.savings.fields.maturityDate"),
+  );
   if (startDate && maturityDate && maturityDate < startDate)
-    throw new Error("Maturity date must be after the start date.");
+    throw new Error(i18n.t("validation.savings.maturity"));
 
   const principal = optionalNumber(
     draft.contributedPrincipal,
-    "contributed principal",
+    i18n.t("validation.savings.fields.contributedPrincipal"),
   );
   const monthlyContribution = optionalNumber(
     draft.monthlyContribution,
-    "monthly contribution",
+    i18n.t("validation.savings.fields.monthlyContribution"),
   );
   const employerMonthlyContribution = optionalNumber(
     draft.employerMonthlyContribution,
-    "employer monthly contribution",
+    i18n.t("validation.savings.fields.employerMonthlyContribution"),
   );
   const withdrawalNoticeDays = optionalNumber(
     draft.withdrawalNoticeDays,
-    "withdrawal notice days",
+    i18n.t("validation.savings.fields.withdrawalNoticeDays"),
     0,
     36500,
   );
   const expectedAnnualReturnRate = optionalRate(
     draft.expectedAnnualReturnRate,
-    "expected annual return rate",
+    i18n.t("validation.savings.fields.expectedAnnualReturnRate"),
   );
   const annualManagementFeeRate = optionalRate(
     draft.annualManagementFeeRate,
-    "annual management fee rate",
+    i18n.t("validation.savings.fields.annualManagementFeeRate"),
   );
   const contributionFeeRate = optionalRate(
     draft.contributionFeeRate,
-    "contribution fee rate",
+    i18n.t("validation.savings.fields.contributionFeeRate"),
   );
   const performanceFeeRate = optionalRate(
     draft.performanceFeeRate,
-    "performance fee rate",
+    i18n.t("validation.savings.fields.performanceFeeRate"),
   );
   const earlyWithdrawalFeeRate = optionalRate(
     draft.earlyWithdrawalFeeRate,
-    "early withdrawal fee rate",
+    i18n.t("validation.savings.fields.earlyWithdrawalFeeRate"),
   );
   const estimatedTaxRate = optionalRate(
     draft.estimatedTaxRate,
-    "estimated tax rate",
+    i18n.t("validation.savings.fields.estimatedTaxRate"),
   );
   const taxFreeAllowance = optionalNumber(
     draft.taxFreeAllowance,
-    "tax-free allowance",
+    i18n.t("validation.savings.fields.taxFreeAllowance"),
   );
 
   if (
@@ -307,16 +317,14 @@ export function validateSavingsDetails(
     monthlyContribution === 0 &&
     employerMonthlyContribution === 0
   ) {
-    throw new Error(
-      "Enter a monthly contribution for this contribution method.",
-    );
+    throw new Error(i18n.t("validation.savings.monthlyContribution"));
   }
   if (draft.liquidity === "notice" && withdrawalNoticeDays === 0)
-    throw new Error("Enter the required withdrawal notice period.");
+    throw new Error(i18n.t("validation.savings.withdrawalNotice"));
   if (draft.taxTreatment !== "tax_exempt" && !draft.taxJurisdiction.trim())
-    throw new Error("Enter the tax jurisdiction used for this estimate.");
+    throw new Error(i18n.t("validation.savings.taxJurisdiction"));
   if (draft.taxTreatment !== "tax_exempt" && estimatedTaxRate === 0)
-    throw new Error("Enter an estimated tax rate, or choose tax exempt.");
+    throw new Error(i18n.t("validation.savings.taxRate"));
 
   return {
     isDetailed: true,

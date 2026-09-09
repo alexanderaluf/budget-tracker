@@ -1,12 +1,14 @@
 import { WarningFill } from "@material-symbols-svg/react-native/rounded/icons/warning";
 import { BottomSheet, Button } from "heroui-native";
 import { useEffect, useRef, useState } from "react";
-import { Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
+import { View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalData } from "@/data/local-data-provider";
 import { deleteCategory } from "@/data/model/category-record";
 import type { Category } from "@/data/selectors/category-selectors";
 import { selectCategories } from "@/data/selectors/document-selectors";
+import { Text } from "@/shared/ui/app-text";
 
 export function CategoryDeleteSheet({
   category,
@@ -17,6 +19,7 @@ export function CategoryDeleteSheet({
   onDismiss: () => void;
   onDeleted: (id: string) => void;
 }) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { document, updateDocument } = useLocalData();
   const [isOpen, setIsOpen] = useState(false);
@@ -68,7 +71,7 @@ export function CategoryDeleteSheet({
       setError(
         reason instanceof Error
           ? reason.message
-          : "Unable to delete this category. Please try again.",
+          : t("categories.delete.error"),
       );
     }
   }
@@ -108,19 +111,17 @@ export function CategoryDeleteSheet({
               </View>
               <BottomSheet.Title className="text-center text-danger">
                 {category.parentId
-                  ? "Delete subcategory?"
-                  : "Delete parent category?"}
+                  ? t("categories.delete.subcategoryTitle")
+                  : t("categories.delete.parentTitle")}
               </BottomSheet.Title>
             </View>
             <BottomSheet.Description className="font-sans text-base leading-6">
-              Delete “{category.name}”? Its transactions will be kept as
-              Uncategorized. Its links in budgets and saved transaction
-              templates will be removed.
+              {t("categories.delete.description", { name: category.name })}
             </BottomSheet.Description>
             {children.length > 0 && (
               <View className="gap-2 rounded-2xl bg-danger/10 p-4">
                 <Text className="font-manrope-semibold text-sm text-foreground">
-                  These children will become main categories:
+                  {t("categories.delete.childrenHeading")}
                 </Text>
                 {children.slice(0, 4).map((child) => (
                   <Text key={child.id} className="font-sans text-sm text-muted">
@@ -129,15 +130,16 @@ export function CategoryDeleteSheet({
                 ))}
                 {children.length > 4 && (
                   <Text className="font-sans text-sm text-muted">
-                    And {children.length - 4} more
+                    {t("categories.delete.more", {
+                      count: children.length - 4,
+                    })}
                   </Text>
                 )}
               </View>
             )}
             {!category.parentId && (
               <Text className="font-sans text-sm leading-5 text-muted">
-                To delete a subcategory individually, press and hold its chip in
-                the category menu.
+                {t("categories.delete.subcategoryHelp")}
               </Text>
             )}
             {!!error && (
@@ -152,7 +154,7 @@ export function CategoryDeleteSheet({
                 isDisabled={busy}
                 onPress={closeSheet}
               >
-                <Button.Label>Cancel</Button.Label>
+                <Button.Label>{t("categories.delete.cancel")}</Button.Label>
               </Button>
               <Button
                 variant="danger"
@@ -161,7 +163,11 @@ export function CategoryDeleteSheet({
                 accessibilityState={{ busy }}
                 onPress={confirm}
               >
-                <Button.Label>{busy ? "Deleting…" : "Delete"}</Button.Label>
+                <Button.Label>
+                  {busy
+                    ? t("categories.delete.deleting")
+                    : t("categories.delete.confirm")}
+                </Button.Label>
               </Button>
             </View>
           </View>

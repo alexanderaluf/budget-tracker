@@ -1,13 +1,15 @@
 import { useLocalData } from "@/data/local-data-provider";
 import { selectAccounts } from "@/data/selectors/document-selectors";
 import { useRouter } from "expo-router";
-import { FlatList, Pressable, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
+import { FlatList, Pressable, View } from "react-native";
 import Animated, {
     Easing,
     FadeInDown,
     ReduceMotion,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Text } from "@/shared/ui/app-text";
 import { AccountCard } from "./components/account-card";
 
 const INITIAL_DELAY = 45;
@@ -22,6 +24,7 @@ function reveal(index: number) {
 }
 
 export function AccountsScreen() {
+  const { t } = useTranslation();
   const { document, paymentError, reconcileCardPayments } = useLocalData();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -46,10 +49,10 @@ export function AccountsScreen() {
               accessibilityRole="header"
               className="font-manrope-bold text-2xl text-foreground"
             >
-              Accounts
+              {t("accounts.list.title")}
             </Text>
             <Text className="font-sans text-sm text-muted">
-              {accounts.length} accounts
+              {t("accounts.list.count", { count: accounts.length })}
             </Text>
           </Animated.View>
           {!!paymentError && (
@@ -67,7 +70,7 @@ export function AccountsScreen() {
                 }}
               >
                 <Text className="font-manrope-bold text-accent">
-                  Retry card payments
+                  {t("accounts.list.retryCardPayments")}
                 </Text>
               </Pressable>
             </Animated.View>
@@ -78,7 +81,9 @@ export function AccountsScreen() {
         <Animated.View entering={reveal(index + (paymentError ? 2 : 1))}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`View ${item.name} account details`}
+            accessibilityLabel={t("accounts.list.viewDetails", {
+              name: item.name,
+            })}
             onPress={() =>
               router.push({
                 pathname: "/accounts/[id]",
@@ -94,8 +99,7 @@ export function AccountsScreen() {
       ListEmptyComponent={
         <Animated.View entering={reveal(1)}>
           <Text className="px-4 py-12 text-center font-sans text-base text-muted">
-            No accounts yet. Tap the add account button below to create your
-            first account.
+            {t("accounts.common.empty")}
           </Text>
         </Animated.View>
       }

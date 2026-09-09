@@ -1,6 +1,7 @@
 import { Button } from "heroui-native";
 import { useRouter } from "expo-router";
 import type { PropsWithChildren, ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import {
   KeyboardAvoidingView,
   Modal,
@@ -8,7 +9,6 @@ import {
   Pressable,
   ScrollView,
   Switch,
-  Text,
   TextInput,
   View,
   type TextInputProps,
@@ -17,27 +17,56 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, Line, Polyline, Text as SvgText } from "react-native-svg";
 import type { Budget } from "@/data/selectors/budget-selectors";
 import { useAppThemeColors } from "@/shared/theme/app-theme";
+import { Text } from "@/shared/ui/app-text";
 import { FilledIcon, type FilledIconName } from "@/shared/ui/filled-icon";
 import { RecordIcon } from "@/shared/ui/record-icon";
 import { colorForeground } from "@/shared/icons/colors";
 import { formatCurrency } from "@/shared/lib/currency";
 
-export const TYPE_LABELS = ["Expense", "Income", "Transfer"] as const;
-export const trackedLabel = (type: number) =>
-  type === 1 ? "Earned" : type === 2 ? "Transferred" : "Spent";
+export function useBudgetLabels() {
+  const { t } = useTranslation();
+  return {
+    types: [
+      t("budgets.common.types.expense"),
+      t("budgets.common.types.income"),
+      t("budgets.common.types.transfer"),
+    ] as const,
+    tracked: [
+      t("budgets.common.tracked.spent"),
+      t("budgets.common.tracked.earned"),
+      t("budgets.common.tracked.transferred"),
+    ] as const,
+    modes: {
+      Automatic: t("budgets.common.modes.automatic"),
+      Manual: t("budgets.common.modes.manual"),
+    },
+    scopes: {
+      Category: t("budgets.common.scopes.category"),
+      Overall: t("budgets.common.scopes.overall"),
+    },
+    periods: {
+      Daily: t("budgets.common.periods.daily"),
+      Weekly: t("budgets.common.periods.weekly"),
+      Monthly: t("budgets.common.periods.monthly"),
+      Yearly: t("budgets.common.periods.yearly"),
+      Custom: t("budgets.common.periods.custom"),
+    },
+  };
+}
 export function BudgetHeader({
   title,
   children,
   disabled = false,
 }: PropsWithChildren<{ title: string; disabled?: boolean }>) {
   const router = useRouter();
+  const { t } = useTranslation();
   return (
     <View className="flex-row items-center gap-2 px-3 py-2">
       <Button
         variant="ghost"
         isIconOnly
         isDisabled={disabled}
-        accessibilityLabel="Go back"
+        accessibilityLabel={t("budgets.common.back")}
         onPress={() =>
           router.canGoBack() ? router.back() : router.replace("/")
         }
@@ -79,6 +108,7 @@ export function BudgetField(props: TextInputProps) {
           fontSize: 17,
           borderWidth: 1,
           borderColor: c.border,
+          textAlign: "left",
         },
         props.style,
       ]}
@@ -203,6 +233,7 @@ export function BudgetSheet({
 }>) {
   const c = useAppThemeColors(),
     insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   return (
     <Modal
       transparent
@@ -221,7 +252,7 @@ export function BudgetSheet({
         }}
       >
         <Pressable
-          accessibilityLabel="Dismiss sheet"
+          accessibilityLabel={t("budgets.common.dismissSheet")}
           onPress={() => !busy && onClose()}
           style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0 }}
         />
@@ -268,11 +299,11 @@ export function BudgetSheet({
           </ScrollView>
           <View className="flex-row justify-end gap-3 px-5 pt-3">
             <Button variant="ghost" isDisabled={busy} onPress={onClose}>
-              <Button.Label>Cancel</Button.Label>
+              <Button.Label>{t("budgets.common.cancel")}</Button.Label>
             </Button>
             {onDone && (
               <Button isDisabled={busy} onPress={onDone}>
-                <Button.Label>Done</Button.Label>
+                <Button.Label>{t("budgets.common.done")}</Button.Label>
               </Button>
             )}
           </View>
@@ -347,6 +378,8 @@ export function BudgetSummary({
   budget: Budget;
   compact?: boolean;
 }) {
+  const { t } = useTranslation();
+  const labels = useBudgetLabels();
   const b = budget;
   const money = (v: number) =>
     `${v < 0 ? "−" : ""}${formatCurrency(v, b.currencyCode)}`;
@@ -362,7 +395,8 @@ export function BudgetSummary({
             className="font-manrope-medium text-xs"
             style={{ color: b.color }}
           >
-            {b.period} · {b.budgetType} · {b.budgetMode}
+            {labels.periods[b.period]} · {labels.scopes[b.budgetType]} ·{" "}
+            {labels.modes[b.budgetMode]}
           </Text>
         </View>
         <Text style={{ color: b.color }} className="font-manrope-bold">
@@ -372,23 +406,25 @@ export function BudgetSummary({
       {!compact && (
         <View className="flex-row justify-between gap-3">
           <Text className="text-muted">
-            {TYPE_LABELS[b.transactionType]} budget
+            {t("budgets.common.typeBudget", {
+              type: labels.types[b.transactionType],
+            })}
           </Text>
           <Text className="text-foreground">
             {b.transactionType === 1
               ? b.percent >= 100
-                ? "Goal reached"
-                : "In progress"
+                ? t("budgets.summary.goalReached")
+                : t("budgets.summary.inProgress")
               : b.remaining < 0
-                ? "Over budget"
-                : "Within budget"}
+                ? t("budgets.summary.overBudget")
+                : t("budgets.summary.withinBudget")}
           </Text>
         </View>
       )}
       <View className="flex-row justify-between gap-3">
         <View>
           <Text className="mb-1 text-muted">
-            {trackedLabel(b.transactionType)}
+            {labels.tracked[b.transactionType]}
           </Text>
           <Text className="font-manrope-semibold text-xl text-foreground">
             {money(b.tracked)}
@@ -396,7 +432,9 @@ export function BudgetSummary({
         </View>
         <View>
           <Text className="mb-1 text-muted">
-            {b.transactionType === 1 ? "Goal" : "Budget"}
+            {b.transactionType === 1
+              ? t("budgets.summary.goal")
+              : t("budgets.summary.budget")}
           </Text>
           <Text className="font-manrope-semibold text-xl text-foreground">
             {money(b.limit)}
@@ -407,21 +445,33 @@ export function BudgetSummary({
       {!compact && (
         <>
           <Text className="text-muted">
-            {b.remaining < 0 ? "Above target" : "Remaining"}{" "}
+            {b.remaining < 0
+              ? t("budgets.summary.aboveTarget")
+              : t("budgets.summary.remaining")}{" "}
             <Text className="font-manrope-semibold text-foreground">
               {money(Math.abs(b.remaining))}
             </Text>
           </Text>
           <Text className="text-sm leading-6" style={{ color: b.color }}>
             {!b.active
-              ? "Outside this budget’s date range"
+              ? t("budgets.summary.outsideRange")
               : b.transactionType === 1
-                ? `Aim for ${money(b.dailyAllowance)}/day for ${b.daysLeft} more days`
-                : `You can ${b.transactionType === 2 ? "transfer" : "spend"} ${money(b.dailyAllowance)}/day for ${b.daysLeft} more days`}
+                ? t("budgets.summary.dailyIncome", {
+                    amount: money(b.dailyAllowance),
+                    count: b.daysLeft,
+                  })
+                : t("budgets.summary.dailyExpense", {
+                    action:
+                      b.transactionType === 2
+                        ? t("budgets.summary.transfer")
+                        : t("budgets.summary.spend"),
+                    amount: money(b.dailyAllowance),
+                    count: b.daysLeft,
+                  })}
           </Text>
           {b.rollover > 0 && (
             <Text className="text-sm text-muted">
-              Includes {money(b.rollover)} carried forward
+              {t("budgets.summary.rollover", { amount: money(b.rollover) })}
             </Text>
           )}
         </>
@@ -437,6 +487,7 @@ export function BudgetRing({
   color: string;
 }) {
   const c = useAppThemeColors();
+  const { t } = useTranslation();
   const length = 2 * Math.PI * 62;
   return (
     <View
@@ -471,12 +522,14 @@ export function BudgetRing({
       <Text className="font-manrope-bold text-3xl text-foreground">
         {Math.round(percent)}%
       </Text>
-      <Text className="text-muted">Tracked</Text>
+      <Text className="text-muted">{t("budgets.summary.tracked")}</Text>
     </View>
   );
 }
 export function BudgetChart({ budget: b }: { budget: Budget }) {
   const c = useAppThemeColors();
+  const { t, i18n } = useTranslation();
+  const labels = useBudgetLabels();
   const max = Math.max(b.limit, b.tracked, 1) * 1.2;
   const x = (time: number) =>
     48 +
@@ -490,11 +543,17 @@ export function BudgetChart({ budget: b }: { budget: Budget }) {
         className="font-manrope-semibold text-lg"
         style={{ color: b.color }}
       >
-        Budget progress
+        {t("budgets.summary.progress")}
       </Text>
       <View
         accessible
-        accessibilityLabel={`Cumulative ${trackedLabel(b.transactionType).toLowerCase()}: ${formatCurrency(b.tracked, b.currencyCode)}. Target ${formatCurrency(b.limit, b.currencyCode)}.`}
+        accessibilityLabel={t("budgets.summary.chartAccessibility", {
+          tracked: labels.tracked[b.transactionType].toLocaleLowerCase(
+            i18n.resolvedLanguage,
+          ),
+          amount: formatCurrency(b.tracked, b.currencyCode),
+          target: formatCurrency(b.limit, b.currencyCode),
+        })}
       >
         <Svg width="100%" height={240} viewBox="0 0 340 240">
           {[0, 0.25, 0.5, 0.75, 1].map((f) => (
@@ -524,7 +583,7 @@ export function BudgetChart({ budget: b }: { budget: Budget }) {
             fill="#ef666d"
             fontSize={10}
           >
-            Target
+            {t("budgets.summary.target")}
           </SvgText>
           <Line
             x1={48}
@@ -554,7 +613,7 @@ export function BudgetChart({ budget: b }: { budget: Budget }) {
               {new Date(
                 b.range.start.getTime() +
                   (b.range.end.getTime() - b.range.start.getTime() - 1) * f,
-              ).toLocaleDateString(undefined, {
+              ).toLocaleDateString(i18n.resolvedLanguage, {
                 month: "short",
                 day: "numeric",
               })}
@@ -564,9 +623,12 @@ export function BudgetChart({ budget: b }: { budget: Budget }) {
       </View>
       <Text className="text-xs text-muted">
         <Text style={{ color: b.color }}>
-          ━ {TYPE_LABELS[b.transactionType]}
+          ━ {labels.types[b.transactionType]}
         </Text>{" "}
-        ┄ Ideal pace <Text style={{ color: "#ef666d" }}>┄ Target</Text>
+        ┄ {t("budgets.summary.idealPace")}{" "}
+        <Text style={{ color: "#ef666d" }}>
+          ┄ {t("budgets.summary.target")}
+        </Text>
       </Text>
     </BudgetPanel>
   );

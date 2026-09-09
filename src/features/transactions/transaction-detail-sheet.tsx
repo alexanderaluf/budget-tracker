@@ -2,7 +2,8 @@ import { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import { useRouter } from "expo-router";
 import { BottomSheet, Button, useThemeColor } from "heroui-native";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Image, StyleSheet, Text, View } from "react-native";
+import { Image, StyleSheet, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import Animated, {
   FadeIn,
   FadeOut,
@@ -20,6 +21,7 @@ import { useProfiles } from "@/features/profile/profile-provider";
 import type { Transaction } from "@/features/home/types";
 import { formatCurrency } from "@/shared/lib/currency";
 import { colorWithAlpha, useAppThemeColors } from "@/shared/theme/app-theme";
+import { Text } from "@/shared/ui/app-text";
 import { FilledIcon, type FilledIconName } from "@/shared/ui/filled-icon";
 import { RecordIcon } from "@/shared/ui/record-icon";
 
@@ -56,6 +58,7 @@ export function TransactionDetailSheet({
   transaction: Transaction;
   onDismiss: () => void;
 }) {
+  const { t, i18n } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const theme = useAppThemeColors();
@@ -79,17 +82,17 @@ export function TransactionDetailSheet({
   })();
   const occurredAt = new Date(transaction.occurredAtIso);
   const dateLabel = Number.isFinite(occurredAt.getTime())
-    ? occurredAt.toLocaleString(undefined, {
+    ? occurredAt.toLocaleString(i18n.resolvedLanguage, {
         dateStyle: "medium",
         timeStyle: "short",
       })
-    : "Unknown date";
+    : t("transactions.common.unknownDate");
   const typeLabel =
     transaction.type === 0
-      ? "Expense"
+      ? t("transactions.common.types.expense")
       : transaction.type === 1
-        ? "Income"
-        : "Transfer";
+        ? t("transactions.common.types.income")
+        : t("transactions.common.types.transfer");
   const amountColor =
     transaction.type === 0
       ? theme.danger
@@ -146,6 +149,23 @@ export function TransactionDetailSheet({
     setDeleteConfirmationVisible(false);
   }
 
+  function transactionDeleteError(reason: unknown) {
+    if (!(reason instanceof Error))
+      return t("transactions.details.deleteError");
+    switch (reason.message) {
+      case "This transaction no longer exists.":
+        return t("transactions.form.validation.missing");
+      case "This transaction belongs to another profile.":
+        return t("transactions.form.validation.wrongProfile");
+      case "This transaction has an invalid amount.":
+        return t("transactions.form.validation.invalidAmount");
+      case "This account has an invalid balance.":
+        return t("transactions.details.invalidAccountBalance");
+      default:
+        return reason.message;
+    }
+  }
+
   async function confirmDelete() {
     if (busy) return;
     setBusy(true);
@@ -167,11 +187,7 @@ export function TransactionDetailSheet({
       setIsOpen(false);
       onDismiss();
     } catch (reason) {
-      setError(
-        reason instanceof Error
-          ? reason.message
-          : "The transaction could not be deleted.",
-      );
+      setError(transactionDeleteError(reason));
     } finally {
       setBusy(false);
     }
@@ -212,14 +228,15 @@ export function TransactionDetailSheet({
               >
                 <View className="items-center gap-2">
                   <BottomSheet.Title className="text-center text-danger">
-                    Delete transaction?
+                    {t("transactions.details.deleteTitle")}
                   </BottomSheet.Title>
                   <BottomSheet.Description
                     numberOfLines={2}
                     className="px-3 text-center font-sans text-sm leading-5"
                   >
-                    “{transaction.merchant}” will be removed and its account
-                    balance restored.
+                    {t("transactions.details.deleteDescription", {
+                      name: transaction.merchant,
+                    })}
                   </BottomSheet.Description>
                 </View>
 
@@ -239,7 +256,9 @@ export function TransactionDetailSheet({
                     isDisabled={busy}
                     onPress={cancelDelete}
                   >
-                    <Button.Label>Cancel</Button.Label>
+                    <Button.Label>
+                      {t("transactions.details.cancel")}
+                    </Button.Label>
                   </Button>
                   <Button
                     variant="danger"
@@ -254,7 +273,9 @@ export function TransactionDetailSheet({
                       size={20}
                     />
                     <Button.Label>
-                      {busy ? "Deleting..." : "Delete"}
+                      {busy
+                        ? t("transactions.details.deleting")
+                        : t("transactions.details.delete")}
                     </Button.Label>
                   </Button>
                 </View>
@@ -287,7 +308,10 @@ export function TransactionDetailSheet({
                         {transaction.merchant}
                       </BottomSheet.Title>
                       <BottomSheet.Description numberOfLines={2}>
-                        {typeLabel} - {dateLabel}
+                        {t("transactions.details.typeAndDate", {
+                          type: typeLabel,
+                          date: dateLabel,
+                        })}
                       </BottomSheet.Description>
                     </View>
                     <Text
@@ -308,28 +332,28 @@ export function TransactionDetailSheet({
                   </View>
 
                   <Text className="pt-5 font-manrope-bold text-base text-accent">
-                    Transaction details
+                    {t("transactions.details.heading")}
                   </Text>
                   <DetailRow
                     icon="credit-card"
                     label={
                       transaction.type === 2
-                        ? "Transfer account from"
-                        : "Account"
+                        ? t("transactions.common.fields.transferFrom")
+                        : t("transactions.common.fields.account")
                     }
                     value={transaction.accountName}
                   />
                   {transaction.destinationAccountName ? (
                     <DetailRow
                       icon="credit-card"
-                      label="Transfer account to"
+                      label={t("transactions.common.fields.transferTo")}
                       value={transaction.destinationAccountName}
                     />
                   ) : null}
                   {transaction.categoryId ? (
                     <DetailRow
                       icon="chart-donut-variant"
-                      label="Category"
+                      label={t("transactions.common.fields.category")}
                       value={transaction.category}
                       leading={
                         <View
@@ -354,42 +378,42 @@ export function TransactionDetailSheet({
                   {transaction.description ? (
                     <DetailRow
                       icon="code-json"
-                      label="Description"
+                      label={t("transactions.common.fields.description")}
                       value={transaction.description}
                     />
                   ) : null}
                   {transaction.budgetName ? (
                     <DetailRow
                       icon="wallet"
-                      label="Budget"
+                      label={t("transactions.common.fields.budget")}
                       value={transaction.budgetName}
                     />
                   ) : null}
                   {transaction.labelName ? (
                     <DetailRow
                       icon="check"
-                      label="Label"
+                      label={t("transactions.common.fields.label")}
                       value={transaction.labelName}
                     />
                   ) : null}
                   {transaction.loanName ? (
                     <DetailRow
                       icon="credit-card"
-                      label="Loan"
+                      label={t("transactions.common.fields.loan")}
                       value={transaction.loanName}
                     />
                   ) : null}
                   {transaction.placeName ? (
                     <DetailRow
                       icon="home"
-                      label="Place"
+                      label={t("transactions.common.fields.place")}
                       value={transaction.placeName}
                     />
                   ) : null}
                   {transaction.personName ? (
                     <DetailRow
                       icon="account"
-                      label="Payee"
+                      label={t("transactions.common.fields.payee")}
                       value={transaction.personName}
                     />
                   ) : null}
@@ -397,9 +421,13 @@ export function TransactionDetailSheet({
                   {receiptUri ? (
                     <View className="gap-2 pt-3">
                       <Text className="font-manrope-semibold text-sm text-muted">
-                        Receipt or bill
+                        {t("transactions.details.receipt")}
                       </Text>
                       <Image
+                        accessibilityLabel={t(
+                          "transactions.details.receiptAccessibility",
+                          { name: transaction.merchant },
+                        )}
                         resizeMode="cover"
                         source={{ uri: receiptUri }}
                         className="h-52 w-full rounded-2xl"
@@ -408,7 +436,7 @@ export function TransactionDetailSheet({
                   ) : null}
 
                   <Text className="pb-2 pt-5 font-sans text-xs text-muted">
-                    Created {dateLabel}
+                    {t("transactions.details.created", { date: dateLabel })}
                   </Text>
                 </BottomSheetScrollView>
 
@@ -424,7 +452,7 @@ export function TransactionDetailSheet({
                   >
                     <FilledIcon name="delete" size={22} tone="danger" />
                     <Button.Label className="text-danger">
-                      Delete
+                      {t("transactions.details.delete")}
                     </Button.Label>
                   </Button>
                   <Button
@@ -434,7 +462,9 @@ export function TransactionDetailSheet({
                     onPress={edit}
                   >
                     <FilledIcon name="pencil" size={22} tone="accent" />
-                    <Button.Label className="text-accent">Edit</Button.Label>
+                    <Button.Label className="text-accent">
+                      {t("transactions.details.edit")}
+                    </Button.Label>
                   </Button>
                   <Button
                     variant="ghost"
@@ -443,7 +473,9 @@ export function TransactionDetailSheet({
                     onPress={copy}
                   >
                     <FilledIcon name="copy" size={22} tone="accent" />
-                    <Button.Label className="text-accent">Copy</Button.Label>
+                    <Button.Label className="text-accent">
+                      {t("transactions.details.copy")}
+                    </Button.Label>
                   </Button>
                 </View>
               </>

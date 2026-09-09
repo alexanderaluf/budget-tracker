@@ -1,6 +1,7 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Button, Input } from "heroui-native";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Alert,
   Keyboard,
@@ -8,12 +9,12 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  Text,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAppThemeColors } from "@/shared/theme/app-theme";
 
+import { Text } from "@/shared/ui/app-text";
 import { FilledIcon } from "@/shared/ui/filled-icon";
 
 import { CurrencySelectorSheet } from "./components/currency-selector-sheet";
@@ -24,6 +25,7 @@ import { getProfileInitials } from "./lib/profile-utils";
 import { useProfiles } from "./profile-provider";
 
 export function UserEditorScreen() {
+  const { t, i18n } = useTranslation();
   const router = useRouter();
   const theme = useAppThemeColors();
   const { mode, profileId } = useLocalSearchParams<{
@@ -58,7 +60,10 @@ export function UserEditorScreen() {
       name: name.trim(),
       email:
         profile?.email ??
-        `${name.trim().toLowerCase().replace(/\s+/g, ".")}@local.profile`,
+        `${name
+          .trim()
+          .toLocaleLowerCase(i18n.resolvedLanguage ?? i18n.language)
+          .replace(/\s+/g, ".")}@local.profile`,
       role: profile?.role ?? "Personal",
       imageUri,
       currencyCode: currency.code,
@@ -76,8 +81,8 @@ export function UserEditorScreen() {
       router.back();
     } catch {
       Alert.alert(
-        "Unable to save profile",
-        "Your changes could not be saved. Please try again.",
+        t("profile.editor.saveErrorTitle"),
+        t("profile.editor.saveError"),
       );
     } finally {
       setIsSaving(false);
@@ -93,7 +98,7 @@ export function UserEditorScreen() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={{ flex: 1 }}
       >
-        <ProfileScreenHeader title="User" />
+        <ProfileScreenHeader title={t("profile.editor.title")} />
 
         <ScrollView
           className="flex-1"
@@ -110,19 +115,23 @@ export function UserEditorScreen() {
 
           <View className="gap-3">
             <Text className="font-manrope-medium text-[15px] text-foreground">
-              What should we call you?
+              {t("profile.editor.nameQuestion")}
             </Text>
             <View className="relative justify-center">
               <FilledIcon
                 tone="muted"
                 name="account"
                 size={20}
-                style={{ position: "absolute", left: 18, zIndex: 2 }}
+                style={{
+                  position: "absolute",
+                  start: 18,
+                  zIndex: 2,
+                }}
               />
               <Input
                 autoCapitalize="words"
-                className="h-[52px] border border-border bg-transparent pl-14 font-manrope-semibold text-base"
-                placeholder="User Name"
+                className="h-[52px] border border-border bg-transparent ps-14 text-left font-manrope-semibold text-base"
+                placeholder={t("profile.editor.namePlaceholder")}
                 value={name}
                 onChangeText={setName}
               />
@@ -131,14 +140,17 @@ export function UserEditorScreen() {
 
           <View className="gap-3">
             <Text className="font-manrope-semibold text-base text-accent">
-              Currency
+              {t("profile.editor.currency")}
             </Text>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={
                 currency
-                  ? `Main currency: ${currency.name}, ${currency.code}`
-                  : "Choose main currency"
+                  ? t("profile.editor.mainCurrencyAccessibility", {
+                      name: currency.name,
+                      code: currency.code,
+                    })
+                  : t("profile.editor.chooseMainCurrency")
               }
               accessibilityState={{
                 expanded: isCurrencyOpen,
@@ -162,20 +174,23 @@ export function UserEditorScreen() {
                   </Text>
                 </View>
               ) : null}
-              <View className={`${currency ? "ml-4" : "ml-1"} flex-1`}>
+              <View className={`${currency ? "ms-4" : "ms-1"} flex-1`}>
                 <Text className="font-manrope-semibold text-base text-foreground">
-                  {currency?.name ?? "Currency"}
+                  {currency?.name ?? t("profile.editor.currency")}
                 </Text>
                 <Text className="mt-0.5 font-sans text-sm leading-5 text-muted">
                   {currency?.code ??
-                    "Choose your preferred currency for transactions"}
+                    t("profile.editor.chooseCurrencyDescription")}
                 </Text>
               </View>
               <FilledIcon name="chevron-right" size={24} tone="muted" />
             </Pressable>
             <Text className="font-sans text-sm leading-5 text-muted">
-              Your profile and main currency are saved on this device when you
-              {isEditing ? " update your profile." : " add your profile."}
+              {t(
+                isEditing
+                  ? "profile.editor.savedOnDeviceEdit"
+                  : "profile.editor.savedOnDeviceCreate",
+              )}
             </Text>
           </View>
         </ScrollView>
@@ -188,7 +203,11 @@ export function UserEditorScreen() {
             onPress={handleSubmit}
           >
             <Button.Label className="font-manrope-bold text-base text-accent-foreground">
-              {isSaving ? "Saving..." : isEditing ? "Update User" : "Add User"}
+              {isSaving
+                ? t("profile.editor.saving")
+                : isEditing
+                  ? t("profile.editor.update")
+                  : t("profile.editor.add")}
             </Button.Label>
           </Button>
         </View>

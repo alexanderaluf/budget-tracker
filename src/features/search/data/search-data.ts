@@ -1,1 +1,1 @@
-export const recentQueries = ["Groceries", "Rent", "Coffee"];
+export const recentQueryKeys = ["groceries", "rent", "coffee"] as const;

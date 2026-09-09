@@ -2,12 +2,12 @@ import { useRef, useState } from "react";
 import { useRouter } from "expo-router";
 import { uuid } from "expo-modules-core";
 import { Button } from "heroui-native";
+import { useTranslation } from "react-i18next";
 import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
-  Text,
   View,
 } from "react-native";
 import {
@@ -36,6 +36,7 @@ import { MATERIAL_ROUNDED_FILLED_ICONS } from "@/shared/icons/material-rounded-f
 import { FilledIcon, type FilledIconName } from "@/shared/ui/filled-icon";
 import { RecordIcon } from "@/shared/ui/record-icon";
 import { useAppThemeColors } from "@/shared/theme/app-theme";
+import { Text } from "@/shared/ui/app-text";
 import { BudgetColorPicker } from "./components/budget-color-picker";
 import {
   BudgetBadge,
@@ -44,7 +45,7 @@ import {
   BudgetOption,
   BudgetSheet,
   BudgetToggle,
-  TYPE_LABELS,
+  useBudgetLabels,
 } from "./components/budget-ui";
 
 type Sheet =
@@ -58,22 +59,12 @@ type Sheet =
   | "icon"
   | "color"
   | "currency";
-const titles: Record<Sheet, string> = {
-  type: "Budget transaction type",
-  mode: "Choose budget mode",
-  scope: "Choose budget type",
-  period: "Select budget period",
-  categories: "Track categories",
-  accounts: "Filter by accounts",
-  settings: "Additional settings",
-  icon: "Choose budget icon",
-  color: "Budget color",
-  currency: "Budget currency",
-};
 const toggleId = (values: string[], id: string) =>
   values.includes(id) ? values.filter((v) => v !== id) : [...values, id];
 
 export function BudgetEditorScreen({ editId }: { editId?: string }) {
+  const { t, i18n } = useTranslation();
+  const labels = useBudgetLabels();
   const { document, updateDocument } = useLocalData();
   const router = useRouter(),
     insets = useSafeAreaInsets(),
@@ -95,6 +86,18 @@ export function BudgetEditorScreen({ editId }: { editId?: string }) {
     (cat) => cat.type === pending.transactionType,
   );
   const accounts = selectAccounts(document);
+  const titles: Record<Sheet, string> = {
+    type: t("budgets.form.sheetTitles.type"),
+    mode: t("budgets.form.sheetTitles.mode"),
+    scope: t("budgets.form.sheetTitles.scope"),
+    period: t("budgets.form.sheetTitles.period"),
+    categories: t("budgets.form.sheetTitles.categories"),
+    accounts: t("budgets.form.sheetTitles.accounts"),
+    settings: t("budgets.form.sheetTitles.settings"),
+    icon: t("budgets.form.sheetTitles.icon"),
+    color: t("budgets.form.sheetTitles.color"),
+    currency: t("budgets.form.sheetTitles.currency"),
+  };
   const change = <K extends keyof BudgetDraft>(key: K, value: BudgetDraft[K]) =>
     setPending((d) => ({ ...d, [key]: value }));
   function open(value: Sheet) {
@@ -126,7 +129,7 @@ export function BudgetEditorScreen({ editId }: { editId?: string }) {
       setError(
         reason instanceof Error
           ? reason.message
-          : "Unable to save budget. Please try again.",
+          : t("budgets.form.saveError"),
       );
     } finally {
       saving.current = false;
@@ -136,9 +139,9 @@ export function BudgetEditorScreen({ editId }: { editId?: string }) {
   if (editId && !existing)
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: c.background }}>
-        <BudgetHeader title="Budget unavailable" />
+        <BudgetHeader title={t("budgets.form.unavailableTitle")} />
         <Text className="p-5 text-muted">
-          This budget was removed or belongs to another profile.
+          {t("budgets.form.unavailableDescription")}
         </Text>
       </SafeAreaView>
     );
@@ -173,7 +176,10 @@ export function BudgetEditorScreen({ editId }: { editId?: string }) {
       edges={["top"]}
       style={{ flex: 1, backgroundColor: c.background }}
     >
-      <BudgetHeader title={editId ? "Edit budget" : "Budget"} disabled={busy} />
+      <BudgetHeader
+        title={editId ? t("budgets.form.editTitle") : t("budgets.form.title")}
+        disabled={busy}
+      />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -189,7 +195,7 @@ export function BudgetEditorScreen({ editId }: { editId?: string }) {
           <View className="mb-4 flex-row items-center gap-3">
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Choose budget icon"
+              accessibilityLabel={t("budgets.form.chooseIcon")}
               disabled={busy}
               onPress={() => open("icon")}
             >
@@ -198,8 +204,8 @@ export function BudgetEditorScreen({ editId }: { editId?: string }) {
             <View className="flex-1">
               <BudgetField
                 editable={!busy}
-                accessibilityLabel="Budget name"
-                placeholder="Ex: Groceries"
+                accessibilityLabel={t("budgets.form.name")}
+                placeholder={t("budgets.form.namePlaceholder")}
                 maxLength={100}
                 value={draft.name}
                 onChangeText={(name) => setDraft((d) => ({ ...d, name }))}
@@ -208,79 +214,98 @@ export function BudgetEditorScreen({ editId }: { editId?: string }) {
           </View>
           <BudgetField
             editable={!busy}
-            accessibilityLabel="Budget amount"
-            placeholder="Enter amount"
+            accessibilityLabel={t("budgets.form.amount")}
+            placeholder={t("budgets.form.amountPlaceholder")}
             keyboardType="decimal-pad"
             value={draft.amount}
             onChangeText={(amount) => setDraft((d) => ({ ...d, amount }))}
           />
           {row(
             "type",
-            "Budget for",
-            "Choose the transactions this budget tracks",
-            `Current: ${TYPE_LABELS[draft.transactionType]}`,
+            t("budgets.form.budgetFor"),
+            t("budgets.form.budgetForHelp"),
+            t("budgets.common.current", {
+              value: labels.types[draft.transactionType],
+            }),
             "swap-horizontal",
           )}
           {row(
             "mode",
-            "Budget mode",
-            "Choose how categories are selected",
-            `Current: ${draft.budgetMode}`,
+            t("budgets.form.mode"),
+            t("budgets.form.modeHelp"),
+            t("budgets.common.current", {
+              value: labels.modes[draft.budgetMode],
+            }),
             "tune",
           )}
           {row(
             "scope",
-            "Budget type",
-            "Choose how to track your budget",
-            `Current: ${draft.budgetType} budget`,
+            t("budgets.form.scope"),
+            t("budgets.form.scopeHelp"),
+            t("budgets.common.current", {
+              value: t("budgets.common.typeBudget", {
+                type: labels.scopes[draft.budgetType],
+              }),
+            }),
             "wallet",
           )}
           {row(
             "period",
-            "Budget period",
-            "Select your budget timeframe",
-            `Current: ${draft.period}${draft.period === "Monthly" && Number(draft.cycleDay) > 1 ? ` · starts on day ${draft.cycleDay}` : ""}`,
+            t("budgets.form.period"),
+            t("budgets.form.periodHelp"),
+            draft.period === "Monthly" && Number(draft.cycleDay) > 1
+              ? t("budgets.common.currentMonthlyCycle", {
+                  period: labels.periods[draft.period],
+                  day: draft.cycleDay,
+                })
+              : t("budgets.common.current", {
+                  value: labels.periods[draft.period],
+                }),
             "clock",
           )}
           {draft.budgetType === "Category" &&
             row(
               "categories",
               draft.budgetMode === "Automatic"
-                ? "Auto-track categories"
-                : "Select categories",
+                ? t("budgets.form.autoTrackCategories")
+                : t("budgets.form.selectCategories"),
               draft.budgetMode === "Automatic"
-                ? "Track selected categories and their subcategories"
-                : "Choose categories to track together",
-              `${draft.categories.length} selected`,
+                ? t("budgets.form.autoTrackCategoriesHelp")
+                : t("budgets.form.selectCategoriesHelp"),
+              t("budgets.common.selected", {
+                count: draft.categories.length,
+              }),
               "shopping",
             )}
           {row(
             "accounts",
-            "Filter by accounts",
-            "Only track transactions in these accounts",
+            t("budgets.form.filterAccounts"),
+            t("budgets.form.filterAccountsHelp"),
             draft.accounts.length
-              ? `${draft.accounts.length} selected`
-              : "All accounts",
+              ? t("budgets.common.selected", { count: draft.accounts.length })
+              : t("budgets.common.allAccounts"),
             "bank",
           )}
           {row(
             "currency",
-            "Currency",
-            "Track transactions in this currency",
+            t("budgets.form.currency"),
+            t("budgets.form.currencyHelp"),
             draft.currencyCode,
             "cash",
           )}
           {row(
             "settings",
-            "Additional settings",
-            "Rolling budget and home-screen visibility",
-            draft.rolling ? "Rolling budget" : "Fixed budget",
+            t("budgets.form.additionalSettings"),
+            t("budgets.form.additionalSettingsHelp"),
+            draft.rolling
+              ? t("budgets.common.rollingBudget")
+              : t("budgets.common.fixedBudget"),
             "cog",
           )}
           <BudgetField
             editable={!busy}
-            accessibilityLabel="Budget notes"
-            placeholder="Notes"
+            accessibilityLabel={t("budgets.form.notes")}
+            placeholder={t("budgets.form.notesPlaceholder")}
             multiline
             maxLength={2000}
             value={draft.notes}
@@ -289,8 +314,8 @@ export function BudgetEditorScreen({ editId }: { editId?: string }) {
           />
           {row(
             "color",
-            "Colors",
-            "Choose a color for this budget",
+            t("budgets.form.colors"),
+            t("budgets.form.colorsHelp"),
             draft.color,
             "format-paint",
           )}
@@ -299,7 +324,7 @@ export function BudgetEditorScreen({ editId }: { editId?: string }) {
               <Pressable
                 key={color}
                 accessibilityRole="button"
-                accessibilityLabel={`Choose color ${color}`}
+                accessibilityLabel={t("budgets.form.chooseColor", { color })}
                 accessibilityState={{ selected: draft.color === color }}
                 disabled={busy}
                 onPress={() => setDraft((d) => ({ ...d, color }))}
@@ -336,7 +361,11 @@ export function BudgetEditorScreen({ editId }: { editId?: string }) {
           >
             <FilledIcon name="wallet" size={24} tone="accent-foreground" />
             <Button.Label>
-              {busy ? "Saving…" : editId ? "Save budget" : "Add budget"}
+              {busy
+                ? t("budgets.form.saving")
+                : editId
+                  ? t("budgets.form.save")
+                  : t("budgets.form.add")}
             </Button.Label>
           </Button>
         </View>
@@ -348,16 +377,16 @@ export function BudgetEditorScreen({ editId }: { editId?: string }) {
           onDone={apply}
         >
           {sheet === "type" &&
-            TYPE_LABELS.map((label, index) => (
+            labels.types.map((label, index) => (
               <BudgetOption
                 key={label}
-                title={`${label} budget`}
+                title={t("budgets.common.typeBudget", { type: label })}
                 description={
                   index === 0
-                    ? "Track spending against a budget limit"
+                    ? t("budgets.form.typeDescriptions.expense")
                     : index === 1
-                      ? "Track income against an earning goal"
-                      : "Track transfers against a movement target"
+                      ? t("budgets.form.typeDescriptions.income")
+                      : t("budgets.form.typeDescriptions.transfer")
                 }
                 selected={pending.transactionType === index}
                 onPress={() =>
@@ -374,11 +403,11 @@ export function BudgetEditorScreen({ editId }: { editId?: string }) {
               {(["Automatic", "Manual"] as const).map((mode) => (
                 <BudgetOption
                   key={mode}
-                  title={mode}
+                  title={labels.modes[mode]}
                   description={
                     mode === "Automatic"
-                      ? "Selected categories automatically include existing and future subcategories."
-                      : "Choose exact categories, with an optional subcategory roll-up."
+                      ? t("budgets.form.modeDescriptions.automatic")
+                      : t("budgets.form.modeDescriptions.manual")
                   }
                   selected={pending.budgetMode === mode}
                   onPress={() => change("budgetMode", mode)}
@@ -391,11 +420,13 @@ export function BudgetEditorScreen({ editId }: { editId?: string }) {
               {(["Category", "Overall"] as const).map((scope) => (
                 <BudgetOption
                   key={scope}
-                  title={`${scope} budget`}
+                  title={t("budgets.common.typeBudget", {
+                    type: labels.scopes[scope],
+                  })}
                   description={
                     scope === "Category"
-                      ? "Track the categories you choose. Create as many independent budgets as you need, including multiple budgets for the same category."
-                      : "Track all categories with one total limit, including uncategorized transactions."
+                      ? t("budgets.form.scopeDescriptions.category")
+                      : t("budgets.form.scopeDescriptions.overall")
                   }
                   selected={pending.budgetType === scope}
                   onPress={() => change("budgetType", scope)}
@@ -408,11 +439,15 @@ export function BudgetEditorScreen({ editId }: { editId?: string }) {
               {BUDGET_PERIODS.map((period) => (
                 <BudgetOption
                   key={period}
-                  title={period}
+                  title={labels.periods[period]}
                   description={
                     period === "Custom"
-                      ? "Set your own date range"
-                      : `Resets ${period.toLowerCase()}`
+                      ? t("budgets.form.customDateRange")
+                      : t("budgets.form.resets", {
+                          period: labels.periods[period].toLocaleLowerCase(
+                            i18n.resolvedLanguage,
+                          ),
+                        })
                   }
                   selected={pending.period === period}
                   onPress={() => change("period", period)}
@@ -421,38 +456,37 @@ export function BudgetEditorScreen({ editId }: { editId?: string }) {
               {pending.period === "Monthly" && (
                 <>
                   <Text className="mt-3 font-manrope-semibold text-lg text-foreground">
-                    Custom monthly cycle
+                    {t("budgets.form.customMonthlyCycle")}
                   </Text>
                   <BudgetField
-                    accessibilityLabel="Start day of month"
-                    placeholder="Start day of month (1–31)"
+                    accessibilityLabel={t("budgets.form.startDay")}
+                    placeholder={t("budgets.form.startDayPlaceholder")}
                     keyboardType="number-pad"
                     value={pending.cycleDay}
                     maxLength={2}
                     onChangeText={(v) => change("cycleDay", v)}
                   />
                   <Text className="text-sm text-muted">
-                    Shorter months use their last day. Leave empty to start on
-                    the 1st.
+                    {t("budgets.form.shorterMonths")}
                   </Text>
                 </>
               )}
               {pending.period === "Custom" && (
                 <>
                   <BudgetField
-                    accessibilityLabel="Budget start date"
-                    placeholder="Start date · YYYY-MM-DD"
+                    accessibilityLabel={t("budgets.form.startDate")}
+                    placeholder={t("budgets.form.startDatePlaceholder")}
                     value={pending.startDate}
                     onChangeText={(v) => change("startDate", v)}
                   />
                   <BudgetField
-                    accessibilityLabel="Budget end date"
-                    placeholder="End date · YYYY-MM-DD"
+                    accessibilityLabel={t("budgets.form.endDate")}
+                    placeholder={t("budgets.form.endDatePlaceholder")}
                     value={pending.endDate}
                     onChangeText={(v) => change("endDate", v)}
                   />
                   <Text className="text-sm text-muted">
-                    Both dates are included.
+                    {t("budgets.form.datesIncluded")}
                   </Text>
                 </>
               )}
@@ -461,11 +495,14 @@ export function BudgetEditorScreen({ editId }: { editId?: string }) {
           {sheet === "categories" && (
             <>
               <Text className="text-muted">
-                {pending.categories.length} of {categories.length} selected
+                {t("budgets.form.categorySelection", {
+                  selected: pending.categories.length,
+                  total: categories.length,
+                })}
               </Text>
               <BudgetField
-                accessibilityLabel="Search categories"
-                placeholder="Search categories"
+                accessibilityLabel={t("budgets.form.searchCategories")}
+                placeholder={t("budgets.form.searchCategories")}
                 value={query}
                 onChangeText={setQuery}
               />
@@ -479,7 +516,11 @@ export function BudgetEditorScreen({ editId }: { editId?: string }) {
                     title={cat.name}
                     description={
                       cat.parentId
-                        ? `Subcategory · ${categories.find((p) => p.id === cat.parentId)?.name ?? "Parent category"}`
+                        ? t("budgets.form.subcategory", {
+                            parent:
+                              categories.find((p) => p.id === cat.parentId)
+                                ?.name ?? t("budgets.form.parentCategory"),
+                          })
                         : undefined
                     }
                     selected={pending.categories.some((id) =>
@@ -499,21 +540,23 @@ export function BudgetEditorScreen({ editId }: { editId?: string }) {
                 ))}
               {!categories.length && (
                 <Text className="py-4 text-muted">
-                  No {TYPE_LABELS[pending.transactionType].toLowerCase()}{" "}
-                  categories yet. Create one from Profile → Categories.
+                  {t("budgets.form.noCategories", {
+                    type: labels.types[
+                      pending.transactionType
+                    ].toLocaleLowerCase(i18n.resolvedLanguage),
+                  })}
                 </Text>
               )}
               {pending.budgetMode === "Manual" ? (
                 <BudgetToggle
-                  title="Include subcategories"
-                  description="Roll up descendants of selected categories"
+                  title={t("budgets.form.includeSubcategories")}
+                  description={t("budgets.form.includeSubcategoriesHelp")}
                   value={pending.includeSubcategories}
                   onChange={(v) => change("includeSubcategories", v)}
                 />
               ) : (
                 <Text className="py-3 text-muted">
-                  Automatic mode includes descendants of your selected
-                  categories.
+                  {t("budgets.form.automaticIncludesDescendants")}
                 </Text>
               )}
               <View className="flex-row gap-3">
@@ -526,13 +569,13 @@ export function BudgetEditorScreen({ editId }: { editId?: string }) {
                     )
                   }
                 >
-                  Select all
+                  {t("budgets.form.selectAll")}
                 </Button>
                 <Button
                   variant="ghost"
                   onPress={() => change("categories", [])}
                 >
-                  Clear all
+                  {t("budgets.form.clearAll")}
                 </Button>
               </View>
             </>
@@ -540,8 +583,10 @@ export function BudgetEditorScreen({ editId }: { editId?: string }) {
           {sheet === "accounts" && (
             <>
               <Text className="text-muted">
-                {pending.accounts.length} / {accounts.length} · None selected
-                means all accounts
+                {t("budgets.form.accountSelection", {
+                  selected: pending.accounts.length,
+                  total: accounts.length,
+                })}
               </Text>
               {accounts.map((a) => (
                 <BudgetOption
@@ -565,10 +610,10 @@ export function BudgetEditorScreen({ editId }: { editId?: string }) {
                     )
                   }
                 >
-                  Select all
+                  {t("budgets.form.selectAll")}
                 </Button>
                 <Button variant="ghost" onPress={() => change("accounts", [])}>
-                  Clear all
+                  {t("budgets.form.clearAll")}
                 </Button>
               </View>
             </>
@@ -576,19 +621,19 @@ export function BudgetEditorScreen({ editId }: { editId?: string }) {
           {sheet === "settings" && (
             <>
               <BudgetToggle
-                title="Rolling budget"
+                title={t("budgets.common.rollingBudget")}
                 description={
                   pending.period === "Custom"
-                    ? "Available for repeating periods only"
-                    : "Unused amount carries forward from the creation period. Overspending reduces the carry to zero."
+                    ? t("budgets.form.rollingCustomHelp")
+                    : t("budgets.form.rollingHelp")
                 }
                 disabled={pending.period === "Custom"}
                 value={pending.rolling}
                 onChange={(v) => change("rolling", v)}
               />
               <BudgetToggle
-                title="Show budget"
-                description="Track this budget on the home screen"
+                title={t("budgets.form.showBudget")}
+                description={t("budgets.form.showBudgetHelp")}
                 value={pending.showOnHome}
                 onChange={(v) => change("showOnHome", v)}
               />
@@ -597,13 +642,13 @@ export function BudgetEditorScreen({ editId }: { editId?: string }) {
           {sheet === "currency" && (
             <>
               <BudgetField
-                accessibilityLabel="Search currencies"
-                placeholder="Search currencies"
+                accessibilityLabel={t("budgets.form.searchCurrencies")}
+                placeholder={t("budgets.form.searchCurrencies")}
                 value={query}
                 onChangeText={setQuery}
               />
               <Text className="text-sm text-muted">
-                Only transactions in this currency contribute to this budget.
+                {t("budgets.form.currencyContribution")}
               </Text>
               {currencies
                 .filter((v) =>
@@ -624,8 +669,8 @@ export function BudgetEditorScreen({ editId }: { editId?: string }) {
           {sheet === "icon" && (
             <>
               <BudgetField
-                accessibilityLabel="Search budget icons"
-                placeholder="Search icons"
+                accessibilityLabel={t("budgets.form.searchBudgetIcons")}
+                placeholder={t("budgets.form.searchIcons")}
                 value={query}
                 onChangeText={setQuery}
               />
@@ -673,7 +718,7 @@ export function BudgetEditorScreen({ editId }: { editId?: string }) {
                   ))}
               </View>
               <Text className="text-sm text-muted">
-                Search to find more icons.
+                {t("budgets.form.searchMoreIcons")}
               </Text>
             </>
           )}

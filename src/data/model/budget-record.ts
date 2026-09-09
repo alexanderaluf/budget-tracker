@@ -1,3 +1,5 @@
+import { i18n } from "@/localization/i18n";
+
 import type { BackupDocument } from "./backup-document";
 import {
   belongsToProfile,
@@ -121,37 +123,35 @@ export function saveBudget(
 ): BackupDocument {
   const existing = document.budgets.find((b) => identity(b) === id);
   if (!id || (editing && !existing))
-    throw new Error("This budget no longer exists.");
+    throw new Error(i18n.t("validation.budget.missing"));
   if (existing && !belongsToProfile(document, existing))
-    throw new Error("This budget belongs to another profile.");
+    throw new Error(i18n.t("validation.budget.wrongProfile"));
   const amount = Number(draft.amount);
   if (!draft.name.trim() || draft.name.trim().length > 100)
-    throw new Error("Enter a budget name (up to 100 characters).");
+    throw new Error(i18n.t("validation.budget.name"));
   if (!Number.isFinite(amount) || amount <= 0 || amount > 1e12)
-    throw new Error(
-      "Enter an amount greater than zero and no more than one trillion.",
-    );
+    throw new Error(i18n.t("validation.budget.amount"));
   if (
     ![0, 1, 2].includes(draft.transactionType) ||
     !BUDGET_PERIODS.includes(draft.period)
   )
-    throw new Error("Choose a valid transaction type and period.");
+    throw new Error(i18n.t("validation.budget.typeAndPeriod"));
   if (
     !/^#[a-f\d]{6}$/i.test(draft.color) ||
     !/^[A-Z]{3}$/.test(draft.currencyCode)
   )
-    throw new Error("Choose a valid color and currency.");
+    throw new Error(i18n.t("validation.budget.colorAndCurrency"));
   const cycleDay = draft.cycleDay.trim() ? Number(draft.cycleDay) : 1;
   if (!Number.isInteger(cycleDay) || cycleDay < 1 || cycleDay > 31)
-    throw new Error("Monthly cycle day must be from 1 to 31.");
+    throw new Error(i18n.t("validation.budget.cycleDay"));
   if (draft.period === "Custom") {
     const start = parseBudgetDate(draft.startDate),
       end = parseBudgetDate(draft.endDate);
     if (!start || !end || end < start)
-      throw new Error("Enter a valid custom date range using YYYY-MM-DD.");
+      throw new Error(i18n.t("validation.budget.customDateRange"));
   }
   if (draft.budgetType === "Category" && !draft.categories.length)
-    throw new Error("Select at least one category to track.");
+    throw new Error(i18n.t("validation.budget.categories"));
   for (const categoryId of draft.budgetType === "Category" ? draft.categories : []) {
     const category = document.categories.find((c) => references(c, categoryId));
     if (
@@ -159,14 +159,12 @@ export function saveBudget(
       !belongsToProfile(document, category) ||
       Number(category.type ?? 0) !== draft.transactionType
     )
-      throw new Error(
-        "Select categories of this transaction type in the current profile.",
-      );
+      throw new Error(i18n.t("validation.budget.categoriesForType"));
   }
   for (const accountId of draft.accounts) {
     const account = document.accounts.find((a) => references(a, accountId));
     if (!account || !belongsToProfile(document, account))
-      throw new Error("Select accounts in the current profile.");
+      throw new Error(i18n.t("validation.budget.accountsForProfile"));
   }
   const record: JsonObject = {
     ...existing,
@@ -207,9 +205,9 @@ export function addBudgetTransaction(
 ): BackupDocument {
   const budget = document.budgets.find((b) => identity(b) === budgetId);
   if (!budget || !belongsToProfile(document, budget))
-    throw new Error("This budget is unavailable.");
+    throw new Error(i18n.t("validation.budget.unavailable"));
   if (document.transactions.some((t) => references(t, id)))
-    throw new Error("This transaction has already been saved.");
+    throw new Error(i18n.t("validation.budget.transactionAlreadySaved"));
   const settings = budgetDraft(budget);
   const amount = Number(draft.amount),
     date = parseBudgetDate(draft.date);
@@ -220,31 +218,32 @@ export function addBudgetTransaction(
     amount > 1e12 ||
     !date
   )
-    throw new Error("Enter a name, a positive amount, and a valid date.");
+    throw new Error(i18n.t("validation.budget.transactionDetails"));
   const account = document.accounts.find((a) => references(a, draft.accountId));
   const category = document.categories.find((c) =>
     references(c, draft.categoryId),
   );
   if (!account || !belongsToProfile(document, account))
-    throw new Error("Choose an account in this profile.");
+    throw new Error(i18n.t("validation.budget.transactionAccount"));
   if (
     !category ||
     !belongsToProfile(document, category) ||
     Number(category.type ?? 0) !== settings.transactionType
   )
-    throw new Error("Choose a category for this transaction type.");
+    throw new Error(i18n.t("validation.budget.transactionCategory"));
   const currencyCode = String(account.currencyCode ?? "USD").toUpperCase();
   if (settings.accounts.length && !settings.accounts.some(id => references(account,id)))
-    throw new Error("Choose an account selected by this budget.");
+    throw new Error(i18n.t("validation.budget.budgetAccount"));
   if (settings.budgetType === "Category") {
     const selected = document.categories.filter(c => settings.categories.some(id => references(c,id)));
     const scope = new Set(selected.map(identity));
     if (settings.budgetMode === "Automatic" || settings.includeSubcategories)
       selected.forEach(c => categoryFamily(document.categories,identity(c)).forEach(id => scope.add(id)));
-    if (!scope.has(identity(category))) throw new Error("Choose a category tracked by this budget.");
+    if (!scope.has(identity(category)))
+      throw new Error(i18n.t("validation.budget.budgetCategory"));
   }
   if (budget.currencyCode && currencyCode !== budget.currencyCode)
-    throw new Error("Choose an account in this budget’s currency.");
+    throw new Error(i18n.t("validation.budget.budgetCurrency"));
   const destination = document.accounts.find((a) =>
     references(a, draft.toAccountId),
   );
@@ -255,11 +254,9 @@ export function addBudgetTransaction(
       identity(destination) === identity(account) ||
       String(destination.currencyCode ?? "USD").toUpperCase() !== currencyCode)
   )
-    throw new Error(
-      "Choose a different destination account in the same currency.",
-    );
+    throw new Error(i18n.t("validation.budget.destinationAccount"));
   const today = new Date(now);
-  if (date > today) throw new Error("Choose today or an earlier date.");
+  if (date > today) throw new Error(i18n.t("validation.budget.date"));
   const stamp =
     date.toDateString() === today.toDateString() ? now : date.toISOString();
   const accounts = document.accounts.map((a) => {
@@ -278,9 +275,7 @@ export function addBudgetTransaction(
       !Number.isFinite(a.amount) ||
       !Number.isFinite(a.amount + delta)
     )
-      throw new Error(
-        "This account has an invalid balance. Edit the account before adding a transaction.",
-      );
+      throw new Error(i18n.t("validation.budget.invalidAccountBalance"));
     return {
       ...a,
       amount: Math.round((a.amount + delta) * 1e8) / 1e8,

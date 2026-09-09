@@ -2,12 +2,15 @@ import { normalizeAccountRecord } from "./account-record";
 import { normalizeBudgetRecord } from "./budget-record";
 import {
     ACCENT_COLOR_IDS,
+  APP_LANGUAGES,
     BACKUP_COLLECTION_KEYS,
     BACKUP_VERSION,
+  DEFAULT_APP_LANGUAGE,
     DEFAULT_ACCENT_COLOR,
     LOCAL_SCHEMA_VERSION,
     THEME_MODES,
     type AccentColorId,
+    type AppLanguage,
     type AttachmentManifest,
     type BackupDocument,
     type ThemeMode,
@@ -38,6 +41,13 @@ function isAccentColor(value: unknown): value is AccentColorId {
   return (
     typeof value === "string" &&
     ACCENT_COLOR_IDS.includes(value as AccentColorId)
+  );
+}
+
+function isAppLanguage(value: unknown): value is AppLanguage {
+  return (
+    typeof value === "string" &&
+    APP_LANGUAGES.includes(value as AppLanguage)
   );
 }
 
@@ -95,6 +105,9 @@ export function normalizeBackupDocument(value: unknown): BackupDocument {
       typeof local.selectedProfileId === "string"
         ? local.selectedProfileId
         : null,
+    appLanguage: isAppLanguage(local.appLanguage)
+      ? local.appLanguage
+      : DEFAULT_APP_LANGUAGE,
     themeMode: isThemeMode(local.themeMode) ? local.themeMode : "system",
     accentColor: isAccentColor(local.accentColor)
       ? local.accentColor

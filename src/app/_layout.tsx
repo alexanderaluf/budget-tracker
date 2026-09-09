@@ -18,6 +18,7 @@ import { useUniwind } from "uniwind";
 import { migrateLocalDatabase } from "@/data/database/migrations";
 import { LocalDataProvider } from "@/data/local-data-provider";
 import { ProfileProvider } from "@/features/profile/profile-provider";
+import { LocalizationProvider } from "@/localization/localization-provider";
 import {
     AppThemeController,
     useAppThemeColors,
@@ -58,15 +59,17 @@ export default function RootLayout() {
           onInit={migrateLocalDatabase}
         >
           <LocalDataProvider>
-            <AppThemeController />
-            <ProfileProvider>
-              <SystemBars />
-              <Stack
-                screenOptions={{
-                  headerShown: false,
-                }}
-              />
-            </ProfileProvider>
+            <LocalizationProvider>
+              <AppThemeController />
+              <ProfileProvider>
+                <SystemBars />
+                <Stack
+                  screenOptions={{
+                    headerShown: false,
+                  }}
+                />
+              </ProfileProvider>
+            </LocalizationProvider>
           </LocalDataProvider>
         </SQLiteProvider>
       </HeroUINativeProvider>

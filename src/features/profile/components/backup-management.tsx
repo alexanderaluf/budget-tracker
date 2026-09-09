@@ -1,6 +1,10 @@
 import { Button } from "heroui-native";
+import type { TFunction } from "i18next";
 import { useState } from "react";
-import { Alert, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
+import { Alert, View } from "react-native";
+
+import { Text } from "@/shared/ui/app-text";
 
 import {
     commitStagedAttachments,
@@ -41,7 +45,7 @@ function BackupAction({
       onPress={onPress}
     >
       <FilledIcon name={icon} size={21} tone="accent" />
-      <View className="ml-3 flex-1 items-start">
+      <View className="ms-3 flex-1 items-start">
         <Button.Label className="font-manrope-semibold text-sm text-foreground">
           {label}
         </Button.Label>
@@ -53,7 +57,7 @@ function BackupAction({
   );
 }
 
-function confirmRestore(imported: ImportedBackup) {
+function confirmRestore(imported: ImportedBackup, t: TFunction) {
   return new Promise<boolean>((resolve) => {
     if (imported.format === "csv") {
       resolve(true);
@@ -61,11 +65,19 @@ function confirmRestore(imported: ImportedBackup) {
     }
 
     Alert.alert(
-      "Restore backup?",
-      "Current local records will be replaced by this backup. This cannot be undone unless you export a backup first.",
+      t("backup.restoreTitle"),
+      t("backup.restoreDescription"),
       [
-        { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
-        { text: "Restore", style: "destructive", onPress: () => resolve(true) },
+        {
+          text: t("backup.cancel"),
+          style: "cancel",
+          onPress: () => resolve(false),
+        },
+        {
+          text: t("backup.restore"),
+          style: "destructive",
+          onPress: () => resolve(true),
+        },
       ],
       { cancelable: true, onDismiss: () => resolve(false) },
     );
@@ -73,11 +85,15 @@ function confirmRestore(imported: ImportedBackup) {
 }
 
 export function BackupManagement() {
+  const { t, i18n } = useTranslation();
   const { document, replaceDocument } = useLocalData();
   const [isBusy, setIsBusy] = useState(false);
   const recordCount = BACKUP_COLLECTION_KEYS.reduce(
     (total, collection) => total + document[collection].length,
     0,
+  );
+  const numberFormatter = new Intl.NumberFormat(
+    i18n.resolvedLanguage ?? i18n.language,
   );
 
   async function handleExport(format: BackupFormat) {
@@ -85,7 +101,10 @@ export function BackupManagement() {
       setIsBusy(true);
       await exportBackup(document, format);
     } catch (error) {
-      Alert.alert("Export failed", getErrorMessage(error));
+      Alert.alert(
+        t("backup.exportFailed"),
+        getErrorMessage(error, t("backup.unexpectedError")),
+      );
     } finally {
       setIsBusy(false);
     }
@@ -95,7 +114,7 @@ export function BackupManagement() {
     try {
       setIsBusy(true);
       const imported = await pickAndImportBackup(document);
-      if (!imported || !(await confirmRestore(imported))) return;
+      if (!imported || !(await confirmRestore(imported, t))) return;
 
       if (imported.format !== "csv") {
         const previousDocument = cloneBackupDocument(document);
@@ -112,13 +131,16 @@ export function BackupManagement() {
         await replaceDocument(imported.document);
       }
       Alert.alert(
-        "Import complete",
+        t("backup.importComplete"),
         imported.format === "csv"
-          ? "Transactions were merged into local storage."
-          : "The local backup was restored successfully.",
+          ? t("backup.csvImportComplete")
+          : t("backup.restoreComplete"),
       );
     } catch (error) {
-      Alert.alert("Import failed", getErrorMessage(error));
+      Alert.alert(
+        t("backup.importFailed"),
+        getErrorMessage(error, t("backup.unexpectedError")),
+      );
     } finally {
       setIsBusy(false);
     }
@@ -128,50 +150,56 @@ export function BackupManagement() {
     <View className="gap-1 rounded-lg border border-border bg-surface-secondary px-3">
       <View className="flex-row items-center justify-between px-1 py-2">
         <Text className="font-sans text-[11px] text-muted">
-          {recordCount} local records
+          {t("backup.localRecords", {
+            count: recordCount,
+            formattedCount: numberFormatter.format(recordCount),
+          })}
         </Text>
         <Text className="font-sans text-[11px] text-muted">
-          {document._local.attachments.length} attachments
+          {t("backup.attachments", {
+            count: document._local.attachments.length,
+            formattedCount: numberFormatter.format(
+              document._local.attachments.length,
+            ),
+          })}
         </Text>
       </View>
       <View className="h-px bg-border" />
       <BackupAction
-        description="Full restorable backup with images and attachments"
+        description={t("backup.actions.exportZipDescription")}
         icon="folder-zip"
         isDisabled={isBusy}
-        label="Export ZIP backup"
+        label={t("backup.actions.exportZip")}
         onPress={() => handleExport("zip")}
       />
       <View className="h-px bg-border" />
       <BackupAction
-        description="Restorable records without media files"
+        description={t("backup.actions.exportJsonDescription")}
         icon="code-json"
         isDisabled={isBusy}
-        label="Export JSON backup"
+        label={t("backup.actions.exportJson")}
         onPress={() => handleExport("json")}
       />
       <View className="h-px bg-border" />
       <BackupAction
-        description="Spreadsheet-friendly transaction export"
+        description={t("backup.actions.exportCsvDescription")}
         icon="file-delimited"
         isDisabled={isBusy}
-        label="Export transactions CSV"
+        label={t("backup.actions.exportCsv")}
         onPress={() => handleExport("csv")}
       />
       <View className="h-px bg-border" />
       <BackupAction
-        description="Restore ZIP/JSON or merge a transaction CSV"
+        description={t("backup.actions.importDescription")}
         icon="database-import"
         isDisabled={isBusy}
-        label="Import data"
+        label={t("backup.actions.import")}
         onPress={handleImport}
       />
     </View>
   );
 }
 
-function getErrorMessage(error: unknown) {
-  return error instanceof Error
-    ? error.message
-    : "An unexpected error occurred.";
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
 }

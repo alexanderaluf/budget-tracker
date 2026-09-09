@@ -8,6 +8,7 @@ import {
 } from "@/data/selectors/document-selectors";
 import { formatCurrency } from "@/shared/lib/currency";
 import { FilledIcon } from "@/shared/ui/filled-icon";
+import { useAppLocalization } from "@/localization/localization-provider";
 import {
   colorWithAlpha,
   useAppThemeColors,
@@ -17,7 +18,13 @@ import { BlurTargetView } from "expo-blur";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { BottomSheet, Button } from "heroui-native";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
+import {
+  FlatList,
+  Pressable,
+  StyleSheet,
+  View,
+} from "react-native";
 import {
     SafeAreaView,
     useSafeAreaInsets,
@@ -25,8 +32,11 @@ import {
 import { AccountCard } from "./components/account-card";
 import { AccountPeriodSelector } from "./components/account-period-selector";
 import type { AccountPeriod } from "./types";
+import { Text } from "@/shared/ui/app-text";
 
 export function AccountDetailsScreen() {
+  const { t, i18n } = useTranslation();
+  const { isRTL } = useAppLocalization();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { document, updateDocument } = useLocalData();
   const router = useRouter();
@@ -78,9 +88,15 @@ export function AccountDetailsScreen() {
     [visible],
   );
   const { start, end } = accountPeriodRange(period, anchor);
+  const periodLabel = {
+    Daily: t("accounts.details.periods.daily"),
+    Weekly: t("accounts.details.periods.weekly"),
+    Monthly: t("accounts.details.periods.monthly"),
+    Yearly: t("accounts.details.periods.yearly"),
+  }[period];
   const dateLabel = allTime
-    ? "All transaction history"
-    : `${start.toLocaleDateString()}${period === "Daily" ? "" : ` – ${new Date(end.getTime() - 1).toLocaleDateString()}`}`;
+    ? t("accounts.details.allTransactionHistory")
+    : `${start.toLocaleDateString(i18n.resolvedLanguage)}${period === "Daily" ? "" : ` – ${new Date(end.getTime() - 1).toLocaleDateString(i18n.resolvedLanguage)}`}`;
   const isMenuMounted = menu !== null;
 
   useEffect(() => {
@@ -124,7 +140,7 @@ export function AccountDetailsScreen() {
       setDeleteError(
         reason instanceof Error
           ? reason.message
-          : "Unable to delete this account. Please try again.",
+          : t("accounts.details.delete.error"),
       );
     } finally {
       deletingRef.current = false;
@@ -137,13 +153,17 @@ export function AccountDetailsScreen() {
       <SafeAreaView
         style={[styles.screen, { backgroundColor: theme.background }]}
       >
-        <Text className="px-5 py-6 text-foreground">Account not found.</Text>
+        <Text className="px-5 py-6 text-foreground">
+          {t("accounts.common.accountNotFound")}
+        </Text>
         <Pressable
           accessibilityRole="button"
           onPress={() => router.dismissTo("/accounts")}
           style={styles.action}
         >
-          <Text className="text-accent">Back to accounts</Text>
+          <Text className="text-accent">
+            {t("accounts.common.backToAccounts")}
+          </Text>
         </Pressable>
       </SafeAreaView>
     );
@@ -157,7 +177,7 @@ export function AccountDetailsScreen() {
         <View style={styles.header}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Back to accounts"
+          accessibilityLabel={t("accounts.common.backToAccounts")}
           onPress={() => router.dismissTo("/accounts")}
           style={styles.iconButton}
         >
@@ -167,11 +187,11 @@ export function AccountDetailsScreen() {
           accessibilityRole="header"
           className="flex-1 font-manrope-bold text-xl text-foreground"
         >
-          Account details
+          {t("accounts.details.title")}
         </Text>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Account options"
+          accessibilityLabel={t("accounts.details.options")}
           onPress={() => setMenu("actions")}
           style={styles.iconButton}
         >
@@ -193,7 +213,9 @@ export function AccountDetailsScreen() {
               style={[styles.summary, { backgroundColor: theme.surface }]}
             >
               <Text className="font-manrope-bold text-base text-accent">
-                {allTime ? "All time" : `${period} activity`}
+                {allTime
+                  ? t("accounts.details.allTime")
+                  : t("accounts.details.activity", { period: periodLabel })}
               </Text>
               {(totals.length
                 ? totals
@@ -202,7 +224,9 @@ export function AccountDetailsScreen() {
                 <View key={total.currency} style={styles.row}>
                   <View style={{ flex: 1, gap: 6 }}>
                     <Text className="text-sm text-muted">
-                      Income · {total.currency}
+                      {t("accounts.details.incomeCurrency", {
+                        currency: total.currency,
+                      })}
                     </Text>
                     <Text className="font-manrope-bold text-lg text-[#82d6a1]">
                       {formatCurrency(total.income, total.currency)}
@@ -210,7 +234,9 @@ export function AccountDetailsScreen() {
                   </View>
                   <View style={{ flex: 1, gap: 6 }}>
                     <Text className="text-sm text-muted">
-                      Expense · {total.currency}
+                      {t("accounts.details.expenseCurrency", {
+                        currency: total.currency,
+                      })}
                     </Text>
                     <Text className="font-manrope-bold text-lg text-[#ef8175]">
                       {formatCurrency(total.expense, total.currency)}
@@ -224,7 +250,9 @@ export function AccountDetailsScreen() {
                 accessibilityRole="header"
                 className="flex-1 font-manrope-bold text-lg text-foreground"
               >
-                Transactions ({visible.length})
+                {t("accounts.details.transactions", {
+                  count: visible.length,
+                })}
               </Text>
               <Pressable
                 accessibilityRole="button"
@@ -233,29 +261,33 @@ export function AccountDetailsScreen() {
                 style={styles.iconButton}
               >
                 <Text className="font-manrope-semibold text-sm text-accent">
-                  All history
+                  {t("accounts.details.allHistory")}
                 </Text>
               </Pressable>
             </View>
             <View style={[styles.row, { marginBottom: 12 }]}>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Previous period"
+                accessibilityLabel={t("accounts.details.previousPeriod")}
                 onPress={() => movePeriod(-1)}
                 style={styles.iconButton}
               >
-                <Text className="text-xl text-foreground">‹</Text>
+                <Text className="text-xl text-foreground">
+                  {isRTL ? "›" : "‹"}
+                </Text>
               </Pressable>
               <Text className="flex-1 text-center font-sans text-sm text-muted">
                 {dateLabel}
               </Text>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Next period"
+                accessibilityLabel={t("accounts.details.nextPeriod")}
                 onPress={() => movePeriod(1)}
                 style={styles.iconButton}
               >
-                <Text className="text-xl text-foreground">›</Text>
+                <Text className="text-xl text-foreground">
+                  {isRTL ? "‹" : "›"}
+                </Text>
               </Pressable>
             </View>
           </View>
@@ -286,10 +318,14 @@ export function AccountDetailsScreen() {
                 {item.name}
               </Text>
               <Text className="font-sans text-xs text-muted">
-                {item.type === "transfer" ? "Transfer" : item.category} ·{" "}
+                {item.type === "transfer"
+                  ? t("accounts.details.transfer")
+                  : item.category} ·{" "}
                 {item.timestamp == null
-                  ? "Unknown date"
-                  : new Date(item.timestamp).toLocaleDateString()}
+                  ? t("accounts.details.unknownDate")
+                  : new Date(item.timestamp).toLocaleDateString(
+                      i18n.resolvedLanguage,
+                    )}
               </Text>
             </View>
             <Text
@@ -311,8 +347,8 @@ export function AccountDetailsScreen() {
         ListEmptyComponent={
           <Text className="py-10 text-center font-sans text-base text-muted">
             {transactions.length
-              ? "No transactions in this period. Browse another period or select All history."
-              : "No transactions for this account yet."}
+              ? t("accounts.details.emptyPeriod")
+              : t("accounts.details.emptyAccount")}
           </Text>
         }
         />
@@ -366,11 +402,18 @@ export function AccountDetailsScreen() {
                 {menu === "confirm" ? (
                   <>
                     <View className="gap-2">
-                      <BottomSheet.Title>Delete account?</BottomSheet.Title>
+                      <BottomSheet.Title>
+                        {t("accounts.details.delete.title")}
+                      </BottomSheet.Title>
                       <BottomSheet.Description className="font-sans text-base leading-6">
                         {transactions.length
-                          ? `Deleting ${account.name} will permanently delete this account and all ${transactions.length} related transactions. This cannot be undone.`
-                          : `Permanently delete ${account.name}? This cannot be undone.`}
+                          ? t("accounts.details.delete.withTransactions", {
+                              name: account.name,
+                              count: transactions.length,
+                            })
+                          : t("accounts.details.delete.withoutTransactions", {
+                              name: account.name,
+                            })}
                       </BottomSheet.Description>
                     </View>
                     {!!deleteError && (
@@ -385,20 +428,26 @@ export function AccountDetailsScreen() {
                         isDisabled={deleting}
                         onPress={() => setMenu("actions")}
                       >
-                        <Button.Label>Cancel</Button.Label>
+                        <Button.Label>
+                          {t("accounts.details.delete.cancel")}
+                        </Button.Label>
                       </Button>
                       <Button
                         className="flex-1"
                         variant="danger"
                         isDisabled={deleting}
                         accessibilityLabel={
-                          deleting ? "Deleting account" : "Delete account"
+                          deleting
+                            ? t("accounts.details.delete.deletingAccessibility")
+                            : t("accounts.details.delete.deleteAccessibility")
                         }
                         accessibilityState={{ busy: deleting }}
                         onPress={deleteAccount}
                       >
                         <Button.Label>
-                          {deleting ? "Deleting…" : "Delete"}
+                          {deleting
+                            ? t("accounts.details.delete.deleting")
+                            : t("accounts.details.delete.confirm")}
                         </Button.Label>
                       </Button>
                     </View>
@@ -419,7 +468,9 @@ export function AccountDetailsScreen() {
                       onPress={editAccount}
                     >
                       <FilledIcon name="pencil" size={22} />
-                      <Button.Label>Edit account</Button.Label>
+                      <Button.Label>
+                        {t("accounts.details.delete.edit")}
+                      </Button.Label>
                     </Button>
                     <Button
                       className="w-full justify-start"
@@ -429,7 +480,9 @@ export function AccountDetailsScreen() {
                         setMenu("confirm");
                       }}
                     >
-                      <Button.Label>Delete account</Button.Label>
+                      <Button.Label>
+                        {t("accounts.details.delete.action")}
+                      </Button.Label>
                     </Button>
                   </>
                 )}

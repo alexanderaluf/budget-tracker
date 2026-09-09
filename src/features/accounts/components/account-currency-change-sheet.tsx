@@ -1,10 +1,12 @@
 import { BottomSheet, Button } from "heroui-native";
 import { useEffect, useRef, useState } from "react";
-import { Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
+import { View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalData } from "@/data/local-data-provider";
 import { convertCurrency, type ExchangeRateSnapshot } from "@/data/model/exchange-rate";
 import { selectExchangeRates } from "@/data/selectors/exchange-rate-selectors";
+import { Text } from "@/shared/ui/app-text";
 
 export type CurrencyChangeRequest = { from: string; to: string; amount: number };
 
@@ -13,6 +15,7 @@ export function AccountCurrencyChangeSheet({ request, onClose, onApply }: {
   onClose: () => void;
   onApply: (amount: number, explanation: string) => void;
 }) {
+  const { t } = useTranslation();
   const { document, ensureExchangeRates } = useLocalData();
   const insets = useSafeAreaInsets();
   const [snapshot, setSnapshot] = useState<ExchangeRateSnapshot | null>(null);
@@ -37,7 +40,10 @@ export function AccountCurrencyChangeSheet({ request, onClose, onApply }: {
     try {
       const next = await ensureExchangeRates(request.from);
       if (current !== generation.current) return;
-      if (!next.rates[request.to]) throw new Error(`No exchange rate is available for ${request.to}.`);
+      if (!next.rates[request.to])
+        throw new Error(
+          t("accounts.currencyChange.noRate", { currency: request.to }),
+        );
       setSnapshot(next);
       setCached(false);
     } catch (reason) {
@@ -46,9 +52,13 @@ export function AccountCurrencyChangeSheet({ request, onClose, onApply }: {
       if (saved?.rates[request.to]) {
         setSnapshot(saved);
         setCached(true);
-        setError("Could not refresh rates. You can explicitly use the saved rate below, or keep the number unchanged.");
+        setError(t("accounts.currencyChange.refreshError"));
       } else {
-        setError(reason instanceof Error ? reason.message : "Unable to load exchange rates.");
+        setError(
+          reason instanceof Error
+            ? reason.message
+            : t("accounts.currencyChange.loadError"),
+        );
       }
     } finally {
       if (current === generation.current) setLoading(false);
@@ -60,7 +70,11 @@ export function AccountCurrencyChangeSheet({ request, onClose, onApply }: {
   let conversionError = "";
   if (request && rate) {
     try { converted = convertCurrency(request.amount, rate, request.to); }
-    catch (reason) { conversionError = reason instanceof Error ? reason.message : "Unable to convert this amount."; }
+    catch (reason) {
+      conversionError = reason instanceof Error
+        ? reason.message
+        : t("accounts.currencyChange.conversionError");
+    }
   }
   const oldRate = snapshot && snapshot.date !== new Date().toISOString().slice(0, 10);
 
@@ -71,28 +85,78 @@ export function AccountCurrencyChangeSheet({ request, onClose, onApply }: {
         <BottomSheet.Content topInset={insets.top} backgroundClassName="rounded-t-[28px] bg-surface"
           handleIndicatorClassName="w-10 bg-muted/40" contentContainerClassName="px-5 pt-2">
           {request && <View className="gap-4" style={{ paddingBottom: insets.bottom + 16 }}>
-            <BottomSheet.Title>Change account currency?</BottomSheet.Title>
+            <BottomSheet.Title>
+              {t("accounts.currencyChange.title")}
+            </BottomSheet.Title>
             <BottomSheet.Description>
-              {request.amount} {request.from} → {request.to}. Keep the balance number or convert its value. Changes are applied when you save the account.
+              {t("accounts.currencyChange.description", {
+                amount: request.amount,
+                from: request.from,
+                to: request.to,
+              })}
             </BottomSheet.Description>
             <Button variant="secondary" onPress={() => onApply(request.amount,
-              `Kept ${request.amount} unchanged: ${request.from} → ${request.to}.`)}>
-              <Button.Label>Keep {request.amount} {request.to}</Button.Label>
+              t("accounts.currencyChange.keptExplanation", {
+                amount: request.amount,
+                from: request.from,
+                to: request.to,
+              }))}>
+              <Button.Label>
+                {t("accounts.currencyChange.keepAmount", {
+                  amount: request.amount,
+                  currency: request.to,
+                })}
+              </Button.Label>
             </Button>
             {!!(error || conversionError) && <Text accessibilityRole="alert" className="text-danger">{error || conversionError}</Text>}
             {snapshot && rate && converted !== null && <View className="gap-2 rounded-2xl bg-surface-secondary p-4">
               <Text className="font-manrope-bold text-lg text-foreground">{converted} {request.to}</Text>
-              <Text className="text-sm text-muted">1 {request.from} = {rate} {request.to} · Rate date: {snapshot.date}</Text>
-              {(cached || oldRate) && <Text className="text-sm text-muted">This rate is {cached ? "saved on your device" : "the latest available"}{oldRate ? ", not today's rate" : ""}.</Text>}
+              <Text className="text-sm text-muted">
+                {t("accounts.currencyChange.rateDetails", {
+                  from: request.from,
+                  rate,
+                  to: request.to,
+                  date: snapshot.date,
+                })}
+              </Text>
+              {(cached || oldRate) && <Text className="text-sm text-muted">
+                {t("accounts.currencyChange.rateStatus", {
+                  source: cached
+                    ? t("accounts.currencyChange.savedRate")
+                    : t("accounts.currencyChange.latestRate"),
+                  age: oldRate ? t("accounts.currencyChange.notToday") : "",
+                })}
+              </Text>}
               <Button onPress={() => onApply(converted!,
-                `Converted ${request.amount} ${request.from} to ${converted} ${request.to} at ${rate} (rate date ${snapshot.date}).`)}>
-                <Button.Label>{cached || oldRate ? "Use this dated rate" : "Apply conversion"}</Button.Label>
+                t("accounts.currencyChange.convertedExplanation", {
+                  amount: request.amount,
+                  from: request.from,
+                  converted,
+                  to: request.to,
+                  rate,
+                  date: snapshot.date,
+                }))}>
+                <Button.Label>
+                  {cached || oldRate
+                    ? t("accounts.currencyChange.useDatedRate")
+                    : t("accounts.currencyChange.applyConversion")}
+                </Button.Label>
               </Button>
             </View>}
             <Button variant={snapshot ? "tertiary" : "primary"} isDisabled={loading} onPress={loadRate}>
-              <Button.Label>{loading ? "Loading daily rate…" : snapshot ? "Refresh rate" : "Preview daily conversion"}</Button.Label>
+              <Button.Label>
+                {loading
+                  ? t("accounts.currencyChange.loadingRate")
+                  : snapshot
+                    ? t("accounts.currencyChange.refreshRate")
+                    : t("accounts.currencyChange.previewConversion")}
+              </Button.Label>
             </Button>
-            <Button variant="ghost" onPress={onClose}><Button.Label>Cancel currency change</Button.Label></Button>
+            <Button variant="ghost" onPress={onClose}>
+              <Button.Label>
+                {t("accounts.currencyChange.cancel")}
+              </Button.Label>
+            </Button>
           </View>}
         </BottomSheet.Content>
       </BottomSheet.Portal>

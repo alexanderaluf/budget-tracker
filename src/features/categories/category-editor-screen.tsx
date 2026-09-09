@@ -9,13 +9,14 @@ import { uuid } from "expo-modules-core";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Button, Input, Switch as HeroSwitch } from "heroui-native";
 import { useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
+  I18nManager,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
-  Text,
   View,
 } from "react-native";
 import {
@@ -32,6 +33,7 @@ import {
 import { selectCategories } from "@/data/selectors/document-selectors";
 import { useProfiles } from "@/features/profile/profile-provider";
 import { ICON_COLORS, colorForeground } from "@/shared/icons/colors";
+import { Text } from "@/shared/ui/app-text";
 import { FilledIcon } from "@/shared/ui/filled-icon";
 import { IconPicker } from "@/shared/ui/icon-picker";
 import { RecordIcon } from "@/shared/ui/record-icon";
@@ -43,6 +45,7 @@ import {
 } from "./components/category-ui";
 
 export function CategoryEditorScreen({ editId }: { editId?: string }) {
+  const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const theme = useAppThemeColors();
@@ -77,6 +80,11 @@ export function CategoryEditorScreen({ editId }: { editId?: string }) {
   );
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const paletteLabels = {
+    Primary: t("categories.form.palette.primary"),
+    Accent: t("categories.form.palette.accent"),
+    Custom: t("categories.form.palette.custom"),
+  };
   const saving = useRef(false);
   const id = useRef(editId ?? uuid.v4());
   const family = useMemo(
@@ -104,9 +112,7 @@ export function CategoryEditorScreen({ editId }: { editId?: string }) {
     try {
       await updateDocument((current) => {
         if (current._local.selectedProfileId !== initialSelection)
-          throw new Error(
-            "Your active profile changed. Reopen this form before saving.",
-          );
+          throw new Error(t("categories.form.activeProfileChanged"));
         return saveCategory(
           current,
           draft,
@@ -122,7 +128,7 @@ export function CategoryEditorScreen({ editId }: { editId?: string }) {
       setError(
         reason instanceof Error
           ? reason.message
-          : "Unable to save category. Please try again.",
+          : t("categories.form.saveError"),
       );
     } finally {
       saving.current = false;
@@ -148,7 +154,11 @@ export function CategoryEditorScreen({ editId }: { editId?: string }) {
       style={{ flex: 1, backgroundColor: theme.background }}
     >
       <CategoryHeader
-        title={editId ? "Edit category" : "Category"}
+        title={
+          editId
+            ? t("categories.form.editTitle")
+            : t("categories.form.title")
+        }
         disabled={isSaving}
       />
       <KeyboardAvoidingView
@@ -164,7 +174,7 @@ export function CategoryEditorScreen({ editId }: { editId?: string }) {
           }}
         >
           {editId && !existing ? (
-            <Text className="text-danger">This category no longer exists.</Text>
+            <Text className="text-danger">{t("categories.form.missing")}</Text>
           ) : (
             <CategoryFormSections
               pointerEvents={isSaving ? "none" : "auto"}
@@ -180,7 +190,7 @@ export function CategoryEditorScreen({ editId }: { editId?: string }) {
               <View className="flex-row items-center gap-3">
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Choose category icon"
+                  accessibilityLabel={t("categories.form.chooseIcon")}
                   onPress={() => {
                     Keyboard.dismiss();
                     setShowIcons(true);
@@ -194,28 +204,36 @@ export function CategoryEditorScreen({ editId }: { editId?: string }) {
                     color={colorForeground(color)}
                     size={32}
                   />
-                  <View className="absolute -bottom-1 -right-1 rounded-full border-2 border-background bg-surface p-1">
+                  <View
+                    className="absolute -bottom-1 rounded-full border-2 border-background bg-surface p-1"
+                    style={{
+                      left: I18nManager.isRTL ? -4 : undefined,
+                      right: I18nManager.isRTL ? undefined : -4,
+                    }}
+                  >
                     <FilledIcon name="pencil" size={14} />
                   </View>
                 </Pressable>
                 <Input
-                  accessibilityLabel="Category name"
-                  placeholder="Enter category name"
+                  accessibilityLabel={t("categories.form.name")}
+                  placeholder={t("categories.form.namePlaceholder")}
                   maxLength={100}
                   value={draft.name}
                   onChangeText={(value) => change("name", value)}
                   containerClassName="flex-1"
                   className="h-16 rounded-2xl bg-surface"
+                  style={{ textAlign: "left" }}
                 />
               </View>
               <Input
-                accessibilityLabel="Description"
-                placeholder="Enter description"
+                accessibilityLabel={t("categories.form.description")}
+                placeholder={t("categories.form.descriptionPlaceholder")}
                 multiline
                 maxLength={500}
                 value={draft.description}
                 onChangeText={(value) => change("description", value)}
                 className="h-14 min-h-14 rounded-2xl bg-surface"
+                style={{ textAlign: "left" }}
               />
               <Pressable
                 accessibilityRole="switch"
@@ -223,7 +241,7 @@ export function CategoryEditorScreen({ editId }: { editId?: string }) {
                   checked: draft.isDefault,
                   disabled: isSaving,
                 }}
-                accessibilityLabel="Default category"
+                accessibilityLabel={t("categories.form.defaultCategory")}
                 disabled={isSaving}
                 onPress={() => change("isDefault", !draft.isDefault)}
                 className="flex-row items-center gap-4 rounded-2xl py-2"
@@ -231,10 +249,10 @@ export function CategoryEditorScreen({ editId }: { editId?: string }) {
               >
                 <View className="flex-1 gap-1">
                   <Text className="font-manrope-bold text-lg text-foreground">
-                    Default category
+                    {t("categories.form.defaultCategory")}
                   </Text>
                   <Text className="font-sans text-sm leading-5 text-muted">
-                    Use as the preferred category for this transaction type.
+                    {t("categories.form.defaultCategoryHelp")}
                   </Text>
                 </View>
                 <View
@@ -260,10 +278,10 @@ export function CategoryEditorScreen({ editId }: { editId?: string }) {
                   <FilledIcon name="filter" size={27} />
                   <View className="flex-1 gap-1">
                     <Text className="font-manrope-semibold text-lg text-foreground">
-                      Parent category
+                      {t("categories.form.parentCategory")}
                     </Text>
                     <Text className="font-sans text-base text-muted">
-                      {parent?.name ?? "None · Main category"}
+                      {parent?.name ?? t("categories.form.noParent")}
                     </Text>
                   </View>
                   <View
@@ -287,7 +305,7 @@ export function CategoryEditorScreen({ editId }: { editId?: string }) {
                       }}
                     >
                       <Text className="font-manrope-medium text-foreground">
-                        None
+                        {t("categories.form.none")}
                       </Text>
                     </Pressable>
                     {parents.map((category) => (
@@ -302,7 +320,7 @@ export function CategoryEditorScreen({ editId }: { editId?: string }) {
                 </CategoryParentOptions>
               </View>
               <Text className="mt-2 font-manrope-semibold text-lg text-foreground">
-                Colors
+                {t("categories.form.colors")}
               </Text>
               <View className="flex-row rounded-xl bg-surface p-1">
                 {(["Primary", "Accent", "Custom"] as const).map((value) => (
@@ -322,20 +340,21 @@ export function CategoryEditorScreen({ editId }: { editId?: string }) {
                           : "text-foreground"
                       }
                     >
-                      {value}
+                      {paletteLabels[value]}
                     </Text>
                   </Pressable>
                 ))}
               </View>
               {palette === "Custom" ? (
                 <Input
-                  accessibilityLabel="Custom hex color"
+                  accessibilityLabel={t("categories.form.customHex")}
                   autoCapitalize="characters"
                   autoCorrect={false}
-                  placeholder="#70D2EB"
+                  placeholder={t("categories.form.hexPlaceholder")}
                   maxLength={7}
                   value={draft.color}
                   onChangeText={(value) => change("color", value)}
+                  style={{ textAlign: "left" }}
                 />
               ) : (
                 <View className="flex-row flex-wrap gap-2">
@@ -343,7 +362,10 @@ export function CategoryEditorScreen({ editId }: { editId?: string }) {
                     <Pressable
                       key={hex}
                       accessibilityRole="radio"
-                      accessibilityLabel={`Color ${hex}`}
+                      accessibilityLabel={t(
+                        "categories.form.colorAccessibility",
+                        { color: hex },
+                      )}
                       accessibilityState={{
                         checked:
                           draft.color.toLowerCase() === hex.toLowerCase(),
@@ -398,7 +420,11 @@ export function CategoryEditorScreen({ editId }: { editId?: string }) {
           >
             <FilledIcon name="check" size={24} tone="accent-foreground" />
             <Button.Label>
-              {isSaving ? "Saving…" : editId ? "Save category" : "Add category"}
+              {isSaving
+                ? t("categories.form.saving")
+                : editId
+                  ? t("categories.form.save")
+                  : t("categories.form.add")}
             </Button.Label>
           </Button>
         </Animated.View>

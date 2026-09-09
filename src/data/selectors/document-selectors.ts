@@ -9,6 +9,7 @@ import type { BudgetCategory, Transaction } from "@/features/home/types";
 import type { DailySpend, SpendingCategory } from "@/features/reports/types";
 import type { SearchResult } from "@/features/search/types";
 import type { FilledIconName } from "@/shared/ui/filled-icon";
+import { i18n } from "@/localization/i18n";
 import type { AccountDraft } from "../model/account-record";
 import {
   belongsToProfile,
@@ -45,9 +46,11 @@ function recordId(record: JsonObject, index: number) {
 }
 
 function lookupName(records: JsonObject[], id: JsonValue | undefined) {
-  if (id == null) return "Uncategorized";
+  if (id == null) return i18n.t("common.uncategorized");
   const record = records.find((item) => references(item, id));
-  return record ? text(record.name, "Uncategorized") : String(id);
+  return record
+    ? text(record.name, i18n.t("common.uncategorized"))
+    : String(id);
 }
 
 function transactionAmount(record: JsonObject) {
@@ -70,8 +73,11 @@ function transactionDate(record: JsonObject) {
   const value = text(record.date, text(record.createdAt));
   const date = new Date(value);
   return Number.isNaN(date.getTime())
-    ? "Unknown date"
-    : date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    ? i18n.t("common.unknownDate")
+    : date.toLocaleDateString(i18n.resolvedLanguage, {
+        month: "short",
+        day: "numeric",
+      });
 }
 
 function relatedName(
@@ -97,7 +103,7 @@ export function selectAccounts(document: BackupDocument): Account[] {
         (owner?.id != null && record.user === owner.id),
     )
     .map((record, index) => {
-      const institution = text(record.bankName, "Local account");
+      const institution = text(record.bankName, i18n.t("common.localAccount"));
       const normalized = `${text(record.name)} ${institution}`.toLowerCase();
       const kind =
         record.accountType === "card"
@@ -253,7 +259,7 @@ export function selectAccountTransactions(
         item.type === 1 ? "income" : item.type === 0 ? "expense" : "transfer";
       return {
         id: recordId(item, index),
-        name: text(item.name, "Untitled transaction"),
+        name: text(item.name, i18n.t("common.untitledTransaction")),
         category: text(
           item.categoryName,
           lookupName(document.categories, item.category),
@@ -418,7 +424,7 @@ export function selectTransactions(document: BackupDocument): Transaction[] {
       ).toUpperCase();
       return {
         id: recordId(record, index),
-        merchant: text(record.name, "Untitled transaction"),
+        merchant: text(record.name, i18n.t("common.untitledTransaction")),
         description: text(record.description),
         category,
         categoryId: categoryRecord ? identity(categoryRecord) : "",
@@ -441,7 +447,7 @@ export function selectTransactions(document: BackupDocument): Transaction[] {
         accountId: accountRecord ? identity(accountRecord) : "",
         accountName: text(
           record.accountName,
-          text(accountRecord?.name, "No account"),
+          text(accountRecord?.name, i18n.t("common.noAccount")),
         ),
         destinationAccountId: destinationRecord
           ? identity(destinationRecord)
@@ -481,13 +487,21 @@ export function selectSearchResults(document: BackupDocument): SearchResult[] {
       record.accountName,
       lookupName(document.accounts, record.account),
     );
+    const accountRecord = document.accounts.find((item) =>
+      references(item, record.account),
+    );
+    const currencyCode = text(
+      record.currencyCode,
+      text(accountRecord?.currencyCode, "USD"),
+    ).toUpperCase();
     return {
       id: recordId(record, index),
-      title: text(record.name, "Untitled transaction"),
+      title: text(record.name, i18n.t("common.untitledTransaction")),
       category,
       account,
       date: transactionDate(record),
       amount: transactionAmount(record),
+      currencyCode: /^[A-Z]{3}$/.test(currencyCode) ? currencyCode : "USD",
       icon: categoryIcon(category),
     };
   });
@@ -558,7 +572,9 @@ export function selectDailySpending(document: BackupDocument): DailySpend[] {
     date.setDate(date.getDate() - (6 - offset));
     const key = date.toISOString().slice(0, 10);
     return {
-      day: date.toLocaleDateString(undefined, { weekday: "narrow" }),
+      day: date.toLocaleDateString(i18n.resolvedLanguage, {
+        weekday: "narrow",
+      }),
       amount: dayTotals.get(key) ?? 0,
     };
   });

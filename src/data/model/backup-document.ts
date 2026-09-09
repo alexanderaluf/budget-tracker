@@ -1,8 +1,12 @@
 import type { JsonObject, JsonValue } from "./json";
 
 export const BACKUP_VERSION = 3;
-export const LOCAL_SCHEMA_VERSION = 13;
+export const LOCAL_SCHEMA_VERSION = 14;
 export const DEFAULT_CATEGORIES_REVISION = 1;
+
+export const APP_LANGUAGES = ["en", "he", "ru"] as const;
+export type AppLanguage = (typeof APP_LANGUAGES)[number];
+export const DEFAULT_APP_LANGUAGE: AppLanguage = "en";
 
 export const THEME_MODES = ["system", "light", "dark"] as const;
 export type ThemeMode = (typeof THEME_MODES)[number];
@@ -56,6 +60,7 @@ export interface LocalBackupMetadata extends JsonObject {
   defaultCategoriesRevision: number;
   exportedAt: string | null;
   selectedProfileId: string | null;
+  appLanguage: AppLanguage;
   themeMode: ThemeMode;
   accentColor: AccentColorId;
   attachments: AttachmentManifest[];

@@ -2,6 +2,8 @@ import * as DocumentPicker from "expo-document-picker";
 import { File, Paths } from "expo-file-system";
 import * as Sharing from "expo-sharing";
 
+import { i18n } from "@/localization/i18n";
+
 import type { ArchivedAttachment } from "../attachments/attachment-store";
 import type { BackupDocument } from "../model/backup-document";
 import { parseBackupDocument } from "../model/normalize-backup";
@@ -31,7 +33,7 @@ function createExportFile(name: string, content: string | Uint8Array) {
 
 async function shareFile(file: File, mimeType: string) {
   if (!(await Sharing.isAvailableAsync())) {
-    throw new Error("File sharing is not available on this device.");
+    throw new Error(i18n.t("errors.backup.sharingUnavailable"));
   }
 
   await Sharing.shareAsync(file.uri, {
@@ -99,7 +101,7 @@ export async function pickAndImportBackup(current: BackupDocument) {
   const file = new File(asset.uri);
   const fileSize = asset.size ?? file.size;
   if (fileSize > MAX_IMPORT_BYTES) {
-    throw new Error("Selected backup exceeds the 128 MB import limit.");
+    throw new Error(i18n.t("errors.backup.importTooLarge"));
   }
   const extension = asset.name.toLowerCase().split(".").pop();
 

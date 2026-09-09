@@ -1,5 +1,8 @@
-import { Pressable, Text, View } from "react-native";
+import { Pressable, View } from "react-native";
+
+import { Text } from "@/shared/ui/app-text";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 
 import { FilledIcon, type FilledIconName } from "@/shared/ui/filled-icon";
 
@@ -29,7 +32,7 @@ function ActionRow({ icon, label, onPress, isFirst }: ActionRowProps) {
       <View className="size-9 items-center justify-center rounded-full bg-surface-tertiary">
         <FilledIcon name={icon} size={22} />
       </View>
-      <Text className="ml-3.5 font-manrope-semibold text-base text-foreground">
+      <Text className="ms-3.5 font-manrope-semibold text-base text-foreground">
         {label}
       </Text>
     </Pressable>
@@ -41,16 +44,21 @@ export function ProfileHubActions({
   onManageProfiles,
   onSettings,
 }: ProfileHubActionsProps) {
+  const { t } = useTranslation();
   const router = useRouter();
   return (
     <View className="gap-4">
       <View className="overflow-hidden rounded-3xl">
-        <ActionRow icon="wallet" label="Budgets" onPress={() => router.push("/budgets")} />
+        <ActionRow
+          icon="wallet"
+          label={t("budgets.list.title")}
+          onPress={() => router.push("/budgets")}
+        />
       </View>
       <View className="overflow-hidden rounded-3xl">
         <ActionRow
           icon="shopping"
-          label="Categories"
+          label={t("categories.common.title")}
           onPress={() => router.push("/categories")}
         />
       </View>
@@ -58,12 +66,12 @@ export function ProfileHubActions({
         <ActionRow
           icon="plus"
           isFirst
-          label="Add another account"
+          label={t("profile.hub.addAccount")}
           onPress={onAddProfile}
         />
         <ActionRow
           icon="account-cog"
-          label="Manage accounts"
+          label={t("profile.hub.manageAccounts")}
           onPress={onManageProfiles}
         />
       </View>
@@ -77,8 +85,8 @@ export function ProfileHubActions({
         <View className="size-9 items-center justify-center rounded-full bg-surface-tertiary">
           <FilledIcon name="cog" size={22} />
         </View>
-        <Text className="ml-3.5 font-manrope-semibold text-base text-foreground">
-          Settings
+        <Text className="ms-3.5 font-manrope-semibold text-base text-foreground">
+          {t("profile.hub.settings")}
         </Text>
       </Pressable>
     </View>

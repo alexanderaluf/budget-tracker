@@ -8,16 +8,17 @@ import { uuid } from "expo-modules-core";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { BottomSheet, Button, Input } from "heroui-native";
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Alert,
   Animated,
   Image,
+  I18nManager,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
   StyleSheet,
-  Text,
   View,
 } from "react-native";
 import {
@@ -51,6 +52,7 @@ import {
 } from "@/data/selectors/document-selectors";
 import { useProfiles } from "@/features/profile/profile-provider";
 import { colorWithAlpha, useAppThemeColors } from "@/shared/theme/app-theme";
+import { Text } from "@/shared/ui/app-text";
 import { FilledIcon } from "@/shared/ui/filled-icon";
 import { GlassSegmentedControl } from "@/shared/ui/glass-segmented-control";
 
@@ -59,12 +61,6 @@ import {
   type TransactionOption,
 } from "./components/transaction-selection-section";
 import { TransactionCategorySheet } from "./components/transaction-category-sheet";
-
-const TYPE_OPTIONS = [
-  { label: "Expense", value: 0 as const },
-  { label: "Income", value: 1 as const },
-  { label: "Transfer", value: 2 as const },
-];
 
 type SaveMode = "transaction" | "another" | "template";
 type DatePickerMode = "date" | "time" | null;
@@ -84,6 +80,7 @@ function recordOptions(
   document: ReturnType<typeof useLocalData>["document"],
   fallbackIcon: string,
   fallbackColor: string,
+  fallbackName: string,
 ): TransactionOption[] {
   return records
     .filter(
@@ -92,7 +89,7 @@ function recordOptions(
     .map((record) => ({
       id: identity(record),
       name:
-        typeof record.name === "string" ? record.name : "Untitled option",
+        typeof record.name === "string" ? record.name : fallbackName,
       description:
         typeof record.description === "string" ? record.description : "",
       icon: typeof record.icon === "string" ? record.icon : fallbackIcon,
@@ -105,30 +102,23 @@ function recordOptions(
     }));
 }
 
-function formatTransactionDate(value: Date) {
-  return value.toLocaleDateString(undefined, {
+function formatTransactionDate(value: Date, locale?: string) {
+  return value.toLocaleDateString(locale, {
     day: "2-digit",
     month: "short",
     year: "numeric",
   });
 }
 
-function formatTransactionTime(value: Date) {
-  return value.toLocaleTimeString(undefined, {
+function formatTransactionTime(value: Date, locale?: string) {
+  return value.toLocaleTimeString(locale, {
     hour: "2-digit",
     minute: "2-digit",
   });
 }
 
-function transactionPlaceholder(type: TransactionType) {
-  return type === 0
-    ? "Expense name"
-    : type === 1
-      ? "Income name"
-      : "Transfer name";
-}
-
 export function TransactionEditorScreen({ editId }: { editId?: string }) {
+  const { t, i18n } = useTranslation();
   const router = useRouter();
   const params = useLocalSearchParams<{ copyId?: string }>();
   const insets = useSafeAreaInsets();
@@ -136,6 +126,11 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
   const { document, updateDocument } = useLocalData();
   const { activeProfile } = useProfiles();
   const [profileId] = useState(activeProfile.id);
+  const typeOptions = [
+    { label: t("transactions.common.types.expense"), value: 0 as const },
+    { label: t("transactions.common.types.income"), value: 1 as const },
+    { label: t("transactions.common.types.transfer"), value: 2 as const },
+  ];
   const sourceId = editId ?? params.copyId;
   const [sourceDraft] = useState(() =>
     sourceId ? transactionDraftFromRecord(document, sourceId) : null,
@@ -159,6 +154,12 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
       accountId: defaultAccount?.id ?? "",
     };
   });
+  const transactionNamePlaceholder =
+    draft.type === 0
+      ? t("transactions.form.namePlaceholders.expense")
+      : draft.type === 1
+        ? t("transactions.form.namePlaceholders.income")
+        : t("transactions.form.namePlaceholders.transfer");
   const [expanded, setExpanded] = useState<Record<ExpandedSection, boolean>>({
     account: true,
     destination: true,
@@ -197,7 +198,10 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
   const accountOptions: TransactionOption[] = accounts.map((account) => ({
     id: account.id,
     name: account.name,
-    description: `${account.institution} - ${account.currencyCode}`,
+    description: t("transactions.common.accountDescription", {
+      institution: account.institution,
+      currency: account.currencyCode,
+    }),
     icon: account.icon,
     iconPath: account.iconPath,
     color: account.color,
@@ -214,7 +218,7 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
     .map((category) => ({
       id: category.id,
       name: category.parentId
-        ? `${categories.find((item) => item.id === category.parentId)?.name ?? "Category"} / ${category.name}`
+        ? `${categories.find((item) => item.id === category.parentId)?.name ?? t("transactions.common.categoryFallback")} / ${category.name}`
         : category.name,
       description: category.description,
       icon: category.icon,
@@ -268,12 +272,31 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
           color: category.color,
         }))
     : [];
+  function localizeBudgetPeriod(period: string) {
+    switch (period.toLowerCase()) {
+      case "daily":
+        return t("transactions.common.periods.daily");
+      case "weekly":
+        return t("transactions.common.periods.weekly");
+      case "monthly":
+        return t("transactions.common.periods.monthly");
+      case "yearly":
+        return t("transactions.common.periods.yearly");
+      case "custom":
+        return t("transactions.common.periods.custom");
+      default:
+        return period;
+    }
+  }
   const budgetOptions: TransactionOption[] = budgets
     .filter((budget) => budget.transactionType === draft.type)
     .map((budget) => ({
       id: budget.id,
       name: budget.name,
-      description: `${budget.period} - ${budget.currencyCode}`,
+      description: t("transactions.common.budgetDescription", {
+        period: localizeBudgetPeriod(budget.period),
+        currency: budget.currencyCode,
+      }),
       icon: budget.icon,
       iconPath: budget.iconPath,
       color: budget.color,
@@ -284,6 +307,7 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
     document,
     "check",
     "#70d2eb",
+    t("transactions.common.untitledOption"),
   );
   const loanOptions = recordOptions(
     document.loans,
@@ -291,6 +315,7 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
     document,
     "credit-card",
     "#f2c66d",
+    t("transactions.common.untitledOption"),
   );
   const placeOptions = recordOptions(
     document.places,
@@ -298,6 +323,7 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
     document,
     "home",
     "#78d6a3",
+    t("transactions.common.untitledOption"),
   );
   const personOptions = recordOptions(
     document.peoples,
@@ -305,6 +331,7 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
     document,
     "account",
     "#b89cf5",
+    t("transactions.common.untitledOption"),
   );
   const topControlsTranslateY = scrollY.interpolate({
     inputRange: [0, 56],
@@ -387,6 +414,66 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
     change("occurredAt", next.toISOString());
   }
 
+  function transactionSaveError(reason: unknown) {
+    if (!(reason instanceof Error)) return t("transactions.form.saveError");
+    switch (reason.message) {
+      case "This transaction has an invalid amount.":
+        return t("transactions.form.validation.invalidAmount");
+      case "Enter a transaction name (up to 100 characters).":
+        return t("transactions.form.validation.name");
+      case "Enter an amount greater than zero and no more than one trillion.":
+        return t("transactions.form.validation.amount");
+      case "Choose a valid transaction type.":
+        return t("transactions.form.validation.type");
+      case "Choose a valid date and time.":
+        return t("transactions.form.validation.dateTime");
+      case "Choose an account in this profile.":
+        return t("transactions.form.validation.account");
+      case "Choose a different destination account.":
+        return t("transactions.form.validation.destinationAccount");
+      case "Transfer accounts must use the same currency.":
+        return t("transactions.form.validation.transferCurrency");
+      case "Choose a category for this transaction type.":
+        return t("transactions.form.validation.category");
+      case "This transaction no longer exists.":
+        return t("transactions.form.validation.missing");
+      case "This transaction has already been saved.":
+        return t("transactions.form.validation.alreadySaved");
+      case "This transaction belongs to another profile.":
+        return t("transactions.form.validation.wrongProfile");
+      case "This account has an invalid balance. Edit the account before saving a transaction.":
+        return t("transactions.form.validation.invalidAccountBalance");
+      case "This template has already been saved.":
+        return t("transactions.form.validation.templateAlreadySaved");
+    }
+    const subcategoryMatch = /^Choose a subcategory of (.+)\.$/.exec(
+      reason.message,
+    );
+    if (subcategoryMatch)
+      return t("transactions.form.validation.subcategory", {
+        name: subcategoryMatch[1],
+      });
+    const relationMatch =
+      /^Choose a valid (budget|label|loan|place|person) in this profile\.$/.exec(
+        reason.message,
+      );
+    if (relationMatch) {
+      const relationLabels: Record<string, string> = {
+        budget: t("transactions.common.fields.budget"),
+        label: t("transactions.common.fields.label"),
+        loan: t("transactions.common.fields.loan"),
+        place: t("transactions.common.fields.place"),
+        person: t("transactions.common.fields.payee"),
+      };
+      return t("transactions.form.validation.relation", {
+        relation: relationLabels[relationMatch[1]].toLocaleLowerCase(
+          i18n.resolvedLanguage,
+        ),
+      });
+    }
+    return reason.message;
+  }
+
   async function pickReceipt() {
     Keyboard.dismiss();
     try {
@@ -398,7 +485,7 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
       if (result.canceled) return;
       const asset = result.assets[0];
       if (asset.fileSize && asset.fileSize > 25 * 1024 * 1024)
-        throw new Error("Choose an image smaller than 25 MB.");
+        throw new Error(t("transactions.form.receiptTooLarge"));
       setPendingReceipt({
         uri: asset.uri,
         mimeType: asset.mimeType ?? "image/jpeg",
@@ -413,9 +500,9 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
       const message =
         reason instanceof Error
           ? reason.message
-          : "The receipt image could not be selected.";
+          : t("transactions.form.receiptSelectError");
       setError(message);
-      Alert.alert("Unable to select receipt", message);
+      Alert.alert(t("transactions.form.receiptSelectErrorTitle"), message);
     }
   }
 
@@ -434,9 +521,7 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
         const id = uuid.v4();
         await updateDocument((current) => {
           if (current._local.selectedProfileId !== profileId)
-            throw new Error(
-              "Your active profile changed. Reopen this form before saving.",
-            );
+            throw new Error(t("transactions.form.activeProfileChanged"));
           return saveTransactionTemplate(
             current,
             draft,
@@ -464,9 +549,7 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
       const now = new Date().toISOString();
       await updateDocument((current) => {
         if (current._local.selectedProfileId !== profileId)
-          throw new Error(
-            "Your active profile changed. Reopen this form before saving.",
-          );
+          throw new Error(t("transactions.form.activeProfileChanged"));
         const saved = saveTransaction(
           current,
           preparedDraft,
@@ -507,7 +590,7 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
           receiptPath: null,
           receiptAttachmentId: null,
         }));
-        setNotice("Transaction saved. Add the next one.");
+        setNotice(t("transactions.form.savedAddNext"));
         return;
       }
       if (editId && router.canGoBack()) router.back();
@@ -518,12 +601,9 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
           deleteAttachment(pendingAttachmentPath);
         } catch {}
       }
-      const message =
-        reason instanceof Error
-          ? reason.message
-          : "The transaction could not be saved. Please try again.";
+      const message = transactionSaveError(reason);
       setError(message);
-      Alert.alert("Unable to save transaction", message);
+      Alert.alert(t("transactions.form.saveErrorTitle"), message);
     } finally {
       saving.current = false;
       setIsSaving(false);
@@ -564,51 +644,67 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
                 {missingSource ? (
                   <View className="rounded-2xl bg-danger/10 p-4">
                     <Text className="font-manrope-semibold text-danger">
-                      This transaction is no longer available.
+                      {t("transactions.form.unavailable")}
                     </Text>
                   </View>
                 ) : null}
 
                 <Input
-                  accessibilityLabel="Transaction name"
-                  placeholder={transactionPlaceholder(draft.type)}
+                  accessibilityLabel={t("transactions.form.name")}
+                  placeholder={transactionNamePlaceholder}
                   maxLength={100}
                   value={draft.name}
                   onChangeText={(value) => change("name", value)}
                   className="h-16 rounded-2xl bg-surface px-4 font-manrope-semibold"
+                  style={{ textAlign: "left" }}
                 />
 
                 <View className="relative">
                   <Input
-                    accessibilityLabel="Transaction amount"
-                    placeholder="Amount (e.g. 1,000.00)"
+                    accessibilityLabel={t("transactions.form.amount")}
+                    placeholder={t("transactions.form.amountPlaceholder")}
                     keyboardType="decimal-pad"
                     maxLength={30}
                     value={draft.amount}
                     onChangeText={(value) => change("amount", value)}
                     className="h-16 rounded-2xl bg-surface px-4 pr-14 font-manrope-semibold"
+                    style={{
+                      paddingLeft: I18nManager.isRTL ? 56 : 16,
+                      paddingRight: I18nManager.isRTL ? 16 : 56,
+                      textAlign: "left",
+                    }}
                   />
                   <View
                     pointerEvents="none"
-                    className="absolute right-4 top-0 h-16 items-center justify-center"
+                    className="absolute top-0 h-16 items-center justify-center"
+                    style={{
+                      left: I18nManager.isRTL ? 16 : undefined,
+                      right: I18nManager.isRTL ? undefined : 16,
+                    }}
                   >
                     <FilledIcon name="currency-usd" size={22} tone="muted" />
                   </View>
                 </View>
 
                 <Input
-                  accessibilityLabel="Transaction description"
-                  placeholder="Description (optional)"
+                  accessibilityLabel={t("transactions.form.description")}
+                  placeholder={t("transactions.form.descriptionPlaceholder")}
                   maxLength={300}
                   value={draft.description}
                   onChangeText={(value) => change("description", value)}
                   className="h-16 rounded-2xl bg-surface px-4"
+                  style={{ textAlign: "left" }}
                 />
 
                 <View className="flex-row gap-3">
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel={`Change date, ${formatTransactionDate(safeOccurredAt)}`}
+                    accessibilityLabel={t("transactions.form.changeDate", {
+                      date: formatTransactionDate(
+                        safeOccurredAt,
+                        i18n.resolvedLanguage,
+                      ),
+                    })}
                     onPress={() => {
                       Keyboard.dismiss();
                       setDatePickerMode("date");
@@ -619,16 +715,24 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
                     <View className="flex-row items-center gap-2">
                       <FilledIcon name="clock" size={17} tone="muted" />
                       <Text className="font-manrope-medium text-xs text-muted">
-                        Date
+                        {t("transactions.form.date")}
                       </Text>
                     </View>
                     <Text className="font-manrope-semibold text-base text-foreground">
-                      {formatTransactionDate(safeOccurredAt)}
+                      {formatTransactionDate(
+                        safeOccurredAt,
+                        i18n.resolvedLanguage,
+                      )}
                     </Text>
                   </Pressable>
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel={`Change time, ${formatTransactionTime(safeOccurredAt)}`}
+                    accessibilityLabel={t("transactions.form.changeTime", {
+                      time: formatTransactionTime(
+                        safeOccurredAt,
+                        i18n.resolvedLanguage,
+                      ),
+                    })}
                     onPress={() => {
                       Keyboard.dismiss();
                       setDatePickerMode("time");
@@ -639,11 +743,14 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
                     <View className="flex-row items-center gap-2">
                       <FilledIcon name="clock" size={17} tone="muted" />
                       <Text className="font-manrope-medium text-xs text-muted">
-                        Time
+                        {t("transactions.form.time")}
                       </Text>
                     </View>
                     <Text className="font-manrope-semibold text-base text-foreground">
-                      {formatTransactionTime(safeOccurredAt)}
+                      {formatTransactionTime(
+                        safeOccurredAt,
+                        i18n.resolvedLanguage,
+                      )}
                     </Text>
                   </Pressable>
                 </View>
@@ -666,15 +773,21 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
                         className="self-end"
                         onPress={() => setDatePickerMode(null)}
                       >
-                        <Button.Label>Done</Button.Label>
+                        <Button.Label>
+                          {t("transactions.form.done")}
+                        </Button.Label>
                       </Button>
                     ) : null}
                   </View>
                 ) : null}
 
                 <TransactionSelectionSection
-                  title={draft.type === 2 ? "Transfer account from" : "Account"}
-                  placeholder="Select account"
+                  title={
+                    draft.type === 2
+                      ? t("transactions.common.fields.transferFrom")
+                      : t("transactions.common.fields.account")
+                  }
+                  placeholder={t("transactions.form.selectAccount")}
                   icon="credit-card"
                   options={accountOptions}
                   selectedId={draft.accountId}
@@ -698,8 +811,10 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
 
                 {draft.type === 2 ? (
                   <TransactionSelectionSection
-                    title="Transfer account to"
-                    placeholder="Select destination account"
+                    title={t("transactions.common.fields.transferTo")}
+                    placeholder={t(
+                      "transactions.form.selectDestinationAccount",
+                    )}
                     icon="credit-card"
                     options={destinationOptions}
                     selectedId={draft.destinationAccountId}
@@ -713,8 +828,8 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
                 ) : null}
 
                 <TransactionSelectionSection
-                  title="Category"
-                  placeholder="Select category"
+                  title={t("transactions.common.fields.category")}
+                  placeholder={t("transactions.form.selectCategory")}
                   icon="chart-donut-variant"
                   options={categoryOptions}
                   selectedId={draft.categoryId}
@@ -739,8 +854,8 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
                 />
 
                 <TransactionSelectionSection
-                  title="Budget"
-                  placeholder="Select a budget"
+                  title={t("transactions.common.fields.budget")}
+                  placeholder={t("transactions.form.selectBudget")}
                   icon="wallet"
                   options={budgetOptions}
                   selectedId={draft.budgetId}
@@ -754,8 +869,8 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
                 />
 
                 <TransactionSelectionSection
-                  title="Label"
-                  placeholder="Select label"
+                  title={t("transactions.common.fields.label")}
+                  placeholder={t("transactions.form.selectLabel")}
                   icon="check"
                   options={labelOptions}
                   selectedId={draft.labelId}
@@ -767,8 +882,8 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
                 />
 
                 <TransactionSelectionSection
-                  title="Loan"
-                  placeholder="Select loan"
+                  title={t("transactions.common.fields.loan")}
+                  placeholder={t("transactions.form.selectLoan")}
                   icon="credit-card"
                   options={loanOptions}
                   selectedId={draft.loanId}
@@ -780,8 +895,8 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
                 />
 
                 <TransactionSelectionSection
-                  title="Place"
-                  placeholder="Select a place"
+                  title={t("transactions.common.fields.place")}
+                  placeholder={t("transactions.form.selectPlace")}
                   icon="home"
                   options={placeOptions}
                   selectedId={draft.placeId}
@@ -793,8 +908,8 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
                 />
 
                 <TransactionSelectionSection
-                  title="Payee"
-                  placeholder="Select a person"
+                  title={t("transactions.common.fields.payee")}
+                  placeholder={t("transactions.form.selectPerson")}
                   icon="account"
                   options={personOptions}
                   selectedId={draft.personId}
@@ -807,12 +922,14 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
 
                 <View className="gap-3 pb-3">
                   <Text className="font-manrope-semibold text-base text-foreground">
-                    Receipt or bill (optional)
+                    {t("transactions.form.receiptOptional")}
                   </Text>
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel={
-                      receiptUri ? "Replace receipt image" : "Add receipt image"
+                      receiptUri
+                        ? t("transactions.form.replaceReceiptAccessibility")
+                        : t("transactions.form.addReceiptAccessibility")
                     }
                     onPress={pickReceipt}
                     className="min-h-52 overflow-hidden rounded-2xl border border-border bg-surface"
@@ -828,10 +945,10 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
                       <View className="flex-1 items-center justify-center gap-2 px-6 py-10">
                         <FilledIcon name="camera" size={42} tone="accent" />
                         <Text className="text-center font-manrope-semibold text-base text-accent">
-                          Add receipt or bill
+                          {t("transactions.form.addReceipt")}
                         </Text>
                         <Text className="text-center font-sans text-sm text-muted">
-                          Tap to select an image
+                          {t("transactions.form.receiptHint")}
                         </Text>
                       </View>
                     )}
@@ -850,7 +967,9 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
                       }}
                     >
                       <FilledIcon name="close" size={18} tone="danger" />
-                      <Button.Label>Remove receipt</Button.Label>
+                      <Button.Label>
+                        {t("transactions.form.removeReceipt")}
+                      </Button.Label>
                     </Button>
                   ) : null}
                 </View>
@@ -891,7 +1010,7 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
               <Button
                 isIconOnly
                 variant="ghost"
-                accessibilityLabel="Go back"
+                accessibilityLabel={t("transactions.form.back")}
                 isDisabled={isSaving}
                 onPress={goBack}
               >
@@ -902,7 +1021,9 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
                 numberOfLines={1}
                 className="flex-1 font-manrope-bold text-xl text-foreground"
               >
-                {editId ? "Edit transaction" : "Transaction"}
+                {editId
+                  ? t("transactions.form.editTitle")
+                  : t("transactions.form.title")}
               </Text>
             </Animated.View>
           </View>
@@ -915,10 +1036,10 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
             ]}
           >
             <GlassSegmentedControl
-              accessibilityLabel="Transaction type"
+              accessibilityLabel={t("transactions.form.transactionType")}
               blurTarget={blurTargetRef}
               minHeight={Platform.OS === "android" ? 52 : 48}
-              options={TYPE_OPTIONS}
+              options={typeOptions}
               value={draft.type}
               onChange={changeType}
             />
@@ -969,10 +1090,10 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
                 accessibilityRole="button"
                 accessibilityLabel={
                   isSaving
-                    ? "Saving transaction"
+                    ? t("transactions.form.savingAccessibility")
                     : editId
-                      ? "Save transaction changes"
-                      : "Add transaction"
+                      ? t("transactions.form.saveChangesAccessibility")
+                      : t("transactions.form.addAccessibility")
                 }
                 accessibilityState={{
                   busy: isSaving,
@@ -999,15 +1120,15 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
                   className="shrink font-manrope-bold text-base text-accent-foreground"
                 >
                   {isSaving
-                    ? "Saving..."
+                    ? t("transactions.form.saving")
                     : editId
-                      ? "Save changes"
-                      : "Add transaction"}
+                      ? t("transactions.form.saveChanges")
+                      : t("transactions.form.add")}
                 </Text>
               </Pressable>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="More save options"
+                accessibilityLabel={t("transactions.form.moreSaveOptions")}
                 accessibilityState={{ disabled: isSaving || missingSource }}
                 disabled={isSaving || missingSource}
                 onPress={() => {
@@ -1055,7 +1176,7 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
               style={{ paddingBottom: Math.max(insets.bottom, 16) + 12 }}
             >
               <BottomSheet.Title className="px-2 pb-2">
-                Save options
+                {t("transactions.form.saveOptions")}
               </BottomSheet.Title>
               <Button
                 variant="ghost"
@@ -1063,7 +1184,9 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
                 onPress={() => persist("another")}
               >
                 <FilledIcon name="plus" size={24} tone="accent" />
-                <Button.Label>Save and add another</Button.Label>
+                <Button.Label>
+                  {t("transactions.form.saveAndAddAnother")}
+                </Button.Label>
               </Button>
               <Button
                 variant="ghost"
@@ -1071,7 +1194,9 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
                 onPress={() => persist("template")}
               >
                 <FilledIcon name="backup" size={24} tone="accent" />
-                <Button.Label>Save as template</Button.Label>
+                <Button.Label>
+                  {t("transactions.form.saveAsTemplate")}
+                </Button.Label>
               </Button>
             </View>
           </BottomSheet.Content>

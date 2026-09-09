@@ -1,5 +1,6 @@
 import { Card } from "heroui-native";
-import { Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
+import { View } from "react-native";
 
 import { formatSignedCurrency } from "@/shared/lib/currency";
 import {
@@ -7,6 +8,7 @@ import {
   useAppThemeColors,
 } from "@/shared/theme/app-theme";
 import { FilledIcon } from "@/shared/ui/filled-icon";
+import { Text } from "@/shared/ui/app-text";
 
 import type { SearchResult } from "../types";
 
@@ -16,6 +18,7 @@ type SearchResultsProps = {
 };
 
 export function SearchResults({ query, results }: SearchResultsProps) {
+  const { i18n, t } = useTranslation();
   const theme = useAppThemeColors();
 
   if (results.length === 0) {
@@ -23,10 +26,10 @@ export function SearchResults({ query, results }: SearchResultsProps) {
       <Card className="items-center border border-border bg-surface px-6 py-10">
         <FilledIcon name="magnify-close" size={30} tone="accent" />
         <Text className="mt-4 font-manrope-bold text-base text-foreground">
-          No matching transactions
+          {t("search.results.emptyTitle")}
         </Text>
         <Text className="mt-1 text-center font-sans text-sm text-muted">
-          Try a merchant, category, or account name.
+          {t("search.results.emptyDescription")}
         </Text>
       </Card>
     );
@@ -36,10 +39,15 @@ export function SearchResults({ query, results }: SearchResultsProps) {
     <Card className="border border-border bg-surface p-0">
       <Card.Header className="flex-row items-center justify-between px-5 pb-2 pt-5">
         <Card.Title className="font-manrope-bold text-lg text-foreground">
-          {query ? "Results" : "All activity"}
+          {query ? t("search.results.title") : t("search.results.allActivity")}
         </Card.Title>
         <Text className="font-manrope-semibold text-xs text-muted">
-          {results.length} {results.length === 1 ? "match" : "matches"}
+          {t("search.results.matches", {
+            count: results.length,
+            formattedCount: new Intl.NumberFormat(
+              i18n.resolvedLanguage,
+            ).format(results.length),
+          })}
         </Text>
       </Card.Header>
 
@@ -59,7 +67,7 @@ export function SearchResults({ query, results }: SearchResultsProps) {
               >
                 <FilledIcon color={tone} name={result.icon} size={21} />
               </View>
-              <View className="ml-3 flex-1">
+              <View className="ms-3 flex-1">
                 <Text className="font-manrope-bold text-sm text-foreground">
                   {result.title}
                 </Text>
@@ -67,13 +75,13 @@ export function SearchResults({ query, results }: SearchResultsProps) {
                   {result.category} · {result.account}
                 </Text>
               </View>
-              <View className="ml-2 items-end">
+              <View className="ms-2 items-end">
                 <Text
                   className={`font-manrope-bold text-sm ${
                     result.amount > 0 ? "text-accent" : "text-foreground"
                   }`}
                 >
-                  {formatSignedCurrency(result.amount)}
+                  {formatSignedCurrency(result.amount, result.currencyCode)}
                 </Text>
                 <Text className="mt-0.5 font-sans text-[10px] text-muted">
                   {result.date}

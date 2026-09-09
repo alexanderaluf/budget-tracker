@@ -1,3 +1,5 @@
+import { i18n } from "@/localization/i18n";
+
 import type { BackupDocument } from "./backup-document";
 import {
   belongsToProfile,
@@ -77,7 +79,7 @@ function transactionEffect(
 ) {
   const amount = Math.abs(Number(record.amount));
   if (!Number.isFinite(amount))
-    throw new Error("This transaction has an invalid amount.");
+    throw new Error(i18n.t("validation.transaction.invalidAmount"));
   const type = transactionType(record);
   const source = findRecord(document.accounts, sourceReference(record));
   const destination =
@@ -133,18 +135,16 @@ function resolveDraft(
   const amount = Number(draft.amount.replace(",", "."));
   const occurredAt = new Date(draft.occurredAt);
   if (!draft.name.trim() || draft.name.trim().length > 100)
-    throw new Error("Enter a transaction name (up to 100 characters).");
+    throw new Error(i18n.t("validation.transaction.name"));
   if (!Number.isFinite(amount) || amount <= 0 || amount > 1e12)
-    throw new Error(
-      "Enter an amount greater than zero and no more than one trillion.",
-    );
+    throw new Error(i18n.t("validation.transaction.amount"));
   if (!TRANSACTION_TYPES.includes(draft.type))
-    throw new Error("Choose a valid transaction type.");
+    throw new Error(i18n.t("validation.transaction.type"));
   if (!Number.isFinite(occurredAt.getTime()))
-    throw new Error("Choose a valid date and time.");
+    throw new Error(i18n.t("validation.transaction.dateTime"));
   const account = findRecord(document.accounts, draft.accountId);
   if (!account || !belongsToProfile(document, account, profileId))
-    throw new Error("Choose an account in this profile.");
+    throw new Error(i18n.t("validation.transaction.account"));
   const destination = draft.destinationAccountId
     ? findRecord(document.accounts, draft.destinationAccountId)
     : undefined;
@@ -154,13 +154,13 @@ function resolveDraft(
       !belongsToProfile(document, destination, profileId) ||
       identity(destination) === identity(account))
   )
-    throw new Error("Choose a different destination account.");
+    throw new Error(i18n.t("validation.transaction.destinationAccount"));
   const currencyCode = String(account.currencyCode ?? "USD").toUpperCase();
   if (
     draft.type === 2 &&
     String(destination?.currencyCode ?? "USD").toUpperCase() !== currencyCode
   )
-    throw new Error("Transfer accounts must use the same currency.");
+    throw new Error(i18n.t("validation.transaction.transferCurrency"));
   const category = draft.categoryId
     ? findRecord(document.categories, draft.categoryId)
     : undefined;
@@ -169,26 +169,30 @@ function resolveDraft(
     (!belongsToProfile(document, category, profileId) ||
       transactionType(category) !== draft.type)
   )
-    throw new Error("Choose a category for this transaction type.");
+    throw new Error(i18n.t("validation.transaction.category"));
   if (
     category &&
     document.categories.some((candidate) =>
       references(category, categoryParent(candidate)),
     )
   )
-    throw new Error(`Choose a subcategory of ${String(category.name)}.`);
+    throw new Error(
+      i18n.t("validation.transaction.subcategory", {
+        name: String(category.name),
+      }),
+    );
   const optionalRelations = [
-    ["budget", document.budgets, draft.budgetId],
-    ["label", document.labels, draft.labelId],
-    ["loan", document.loans, draft.loanId],
-    ["place", document.places, draft.placeId],
-    ["person", document.peoples, draft.personId],
+    [i18n.t("validation.transaction.relations.budget"), document.budgets, draft.budgetId],
+    [i18n.t("validation.transaction.relations.label"), document.labels, draft.labelId],
+    [i18n.t("validation.transaction.relations.loan"), document.loans, draft.loanId],
+    [i18n.t("validation.transaction.relations.place"), document.places, draft.placeId],
+    [i18n.t("validation.transaction.relations.person"), document.peoples, draft.personId],
   ] as const;
   for (const [label, records, value] of optionalRelations) {
     if (!value) continue;
     const relation = findRecord(records, value);
     if (!relation || !belongsToProfile(document, relation, profileId))
-      throw new Error(`Choose a valid ${label} in this profile.`);
+      throw new Error(i18n.t("validation.transaction.relation", { label }));
   }
   return {
     account,
@@ -249,11 +253,11 @@ export function saveTransaction(
     (transaction) => identity(transaction) === id,
   );
   if (!id || (editing && !existing))
-    throw new Error("This transaction no longer exists.");
+    throw new Error(i18n.t("validation.transaction.missing"));
   if (existing && !editing)
-    throw new Error("This transaction has already been saved.");
+    throw new Error(i18n.t("validation.transaction.alreadySaved"));
   if (existing && !belongsToProfile(document, existing, profileId))
-    throw new Error("This transaction belongs to another profile.");
+    throw new Error(i18n.t("validation.transaction.wrongProfile"));
   const values = resolveDraft(document, draft, profileId);
   const record: JsonObject = {
     ...existing,
@@ -297,9 +301,7 @@ export function saveTransaction(
     const delta = effects.get(accountId) ?? 0;
     const balance = Number(account.amount);
     if (delta && (!Number.isFinite(balance) || !Number.isFinite(balance + delta)))
-      throw new Error(
-        "This account has an invalid balance. Edit the account before saving a transaction.",
-      );
+      throw new Error(i18n.t("validation.transaction.invalidAccountBalance"));
     return {
       ...account,
       ...(delta
@@ -365,15 +367,17 @@ export function deleteTransaction(
   const record = document.transactions.find(
     (transaction) => identity(transaction) === id,
   );
-  if (!record) throw new Error("This transaction no longer exists.");
+  if (!record) throw new Error(i18n.t("validation.transaction.missing"));
   if (!belongsToProfile(document, record, profileId))
-    throw new Error("This transaction belongs to another profile.");
+    throw new Error(i18n.t("validation.transaction.wrongProfile"));
   const effects = transactionEffect(document, record, -1);
   const accounts = document.accounts.map((account) => {
     const delta = effects.get(identity(account)) ?? 0;
     const balance = Number(account.amount);
     if (delta && (!Number.isFinite(balance) || !Number.isFinite(balance + delta)))
-      throw new Error("This account has an invalid balance.");
+      throw new Error(
+        i18n.t("validation.transaction.invalidAccountBalanceShort"),
+      );
     return {
       ...account,
       ...(delta
@@ -423,7 +427,7 @@ export function saveTransactionTemplate(
 ): BackupDocument {
   const values = resolveDraft(document, draft, profileId);
   if (document.templates.some((template) => references(template, id)))
-    throw new Error("This template has already been saved.");
+    throw new Error(i18n.t("validation.transaction.templateAlreadySaved"));
   return {
     ...document,
     templates: [

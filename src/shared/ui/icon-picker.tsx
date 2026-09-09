@@ -12,7 +12,6 @@ import {
   Pressable,
   SectionList,
   StyleSheet,
-  Text,
   View,
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -21,6 +20,7 @@ import {
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
 import { FilledIcon } from "@/shared/ui/filled-icon";
+import { Text } from "@/shared/ui/app-text";
 import { ICON_GROUPS } from "@/shared/icons/icon-options";
 import { MATERIAL_ROUNDED_FILLED_ICONS } from "@/shared/icons/material-rounded-filled-icons";
 import { RecordIcon, type IconSelection } from "./record-icon";
@@ -166,6 +166,7 @@ export function IconPicker({
         <View className="px-5 pb-3">
           <Input
             accessibilityLabel="Search icons"
+            className="text-left"
             placeholder="Search icons"
             value={query}
             onChangeText={setQuery}

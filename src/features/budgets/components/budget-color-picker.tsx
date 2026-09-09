@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, View } from "react-native";
 import Svg, {
   Circle,
   Defs,
@@ -9,6 +9,7 @@ import Svg, {
 } from "react-native-svg";
 import { ICON_COLORS, colorForeground } from "@/shared/icons/colors";
 import { useAppThemeColors } from "@/shared/theme/app-theme";
+import { Text } from "@/shared/ui/app-text";
 import { FilledIcon } from "@/shared/ui/filled-icon";
 import { BudgetField } from "./budget-ui";
 

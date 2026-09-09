@@ -1,5 +1,8 @@
 import { useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
+import { Pressable, ScrollView, View } from "react-native";
+
+import { Text } from "@/shared/ui/app-text";
 import Animated, {
     Easing,
     FadeInDown,
@@ -17,49 +20,43 @@ import { ACCENT_OPTIONS } from "@/shared/theme/app-theme";
 import { FilledIcon } from "@/shared/ui/filled-icon";
 import { GlassSegmentedControl } from "@/shared/ui/glass-segmented-control";
 
-const MODE_LABELS: Record<ThemeMode, string> = {
-  system: "System",
-  light: "Light",
-  dark: "Dark",
-};
-
-const MODE_OPTIONS = THEME_MODES.map((mode) => ({
-  label: MODE_LABELS[mode],
-  value: mode,
-}));
-
 const reveal = FadeInDown.duration(400)
   .easing(Easing.bezier(0.22, 1, 0.36, 1))
   .reduceMotion(ReduceMotion.System);
 
 export function ThemeSettingsPage() {
+  const { t } = useTranslation();
   const { document, updateDocument } = useLocalData();
   const { accentColor, themeMode } = document._local;
-  const [error, setError] = useState("");
+  const [error, setError] = useState<"accent" | "appearance" | null>(null);
+  const modeOptions = THEME_MODES.map((mode) => ({
+    label: t(`theme.modes.${mode}`),
+    value: mode,
+  }));
 
   async function setThemeMode(mode: ThemeMode) {
     if (mode === themeMode) return;
-    setError("");
+    setError(null);
     try {
       await updateDocument((current) => ({
         ...current,
         _local: { ...current._local, themeMode: mode },
       }));
     } catch {
-      setError("The appearance setting could not be saved.");
+      setError("appearance");
     }
   }
 
   async function setAccentColor(nextAccent: AccentColorId) {
     if (nextAccent === accentColor) return;
-    setError("");
+    setError(null);
     try {
       await updateDocument((current) => ({
         ...current,
         _local: { ...current._local, accentColor: nextAccent },
       }));
     } catch {
-      setError("The accent color could not be saved.");
+      setError("accent");
     }
   }
 
@@ -73,17 +70,17 @@ export function ThemeSettingsPage() {
       <Animated.View entering={reveal} className="gap-3">
         <View className="gap-1 px-1">
           <Text className="font-manrope-bold text-lg text-foreground">
-            Appearance
+            {t("theme.appearance")}
           </Text>
           <Text className="font-sans text-sm leading-5 text-muted">
-            System follows your device and updates when its appearance changes.
+            {t("theme.appearanceDescription")}
           </Text>
         </View>
         <GlassSegmentedControl
-          accessibilityLabel="Application appearance"
+          accessibilityLabel={t("theme.appearanceAccessibility")}
           minHeight={52}
           onChange={(mode) => void setThemeMode(mode)}
-          options={MODE_OPTIONS}
+          options={modeOptions}
           value={themeMode}
         />
       </Animated.View>
@@ -91,19 +88,22 @@ export function ThemeSettingsPage() {
       <Animated.View entering={reveal.delay(80)} className="gap-3">
         <View className="gap-1 px-1">
           <Text className="font-manrope-bold text-lg text-foreground">
-            Accent color
+            {t("theme.accentColor")}
           </Text>
           <Text className="font-sans text-sm leading-5 text-muted">
-            Applied to actions, selected controls, links, and highlights.
+            {t("theme.accentDescription")}
           </Text>
         </View>
         <View className="flex-row flex-wrap gap-3">
           {ACCENT_OPTIONS.map((option) => {
             const selected = option.id === accentColor;
+            const label = t(`theme.accents.${option.id}`);
             return (
               <Pressable
                 key={option.id}
-                accessibilityLabel={`${option.label} accent`}
+                accessibilityLabel={t("theme.accentAccessibility", {
+                  color: label,
+                })}
                 accessibilityRole="radio"
                 accessibilityState={{ checked: selected }}
                 className={`min-h-20 w-[48%] flex-row items-center gap-3 rounded-2xl border px-3 py-3 ${
@@ -130,7 +130,7 @@ export function ThemeSettingsPage() {
                   className="min-w-0 flex-1 font-manrope-semibold text-sm text-foreground"
                   numberOfLines={1}
                 >
-                  {option.label}
+                  {label}
                 </Text>
               </Pressable>
             );
@@ -143,7 +143,11 @@ export function ThemeSettingsPage() {
           accessibilityRole="alert"
           className="font-sans text-sm text-danger"
         >
-          {error}
+          {t(
+            error === "appearance"
+              ? "theme.appearanceSaveError"
+              : "theme.accentSaveError",
+          )}
         </Text>
       ) : null}
     </ScrollView>

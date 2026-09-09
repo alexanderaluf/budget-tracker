@@ -1,5 +1,6 @@
 import { useRouter } from "expo-router";
 import { ScrollView } from "react-native";
+import { useTranslation } from "react-i18next";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAppThemeColors } from "@/shared/theme/app-theme";
 
@@ -9,6 +10,7 @@ import { useProfiles } from "./profile-provider";
 import type { UserProfile } from "./types";
 
 export function ManageProfilesScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const theme = useAppThemeColors();
   const { profiles, activeProfileId, selectProfile } = useProfiles();
@@ -27,7 +29,7 @@ export function ManageProfilesScreen() {
       edges={["top", "bottom"]}
       style={{ flex: 1, backgroundColor: theme.background }}
     >
-      <ProfileScreenHeader title="Manage accounts" />
+      <ProfileScreenHeader title={t("profile.manage.title")} />
       <ScrollView
         className="flex-1"
         contentContainerClassName="px-5 pb-8 pt-5"

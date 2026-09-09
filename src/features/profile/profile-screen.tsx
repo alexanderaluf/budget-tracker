@@ -1,21 +1,25 @@
 import { useAppThemeColors } from "@/shared/theme/app-theme";
+import { Text } from "@/shared/ui/app-text";
 import { useRouter } from "expo-router";
 import { Button } from "heroui-native";
 import { useEffect, useState } from "react";
-import { BackHandler, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
+import { BackHandler, View } from "react-native";
 import Animated, { Easing, FadeInDown } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ProfileAvatar } from "./components/profile-avatar";
 import { ProfileHubActions } from "./components/profile-hub-actions";
+import { LanguageSettingsPage } from "./components/language-settings-page";
 import { ProfileScreenHeader } from "./components/profile-screen-header";
 import { ProfileSettingsPage } from "./components/profile-settings-page";
 import { ThemeSettingsPage } from "./components/theme-settings-page";
 import { useProfiles } from "./profile-provider";
 
-type ProfilePage = "profile" | "settings" | "theme";
+type ProfilePage = "profile" | "settings" | "theme" | "language";
 
 export function ProfileScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const theme = useAppThemeColors();
   const { activeProfile } = useProfiles();
@@ -28,7 +32,11 @@ export function ProfileScreen() {
     const subscription = BackHandler.addEventListener(
       "hardwareBackPress",
       () => {
-        setPage((current) => (current === "theme" ? "settings" : "profile"));
+        setPage((current) =>
+          current === "theme" || current === "language"
+            ? "settings"
+            : "profile",
+        );
         return true;
       },
     );
@@ -37,7 +45,13 @@ export function ProfileScreen() {
   }, [page]);
 
   const title =
-    page === "theme" ? "Theme" : page === "settings" ? "Settings" : "Accounts";
+    page === "theme"
+      ? t("settings.items.theme.title")
+      : page === "language"
+        ? t("language.title")
+        : page === "settings"
+          ? t("settings.title")
+          : t("profile.accountsTitle");
 
   return (
     <SafeAreaView
@@ -46,7 +60,7 @@ export function ProfileScreen() {
     >
       <ProfileScreenHeader
         onBack={
-          page === "theme"
+          page === "theme" || page === "language"
             ? () => setPage("settings")
             : page === "settings"
               ? () => setPage("profile")
@@ -56,9 +70,14 @@ export function ProfileScreen() {
       />
 
       {page === "settings" ? (
-        <ProfileSettingsPage onOpenTheme={() => setPage("theme")} />
+        <ProfileSettingsPage
+          onOpenLanguage={() => setPage("language")}
+          onOpenTheme={() => setPage("theme")}
+        />
       ) : page === "theme" ? (
         <ThemeSettingsPage />
+      ) : page === "language" ? (
+        <LanguageSettingsPage />
       ) : (
         <View className="flex-1 px-5 pt-10">
           <Animated.View
@@ -75,7 +94,7 @@ export function ProfileScreen() {
               size="lg"
             />
             <Text className="mt-6 font-manrope-bold text-[26px] text-foreground">
-              Hi, {firstName}!
+              {t("profile.greeting", { name: firstName })}
             </Text>
             <Button
               size="md"
@@ -89,7 +108,7 @@ export function ProfileScreen() {
               }
             >
               <Button.Label className="font-manrope-bold text-accent">
-                Manage your profile
+                {t("profile.manageProfile")}
               </Button.Label>
             </Button>
           </Animated.View>
