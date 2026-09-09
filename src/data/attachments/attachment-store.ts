@@ -57,6 +57,11 @@ export function getAttachmentFile(relativePath: string) {
   return new File(getAttachmentsDirectory(), relativePath);
 }
 
+export function deleteAttachment(relativePath: string) {
+  const file = getAttachmentFile(relativePath);
+  if (file.exists) file.delete();
+}
+
 export type ArchivedAttachment = {
   relativePath: string;
   data: Uint8Array;

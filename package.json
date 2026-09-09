@@ -8,6 +8,8 @@
     "@expo/ui": "~57.0.17",
     "@gorhom/bottom-sheet": "^5.2.14",
     "@material-symbols-svg/react-native": "^0.14.0",
+    "@react-native-community/datetimepicker": "9.1.0",
+    "eslint-config-expo": "~57.0.2",
     "expo": "~57.0.21",
     "expo-blur": "^57.0.2",
     "expo-constants": "~57.0.17",
@@ -49,6 +51,7 @@
     "@types/papaparse": "^5.5.2",
     "@types/react": "~19.2.2",
     "babel-preset-expo": "^57.0.10",
+    "eslint": "^9.39.5",
     "prettier-plugin-tailwindcss": "^0.5.14",
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.3"
@@ -57,7 +60,7 @@
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo run:android",
-    "ios": "expo start --ios",
+    "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "expo lint"
   },

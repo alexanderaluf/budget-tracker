@@ -19,6 +19,7 @@ import { useCategoryClock } from "@/features/categories/use-category-clock";
 import { PaymentCard } from "./components/payment-card";
 import { TransactionList } from "./components/transaction-list";
 import { primaryCard } from "./data/home-data";
+import { TransactionDetailSheet } from "@/features/transactions/transaction-detail-sheet";
 
 export function HomeScreen() {
   const router = useRouter();
@@ -26,8 +27,11 @@ export function HomeScreen() {
   const { document } = useLocalData();
   const [isBalanceVisible, setIsBalanceVisible] = useState(true);
   const [showAllTransactions, setShowAllTransactions] = useState(false);
+  const [selectedTransactionId, setSelectedTransactionId] = useState<
+    string | null
+  >(null);
   const transactions = selectTransactions(document);
-  useCategoryClock();
+  const now = useCategoryClock();
   const accounts = selectAccounts(document);
   const persistedBudgets = selectBudgets(document).filter(b => b.showOnHome);
   const availableBalance = accounts
@@ -41,13 +45,21 @@ export function HomeScreen() {
   const displayedTransactions = showAllTransactions
     ? transactions
     : transactions.slice(0, 3);
+  const selectedTransaction = transactions.find(
+    (transaction) => transaction.id === selectedTransactionId,
+  );
 
   return (
-    <TabPage>
+    <>
+      <TabPage>
       <View className="flex-row items-center justify-between pt-3">
         <View className="flex-1 pr-3">
           <Text className="font-manrope-medium text-xs uppercase tracking-widest text-muted">
-            Saturday, September 5
+            {now.toLocaleDateString(undefined, {
+              weekday: "long",
+              month: "long",
+              day: "numeric",
+            })}
           </Text>
           <Text className="mt-1 font-manrope-bold text-2xl text-foreground">
             Good morning, {activeProfile.name.split(" ")[0]}
@@ -111,8 +123,18 @@ export function HomeScreen() {
           </Button>
         </View>
 
-        <TransactionList transactions={displayedTransactions} />
+        <TransactionList
+          transactions={displayedTransactions}
+          onPress={(transaction) => setSelectedTransactionId(transaction.id)}
+        />
       </View>
-    </TabPage>
+      </TabPage>
+      {selectedTransaction ? (
+        <TransactionDetailSheet
+          transaction={selectedTransaction}
+          onDismiss={() => setSelectedTransactionId(null)}
+        />
+      ) : null}
+    </>
   );
 }

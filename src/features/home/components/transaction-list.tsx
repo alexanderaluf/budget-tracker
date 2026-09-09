@@ -1,58 +1,48 @@
-import { Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 
 import { formatSignedCurrency } from "@/shared/lib/currency";
-import {
-  colorWithAlpha,
-  useAppThemeColors,
-} from "@/shared/theme/app-theme";
+import { colorWithAlpha } from "@/shared/theme/app-theme";
 import { FilledIcon, type FilledIconName } from "@/shared/ui/filled-icon";
+import { RecordIcon } from "@/shared/ui/record-icon";
 
-import type { Transaction, TransactionTone } from "../types";
-
-const toneStyles: Record<
-  TransactionTone,
-  { backgroundColor: string; foregroundColor: string }
-> = {
-  emerald: { backgroundColor: "#173a2a", foregroundColor: "#78d6a3" },
-  blue: { backgroundColor: "#1b2e45", foregroundColor: "#82b8ee" },
-  amber: { backgroundColor: "#3b3020", foregroundColor: "#f2c66d" },
-  rose: { backgroundColor: "#402523", foregroundColor: "#ef8175" },
-};
+import type { Transaction } from "../types";
 
 type TransactionListProps = {
   transactions: Transaction[];
+  onPress: (transaction: Transaction) => void;
 };
 
-export function TransactionList({ transactions }: TransactionListProps) {
-  const theme = useAppThemeColors();
-
+export function TransactionList({
+  transactions,
+  onPress,
+}: TransactionListProps) {
   return (
     <View className="gap-1">
       {transactions.map((transaction, index) => {
         const directionIcon: FilledIconName =
           transaction.amount >= 0 ? "arrow-bottom-left" : "arrow-top-right";
-        const tone =
-          transaction.tone === "emerald"
-            ? {
-                backgroundColor: colorWithAlpha(theme.accent, 0.14),
-                foregroundColor: theme.accent,
-              }
-            : toneStyles[transaction.tone];
 
         return (
-          <View
+          <Pressable
             key={transaction.id}
+            accessibilityRole="button"
+            accessibilityLabel={`Open ${transaction.merchant} transaction`}
+            onPress={() => onPress(transaction)}
             className={`flex-row items-center py-3 ${
               index < transactions.length - 1 ? "border-b border-border" : ""
             }`}
+            style={({ pressed }) => ({ opacity: pressed ? 0.68 : 1 })}
           >
             <View
               className="size-11 items-center justify-center rounded-xl"
-              style={{ backgroundColor: tone.backgroundColor }}
+              style={{
+                backgroundColor: colorWithAlpha(transaction.color, 0.18),
+              }}
             >
-              <FilledIcon
-                color={tone.foregroundColor}
+              <RecordIcon
+                color={transaction.color}
                 name={transaction.icon}
+                pathData={transaction.iconPath}
                 size={21}
               />
             </View>
@@ -72,11 +62,14 @@ export function TransactionList({ transactions }: TransactionListProps) {
                   transaction.amount >= 0 ? "text-accent" : "text-foreground"
                 }`}
               >
-                {formatSignedCurrency(transaction.amount)}
+                {formatSignedCurrency(
+                  transaction.amount,
+                  transaction.currencyCode,
+                )}
               </Text>
               <FilledIcon name={directionIcon} size={15} tone="muted" />
             </View>
-          </View>
+          </Pressable>
         );
       })}
     </View>

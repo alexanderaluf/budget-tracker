@@ -21,26 +21,30 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow Plutus to select a profile photo.",
+          "photosPermission": "Allow Plutus to select profile photos and receipt images.",
           "cameraPermission": false,
           "microphonePermission": false
         }
       ],
       [
         "expo-navigation-bar",
-        { "enforceContrast": false, "hidden": false, "style": "dark" }
+        {
+          "enforceContrast": false,
+          "hidden": false,
+          "style": "dark"
+        }
       ],
       [
         "expo-splash-screen",
         {
           "backgroundColor": "#DCE7E0",
-          "android": {
-            "image": "./assets/expo.icon/Assets/expo-symbol 2.svg"
-          }
+          "image": "./assets/splash-logo.png",
+          "imageWidth": 100
         }
       ],
       "expo-sqlite",
-      "expo-sharing"
+      "expo-sharing",
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true,

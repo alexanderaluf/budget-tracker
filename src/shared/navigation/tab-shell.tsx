@@ -32,6 +32,10 @@ export function TabShell() {
   }
 
   function handleActionPress(tabId: TabId) {
+    if (tabId === "home") {
+      router.push("/transactions/create");
+      return;
+    }
     if (tabId === "accounts") {
       router.push("/accounts/create");
       return;

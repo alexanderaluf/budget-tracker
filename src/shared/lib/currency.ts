@@ -12,7 +12,7 @@ export function formatCurrency(value: number, currency = "USD") {
       );
 }
 
-export function formatSignedCurrency(value: number) {
+export function formatSignedCurrency(value: number, currency = "USD") {
   const prefix = value >= 0 ? "+" : "-";
-  return `${prefix}${formatCurrency(value)}`;
+  return `${prefix}${formatCurrency(value, currency)}`;
 }

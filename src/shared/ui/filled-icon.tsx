@@ -14,12 +14,14 @@ import { CheckFill } from "@material-symbols-svg/react-native/rounded/icons/chec
 import { ChevronRightFill } from "@material-symbols-svg/react-native/rounded/icons/chevron-right";
 import { CloseFill } from "@material-symbols-svg/react-native/rounded/icons/close";
 import { ContactlessFill } from "@material-symbols-svg/react-native/rounded/icons/contactless";
+import { ContentCopyFill } from "@material-symbols-svg/react-native/rounded/icons/content-copy";
 import { CreditCardFill } from "@material-symbols-svg/react-native/rounded/icons/credit-card";
 import { CsvFill } from "@material-symbols-svg/react-native/rounded/icons/csv";
 import { CurrencyExchangeFill } from "@material-symbols-svg/react-native/rounded/icons/currency-exchange";
 import { DarkModeFill } from "@material-symbols-svg/react-native/rounded/icons/dark-mode";
 import { DataObjectFill } from "@material-symbols-svg/react-native/rounded/icons/data-object";
 import { DatabaseUploadFill } from "@material-symbols-svg/react-native/rounded/icons/database-upload";
+import { DeleteFill } from "@material-symbols-svg/react-native/rounded/icons/delete";
 import { DirectionsCarFill } from "@material-symbols-svg/react-native/rounded/icons/directions-car";
 import {
     DonutLargeFill,
@@ -32,6 +34,7 @@ import { FolderZipFill } from "@material-symbols-svg/react-native/rounded/icons/
 import { FormatPaintFill } from "@material-symbols-svg/react-native/rounded/icons/format-paint";
 import { HelpFill } from "@material-symbols-svg/react-native/rounded/icons/help";
 import { HomeFill } from "@material-symbols-svg/react-native/rounded/icons/home";
+import { KeyboardArrowUpFill } from "@material-symbols-svg/react-native/rounded/icons/keyboard-arrow-up";
 import { LocalCafeFill } from "@material-symbols-svg/react-native/rounded/icons/local-cafe";
 import { ManageAccountsFill } from "@material-symbols-svg/react-native/rounded/icons/manage-accounts";
 import { NotificationsFill } from "@material-symbols-svg/react-native/rounded/icons/notifications";
@@ -40,6 +43,7 @@ import { PaymentsFill } from "@material-symbols-svg/react-native/rounded/icons/p
 import { PersonFill } from "@material-symbols-svg/react-native/rounded/icons/person";
 import { PhotoLibraryFill } from "@material-symbols-svg/react-native/rounded/icons/photo-library";
 import { RestaurantFill } from "@material-symbols-svg/react-native/rounded/icons/restaurant";
+import { SaveFill } from "@material-symbols-svg/react-native/rounded/icons/save";
 import { SavingsFill } from "@material-symbols-svg/react-native/rounded/icons/savings";
 import { ScheduleFill } from "@material-symbols-svg/react-native/rounded/icons/schedule";
 import {
@@ -78,10 +82,12 @@ const icons = {
   "chart-donut-variant": DonutLargeFill,
   check: CheckFill,
   "chevron-right": ChevronRightFill,
+  "chevron-up": KeyboardArrowUpFill,
   clock: ScheduleFill,
   close: CloseFill,
   "code-json": DataObjectFill,
   coffee: LocalCafeFill,
+  copy: ContentCopyFill,
   cog: SettingsFill,
   "credit-card": CreditCardFill,
   "credit-card-chip": CreditCardFill,
@@ -89,6 +95,7 @@ const icons = {
   "currency-exchange": CurrencyExchangeFill,
   "currency-usd": PaymentsFill,
   "database-import": DatabaseUploadFill,
+  delete: DeleteFill,
   experiment: ExperimentFill,
   eye: VisibilityFill,
   "eye-off": VisibilityOffFill,
@@ -109,6 +116,7 @@ const icons = {
   "piggy-bank": SavingsFill,
   plus: AddFill,
   "plus-thick": AddFill,
+  save: SaveFill,
   "shield-check": VerifiedUserFill,
   shopping: ShoppingBagFill,
   "swap-horizontal": SwapHorizFill,

@@ -1,7 +1,5 @@
 import { ACCOUNT_ICONS } from "@/features/accounts/account-options";
 import { selectBudgets } from "./budget-selectors";
-export { selectBudgets, selectBudgetCurrency } from "./budget-selectors";
-export { selectCategories, selectCategoryMonthlyTotals, selectCategoryTransactions } from "./category-selectors";
 import type {
     Account,
     AccountPeriod,
@@ -13,12 +11,24 @@ import type { SearchResult } from "@/features/search/types";
 import type { FilledIconName } from "@/shared/ui/filled-icon";
 import type { AccountDraft } from "../model/account-record";
 import {
+  belongsToProfile,
+  identity,
+  references,
+} from "../model/category-record";
+import {
     getSavingsAccountSummary,
     savingsDetailsToDraft,
 } from "../model/savings-account";
 
 import type { BackupDocument } from "../model/backup-document";
 import type { JsonObject, JsonValue } from "../model/json";
+
+export { selectBudgets, selectBudgetCurrency } from "./budget-selectors";
+export {
+  selectCategories,
+  selectCategoryMonthlyTotals,
+  selectCategoryTransactions,
+} from "./category-selectors";
 
 const colors = ["#70d2eb", "#b89cf5", "#f2c66d", "#ef8175"];
 
@@ -35,9 +45,9 @@ function recordId(record: JsonObject, index: number) {
 }
 
 function lookupName(records: JsonObject[], id: JsonValue | undefined) {
-  if (typeof id !== "string") return "Uncategorized";
-  const record = records.find((item) => item.uuid === id);
-  return record ? text(record.name, "Uncategorized") : id;
+  if (id == null) return "Uncategorized";
+  const record = records.find((item) => references(item, id));
+  return record ? text(record.name, "Uncategorized") : String(id);
 }
 
 function transactionAmount(record: JsonObject) {
@@ -57,11 +67,20 @@ function categoryIcon(category: string): FilledIconName {
 }
 
 function transactionDate(record: JsonObject) {
-  const value = text(record.createdAt);
+  const value = text(record.date, text(record.createdAt));
   const date = new Date(value);
   return Number.isNaN(date.getTime())
     ? "Unknown date"
     : date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function relatedName(
+  records: JsonObject[],
+  value: JsonValue | undefined,
+) {
+  if (value == null) return "";
+  const record = records.find((item) => references(item, value));
+  return record ? text(record.name) : "";
 }
 
 export function selectAccounts(document: BackupDocument): Account[] {
@@ -371,22 +390,85 @@ function includedTransactions(document: BackupDocument) {
 
 export function selectTransactions(document: BackupDocument): Transaction[] {
   return document.transactions
+    .filter((record) => belongsToProfile(document, record))
     .map((record, index) => {
+      const categoryRecord = document.categories.find((item) =>
+        references(item, record.category),
+      );
+      const accountRecord = document.accounts.find((item) =>
+        references(
+          item,
+          record.account ?? record.fromAccount ?? record.sourceAccount,
+        ),
+      );
+      const destinationRecord = document.accounts.find((item) =>
+        references(item, record.toAccount ?? record.destinationAccount),
+      );
       const category = text(
         record.categoryName,
         lookupName(document.categories, record.category),
       );
+      const occurredAtIso = text(record.date, text(record.createdAt));
+      const timestamp = new Date(occurredAtIso).getTime();
+      const type = record.type === 1 ? 1 : record.type === 2 ? 2 : 0;
+      const absoluteAmount = Math.abs(number(record.amount));
+      const currencyCode = text(
+        record.currencyCode,
+        text(accountRecord?.currencyCode, "USD"),
+      ).toUpperCase();
       return {
         id: recordId(record, index),
         merchant: text(record.name, "Untitled transaction"),
+        description: text(record.description),
         category,
+        categoryId: categoryRecord ? identity(categoryRecord) : "",
         occurredAt: transactionDate(record),
-        amount: transactionAmount(record),
-        icon: categoryIcon(category),
-        tone: number(record.type) === 1 ? "blue" : "emerald",
-      } satisfies Transaction;
+        occurredAtIso,
+        amount: type === 1 ? absoluteAmount : -absoluteAmount,
+        absoluteAmount,
+        currencyCode: /^[A-Z]{3}$/.test(currencyCode) ? currencyCode : "USD",
+        type,
+        icon: text(categoryRecord?.icon, categoryIcon(category)),
+        iconPath:
+          /^[Mm]/.test(text(categoryRecord?.iconPath)) &&
+          text(categoryRecord?.iconPath).length <= 20_000
+            ? text(categoryRecord?.iconPath)
+            : null,
+        color: /^#[a-f\d]{6}$/i.test(text(categoryRecord?.color))
+          ? text(categoryRecord?.color)
+          : colors[index % colors.length],
+        tone: type === 1 ? "blue" : type === 2 ? "amber" : "emerald",
+        accountId: accountRecord ? identity(accountRecord) : "",
+        accountName: text(
+          record.accountName,
+          text(accountRecord?.name, "No account"),
+        ),
+        destinationAccountId: destinationRecord
+          ? identity(destinationRecord)
+          : "",
+        destinationAccountName: text(destinationRecord?.name),
+        budgetName: relatedName(document.budgets, record.budget),
+        labelName: relatedName(
+          document.labels,
+          record.label ?? (Array.isArray(record.tags) ? record.tags[0] : null),
+        ),
+        loanName: relatedName(document.loans, record.loan),
+        placeName: relatedName(document.places, record.place),
+        personName: relatedName(
+          document.peoples,
+          record.person ?? record.payee,
+        ),
+        receiptPath:
+          typeof record.receipt === "string"
+            ? record.receipt
+            : typeof record.image === "string"
+              ? record.image
+              : null,
+        timestamp: Number.isFinite(timestamp) ? timestamp : -Infinity,
+      } satisfies Transaction & { timestamp: number };
     })
-    .sort((left, right) => right.occurredAt.localeCompare(left.occurredAt));
+    .sort((left, right) => right.timestamp - left.timestamp)
+    .map(({ timestamp, ...transaction }) => transaction);
 }
 
 export function selectSearchResults(document: BackupDocument): SearchResult[] {
