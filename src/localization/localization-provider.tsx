@@ -1,11 +1,10 @@
-import { reloadAppAsync } from "expo";
 import {
-  createContext,
-  type ComponentType,
-  type PropsWithChildren,
-  useContext,
-  useEffect,
-  useState,
+    createContext,
+    useContext,
+    useEffect,
+    useState,
+    type ComponentType,
+    type PropsWithChildren,
 } from "react";
 import { I18nextProvider } from "react-i18next";
 import { I18nManager, Platform, View, type ViewProps } from "react-native";
@@ -56,7 +55,6 @@ export function LocalizationProvider({ children }: PropsWithChildren) {
         I18nManager.allowRTL(true);
         I18nManager.swapLeftAndRightInRTL(true);
         I18nManager.forceRTL(isRTL);
-        await reloadAppAsync("Apply application language direction");
       }
     }
 
