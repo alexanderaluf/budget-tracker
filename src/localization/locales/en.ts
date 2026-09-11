@@ -125,6 +125,8 @@ export const en = {
       account: "Choose an account in this profile.",
       destinationAccount: "Choose a different destination account.",
       transferCurrency: "Transfer accounts must use the same currency.",
+      exchangeRate:
+        "Choose the transaction currency again to load its current exchange rate.",
       category: "Choose a category for this transaction type.",
       subcategory: "Choose a subcategory of {{name}}.",
       relation: "Choose a valid {{label}} in this profile.",
@@ -973,6 +975,16 @@ export const en = {
       },
       amount: "Transaction amount",
       amountPlaceholder: "Amount (e.g. 1,000.00)",
+      currencyAccessibility:
+        "Choose transaction currency, currently {{currency}}",
+      transactionCurrency: "{{type}} currency: {{currency}}",
+      currencyRateLoading: "Loading the current exchange rate...",
+      currencyRateUnavailable:
+        "The current exchange rate is unavailable. Check your connection and choose the currency again.",
+      currencyRateCached:
+        "Offline: using the last saved exchange rate from {{date}}.",
+      exchangeRateSummary: "1 {{from}} = {{rate}} {{to}} · {{date}}",
+      amountInAccountCurrency: "Amount in {{currency}}: {{amount}}",
       description: "Transaction description",
       descriptionPlaceholder: "Description (optional)",
       date: "Date",
@@ -1023,6 +1035,8 @@ export const en = {
         account: "Choose an account in this profile.",
         destinationAccount: "Choose a different destination account.",
         transferCurrency: "Transfer accounts must use the same currency.",
+        exchangeRate:
+          "Choose the transaction currency again to load its current exchange rate.",
         category: "Choose a category for this transaction type.",
         subcategory: "Choose a subcategory of {{name}}.",
         relation: "Choose a valid {{relation}} in this profile.",
@@ -1055,6 +1069,12 @@ export const en = {
     details: {
       typeAndDate: "{{type}} · {{date}}",
       heading: "Transaction details",
+      conversionTitle: "Currency conversion",
+      conversionPair: "{{from}} to {{to}}",
+      originalAmount: "{{type}} amount",
+      exchangeRateValue: "1 {{from}} = {{rate}} {{to}}",
+      rateCaptured: "Rate captured {{date}}",
+      accountAmount: "Amount in {{currency}}",
       receipt: "Receipt or bill",
       receiptAccessibility: "Receipt for {{name}}",
       created: "Created {{date}}",

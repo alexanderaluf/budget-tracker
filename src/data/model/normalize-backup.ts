@@ -51,6 +51,53 @@ function isAppLanguage(value: unknown): value is AppLanguage {
   );
 }
 
+function normalizeTransactionCurrency(
+  record: BackupDocument["transactions"][number],
+) {
+  const amount =
+    typeof record.amount === "number" && Number.isFinite(record.amount)
+      ? record.amount
+      : 0;
+  const transactionCurrency =
+    typeof record.currencyCode === "string" &&
+    /^[A-Z]{3}$/.test(record.currencyCode.toUpperCase())
+      ? record.currencyCode.toUpperCase()
+      : "USD";
+  const accountCurrency =
+    typeof record.accountCurrencyCode === "string" &&
+    /^[A-Z]{3}$/.test(record.accountCurrencyCode.toUpperCase())
+      ? record.accountCurrencyCode.toUpperCase()
+      : transactionCurrency;
+  return {
+    ...record,
+    currencyCode: transactionCurrency,
+    accountAmount:
+      typeof record.accountAmount === "number" &&
+      Number.isFinite(record.accountAmount)
+        ? record.accountAmount
+        : amount,
+    accountCurrencyCode: accountCurrency,
+    exchangeRate:
+      typeof record.exchangeRate === "number" &&
+      Number.isFinite(record.exchangeRate) &&
+      record.exchangeRate > 0
+        ? record.exchangeRate
+        : null,
+    exchangeRateDate:
+      typeof record.exchangeRateDate === "string"
+        ? record.exchangeRateDate
+        : null,
+    exchangeRateFetchedAt:
+      typeof record.exchangeRateFetchedAt === "string"
+        ? record.exchangeRateFetchedAt
+        : null,
+    exchangeRateSource:
+      typeof record.exchangeRateSource === "string"
+        ? record.exchangeRateSource
+        : null,
+  };
+}
+
 export function normalizeBackupDocument(value: unknown): BackupDocument {
   if (!isJsonObject(value)) {
     throw new Error("Backup must contain a JSON object at its root.");
@@ -85,6 +132,9 @@ export function normalizeBackupDocument(value: unknown): BackupDocument {
     );
   }
   document.accounts = document.accounts.map(normalizeAccountRecord);
+  document.transactions = document.transactions.map(
+    normalizeTransactionCurrency,
+  );
   document.categories = document.categories.map(normalizeCategoryRecord);
   document.budgets = document.budgets.map(normalizeBudgetRecord);
   // Leave foreign/imported rate formats intact. Selectors validate our tables

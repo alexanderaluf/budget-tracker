@@ -789,51 +789,48 @@ export function AccountCreateScreen({ editId }: { editId?: string }) {
           </View>
         </View>
       </KeyboardAvoidingView>
-      {picker === "currency" && (
-        <CurrencySelectorSheet
-          currencies={currencies}
-          isOpen
-          selectedCode={draft.currencyCode}
-          onOpenChange={(open) => {
-            if (!open) setPicker(null);
-          }}
-          onSelect={(item) => {
-            if (item.code === draft.currencyCode) return;
-            try {
-              const amount = draft.amount.trim()
-                ? parseAccountAmount(draft.amount)
-                : 0;
-              setCurrencyChange({
-                from: draft.currencyCode,
-                to: item.code,
-                amount,
-              });
-              setError("");
-            } catch (reason) {
-              setError(
-                reason instanceof Error
-                  ? reason.message
-                  : t("accounts.form.validBalanceFirst"),
-              );
-            }
-          }}
-        />
-      )}
-      {currencyChange && (
-        <AccountCurrencyChangeSheet
-          request={currencyChange}
-          onClose={() => setCurrencyChange(null)}
-          onApply={(amount, explanation) => {
-            setDraft((current) => ({
-              ...current,
-              currencyCode: currencyChange.to,
-              amount: String(amount),
-            }));
-            setCurrencyChangeNote(explanation);
-            setCurrencyChange(null);
-          }}
-        />
-      )}
+      <CurrencySelectorSheet
+        currencies={currencies}
+        isOpen={picker === "currency"}
+        selectedCode={draft.currencyCode}
+        onOpenChange={(open) => {
+          if (!open) setPicker(null);
+        }}
+        onSelect={(item) => {
+          if (item.code === draft.currencyCode) return;
+          try {
+            const amount = draft.amount.trim()
+              ? parseAccountAmount(draft.amount)
+              : 0;
+            setCurrencyChange({
+              from: draft.currencyCode,
+              to: item.code,
+              amount,
+            });
+            setError("");
+          } catch (reason) {
+            setError(
+              reason instanceof Error
+                ? reason.message
+                : t("accounts.form.validBalanceFirst"),
+            );
+          }
+        }}
+      />
+      <AccountCurrencyChangeSheet
+        request={currencyChange}
+        onClose={() => setCurrencyChange(null)}
+        onApply={(amount, explanation) => {
+          if (!currencyChange) return;
+          setDraft((current) => ({
+            ...current,
+            currencyCode: currencyChange.to,
+            amount: String(amount),
+          }));
+          setCurrencyChangeNote(explanation);
+          setCurrencyChange(null);
+        }}
+      />
       {picker === "icon" && (
         <IconPicker
           selected={{ name: draft.icon, pathData: draft.iconPath }}

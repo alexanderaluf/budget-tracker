@@ -2,7 +2,7 @@ import { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import { useRouter } from "expo-router";
 import { BottomSheet, Button, useThemeColor } from "heroui-native";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Image, StyleSheet, View } from "react-native";
+import { I18nManager, Image, StyleSheet, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import Animated, {
   FadeIn,
@@ -25,6 +25,21 @@ import { Text } from "@/shared/ui/app-text";
 import { FilledIcon, type FilledIconName } from "@/shared/ui/filled-icon";
 import { RecordIcon } from "@/shared/ui/record-icon";
 
+// The portal sits outside app context; compensate for native mirroring only once.
+function useSheetDirection() {
+  const { i18n } = useTranslation();
+  const isRTL = i18n.dir(i18n.resolvedLanguage ?? i18n.language) === "rtl";
+  const flip = isRTL !== I18nManager.isRTL;
+
+  return {
+    nativeDirection: I18nManager.isRTL ? "rtl" as const : "ltr" as const,
+    writingDirection: isRTL ? "rtl" as const : "ltr" as const,
+    row: (flip ? "row-reverse" : "row") as "row" | "row-reverse",
+    start: (flip ? "right" : "left") as "left" | "right",
+    end: (flip ? "left" : "right") as "left" | "right",
+  };
+}
+
 function DetailRow({
   icon,
   label,
@@ -36,14 +51,24 @@ function DetailRow({
   value: string;
   leading?: ReactNode;
 }) {
+  const { row, start, writingDirection } = useSheetDirection();
+
   return (
-    <View className="flex-row items-center gap-4 py-3">
+    <View className="items-center gap-4 py-3" style={{ flexDirection: row }}>
       <View className="size-10 items-center justify-center">
         {leading ?? <FilledIcon name={icon} size={24} tone="muted" />}
       </View>
-      <View className="flex-1 gap-0.5">
-        <Text className="font-sans text-sm text-muted">{label}</Text>
-        <Text className="font-manrope-semibold text-base text-foreground">
+      <View className="min-w-0 flex-1 gap-0.5">
+        <Text
+          className="font-sans text-sm text-muted"
+          style={{ textAlign: start, writingDirection }}
+        >
+          {label}
+        </Text>
+        <Text
+          className="font-manrope-semibold text-base text-foreground"
+          style={{ textAlign: start, writingDirection }}
+        >
           {value}
         </Text>
       </View>
@@ -60,6 +85,7 @@ export function TransactionDetailSheet({
 }) {
   const { t, i18n } = useTranslation();
   const router = useRouter();
+  const { nativeDirection, writingDirection, row, start, end } = useSheetDirection();
   const insets = useSafeAreaInsets();
   const theme = useAppThemeColors();
   const dangerForeground = useThemeColor("danger-foreground");
@@ -99,6 +125,21 @@ export function TransactionDetailSheet({
       : transaction.type === 1
         ? theme.success
         : theme.accent;
+  const hasCurrencyConversion =
+    transaction.exchangeRate !== null &&
+    transaction.currencyCode !== transaction.accountCurrencyCode;
+  const rateTimestamp = new Date(
+    transaction.exchangeRateFetchedAt ?? transaction.exchangeRateDate ?? "",
+  );
+  const rateDateLabel = Number.isFinite(rateTimestamp.getTime())
+    ? rateTimestamp.toLocaleString(i18n.resolvedLanguage, {
+        dateStyle: "medium",
+        ...(transaction.exchangeRateFetchedAt
+          ? { timeStyle: "short" as const }
+          : {}),
+      })
+    : (transaction.exchangeRateDate ?? "");
+  const displayedExchangeRate = transaction.exchangeRate?.toFixed(2) ?? "";
 
   useEffect(() => {
     return () => {
@@ -211,10 +252,14 @@ export function TransactionDetailSheet({
           enableContentPanningGesture={!busy}
           topInset={insets.top}
           contentContainerClassName="h-full px-0 pb-0 pt-1"
+          contentContainerProps={{ style: { direction: nativeDirection } }}
           backgroundClassName="rounded-t-[28px] bg-surface"
           handleIndicatorClassName="w-10 bg-muted/40"
         >
-          <View onLayout={openAfterLayout} style={styles.fill}>
+          <View
+            onLayout={openAfterLayout}
+            style={[styles.fill, { direction: nativeDirection }]}
+          >
             {deleteConfirmationVisible ? (
               <Animated.View
                 entering={FadeIn.duration(180).reduceMotion(
@@ -227,12 +272,16 @@ export function TransactionDetailSheet({
                 style={{ paddingBottom: Math.max(insets.bottom, 16) + 12 }}
               >
                 <View className="items-center gap-2">
-                  <BottomSheet.Title className="text-center text-danger">
+                  <BottomSheet.Title
+                    className="text-center text-danger"
+                    style={{ textAlign: "center", writingDirection }}
+                  >
                     {t("transactions.details.deleteTitle")}
                   </BottomSheet.Title>
                   <BottomSheet.Description
                     numberOfLines={2}
                     className="px-3 text-center font-sans text-sm leading-5"
+                    style={{ textAlign: "center", writingDirection }}
                   >
                     {t("transactions.details.deleteDescription", {
                       name: transaction.merchant,
@@ -244,25 +293,31 @@ export function TransactionDetailSheet({
                   <Text
                     accessibilityRole="alert"
                     className="text-center font-sans text-sm text-danger"
+                    style={{ textAlign: "center", writingDirection }}
                   >
                     {error}
                   </Text>
                 )}
 
-                <View className="flex-row gap-3">
+                <View
+                  className="gap-3"
+                  style={{ flexDirection: row }}
+                >
                   <Button
                     variant="tertiary"
                     className="flex-1"
+                    style={{ flexDirection: row }}
                     isDisabled={busy}
                     onPress={cancelDelete}
                   >
-                    <Button.Label>
+                    <Button.Label style={{ writingDirection }}>
                       {t("transactions.details.cancel")}
                     </Button.Label>
                   </Button>
                   <Button
                     variant="danger"
                     className="flex-1"
+                    style={{ flexDirection: row }}
                     isDisabled={busy}
                     accessibilityState={{ busy }}
                     onPress={confirmDelete}
@@ -272,7 +327,7 @@ export function TransactionDetailSheet({
                       name="delete"
                       size={20}
                     />
-                    <Button.Label>
+                    <Button.Label style={{ writingDirection }}>
                       {busy
                         ? t("transactions.details.deleting")
                         : t("transactions.details.delete")}
@@ -284,9 +339,15 @@ export function TransactionDetailSheet({
               <>
                 <BottomSheetScrollView
                   showsVerticalScrollIndicator={false}
-                  contentContainerStyle={styles.scrollContent}
+                  contentContainerStyle={[
+                    styles.scrollContent,
+                    { direction: nativeDirection },
+                  ]}
                 >
-                  <View className="flex-row items-center gap-4 border-b border-border pb-5">
+                  <View
+                    className="items-center gap-4 border-b border-border pb-5"
+                    style={{ flexDirection: row }}
+                  >
                     <View
                       className="size-16 items-center justify-center rounded-2xl"
                       style={{
@@ -303,11 +364,17 @@ export function TransactionDetailSheet({
                         size={32}
                       />
                     </View>
-                    <View className="flex-1 gap-1">
-                      <BottomSheet.Title numberOfLines={1}>
+                    <View className="min-w-0 flex-1 gap-1">
+                      <BottomSheet.Title
+                        numberOfLines={1}
+                        style={{ textAlign: start, writingDirection }}
+                      >
                         {transaction.merchant}
                       </BottomSheet.Title>
-                      <BottomSheet.Description numberOfLines={2}>
+                      <BottomSheet.Description
+                        numberOfLines={2}
+                        style={{ textAlign: start, writingDirection }}
+                      >
                         {t("transactions.details.typeAndDate", {
                           type: typeLabel,
                           date: dateLabel,
@@ -317,7 +384,11 @@ export function TransactionDetailSheet({
                     <Text
                       numberOfLines={1}
                       className="font-manrope-bold text-lg"
-                      style={{ color: amountColor }}
+                      style={{
+                        color: amountColor,
+                        textAlign: end,
+                        writingDirection: "ltr",
+                      }}
                     >
                       {transaction.type === 1
                         ? "+"
@@ -331,7 +402,10 @@ export function TransactionDetailSheet({
                     </Text>
                   </View>
 
-                  <Text className="pt-5 font-manrope-bold text-base text-accent">
+                  <Text
+                    className="pt-5 font-manrope-bold text-base text-accent"
+                    style={{ textAlign: start, writingDirection }}
+                  >
                     {t("transactions.details.heading")}
                   </Text>
                   <DetailRow
@@ -343,6 +417,144 @@ export function TransactionDetailSheet({
                     }
                     value={transaction.accountName}
                   />
+                  {hasCurrencyConversion ? (
+                    <View
+                      className="gap-4 border-y border-border py-3"
+                      style={{ flexDirection: row }}
+                    >
+                      <View className="size-10 items-center justify-center">
+                        <FilledIcon
+                          name="currency-exchange"
+                          size={24}
+                          tone="accent"
+                        />
+                      </View>
+                      <View className="min-w-0 flex-1 gap-2.5">
+                        <View
+                          className="flex-wrap items-center justify-between gap-3"
+                          style={{
+                            flexDirection: row,
+                          }}
+                        >
+                          <Text
+                            className="shrink font-sans text-sm text-muted"
+                            style={{ textAlign: start, writingDirection }}
+                          >
+                            {t("transactions.details.conversionTitle")}
+                          </Text>
+                          <Text
+                            className="font-manrope-semibold text-xs text-accent"
+                            style={{ textAlign: end, writingDirection }}
+                          >
+                            {t("transactions.details.conversionPair", {
+                              from: transaction.currencyCode,
+                              to: transaction.accountCurrencyCode,
+                            })}
+                          </Text>
+                        </View>
+                        <View
+                          className="items-stretch gap-3"
+                          style={{
+                            flexDirection: row,
+                          }}
+                        >
+                          <View className="min-w-0 flex-1 gap-0.5">
+                            <Text
+                              className="font-sans text-xs text-muted"
+                              style={{ textAlign: start, writingDirection }}
+                            >
+                              {t("transactions.details.originalAmount", {
+                                type: typeLabel,
+                              })}
+                            </Text>
+                            <Text
+                              adjustsFontSizeToFit
+                              minimumFontScale={0.72}
+                              numberOfLines={1}
+                              className="font-manrope-bold text-base text-foreground"
+                              style={{
+                                textAlign: start,
+                                writingDirection: "ltr",
+                              }}
+                            >
+                              {formatCurrency(
+                                transaction.absoluteAmount,
+                                transaction.currencyCode,
+                              )}
+                            </Text>
+                          </View>
+                          <View className="w-10 shrink-0 items-center justify-center border-x border-border">
+                            <FilledIcon
+                              name="swap-horizontal"
+                              size={20}
+                              tone="accent"
+                            />
+                          </View>
+                          <View className="min-w-0 flex-1 gap-0.5">
+                            <Text
+                              className="font-sans text-xs text-muted"
+                              style={{ textAlign: start, writingDirection }}
+                            >
+                              {t("transactions.details.accountAmount", {
+                                currency: transaction.accountCurrencyCode,
+                              })}
+                            </Text>
+                            <Text
+                              adjustsFontSizeToFit
+                              minimumFontScale={0.72}
+                              numberOfLines={1}
+                              className="font-manrope-bold text-base"
+                              style={{
+                                color: amountColor,
+                                textAlign: start,
+                                writingDirection: "ltr",
+                              }}
+                            >
+                              {formatCurrency(
+                                transaction.accountAmount,
+                                transaction.accountCurrencyCode,
+                              )}
+                            </Text>
+                          </View>
+                        </View>
+                        <View
+                          className="flex-wrap gap-2"
+                          style={{
+                            flexDirection: row,
+                          }}
+                        >
+                          <View className="max-w-full rounded-full bg-surface-tertiary px-2.5 py-1.5">
+                            <Text
+                              className="font-manrope-semibold text-xs text-foreground"
+                              style={{ textAlign: start, writingDirection: "ltr" }}
+                            >
+                              {t("transactions.details.exchangeRateValue", {
+                                from: transaction.currencyCode,
+                                rate: displayedExchangeRate,
+                                to: transaction.accountCurrencyCode,
+                              })}
+                            </Text>
+                          </View>
+                          <View
+                            className="max-w-full items-center gap-1.5 rounded-full bg-surface-tertiary px-2.5 py-1.5"
+                            style={{
+                              flexDirection: row,
+                            }}
+                          >
+                            <FilledIcon name="clock" size={13} tone="muted" />
+                            <Text
+                              className="min-w-0 shrink font-sans text-xs text-muted"
+                              style={{ textAlign: start, writingDirection }}
+                            >
+                              {t("transactions.details.rateCaptured", {
+                                date: rateDateLabel,
+                              })}
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
+                    </View>
+                  ) : null}
                   {transaction.destinationAccountName ? (
                     <DetailRow
                       icon="credit-card"
@@ -420,7 +632,10 @@ export function TransactionDetailSheet({
 
                   {receiptUri ? (
                     <View className="gap-2 pt-3">
-                      <Text className="font-manrope-semibold text-sm text-muted">
+                      <Text
+                        className="font-manrope-semibold text-sm text-muted"
+                        style={{ textAlign: start, writingDirection }}
+                      >
                         {t("transactions.details.receipt")}
                       </Text>
                       <Image
@@ -435,45 +650,54 @@ export function TransactionDetailSheet({
                     </View>
                   ) : null}
 
-                  <Text className="pb-2 pt-5 font-sans text-xs text-muted">
+                  <Text
+                    className="pb-2 pt-5 font-sans text-xs text-muted"
+                    style={{ textAlign: start, writingDirection }}
+                  >
                     {t("transactions.details.created", { date: dateLabel })}
                   </Text>
                 </BottomSheetScrollView>
 
                 <View
-                  className="flex-row border-t border-border px-3 pt-2"
-                  style={{ paddingBottom: Math.max(insets.bottom, 10) }}
+                  className="border-t border-border px-3 pt-2"
+                  style={{
+                    flexDirection: row,
+                    paddingBottom: Math.max(insets.bottom, 10),
+                  }}
                 >
                   <Button
                     variant="ghost"
                     className="flex-1"
+                    style={{ flexDirection: row }}
                     isDisabled={busy}
                     onPress={requestDelete}
                   >
                     <FilledIcon name="delete" size={22} tone="danger" />
-                    <Button.Label className="text-danger">
+                    <Button.Label className="text-danger" style={{ writingDirection }}>
                       {t("transactions.details.delete")}
                     </Button.Label>
                   </Button>
                   <Button
                     variant="ghost"
                     className="flex-1"
+                    style={{ flexDirection: row }}
                     isDisabled={busy}
                     onPress={edit}
                   >
                     <FilledIcon name="pencil" size={22} tone="accent" />
-                    <Button.Label className="text-accent">
+                    <Button.Label className="text-accent" style={{ writingDirection }}>
                       {t("transactions.details.edit")}
                     </Button.Label>
                   </Button>
                   <Button
                     variant="ghost"
                     className="flex-1"
+                    style={{ flexDirection: row }}
                     isDisabled={busy}
                     onPress={copy}
                   >
                     <FilledIcon name="copy" size={22} tone="accent" />
-                    <Button.Label className="text-accent">
+                    <Button.Label className="text-accent" style={{ writingDirection }}>
                       {t("transactions.details.copy")}
                     </Button.Label>
                   </Button>

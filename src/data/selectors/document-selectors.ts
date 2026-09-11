@@ -58,6 +58,11 @@ function transactionAmount(record: JsonObject) {
   return number(record.type) === 1 ? amount : -amount;
 }
 
+function transactionAccountAmount(record: JsonObject) {
+  const amount = Math.abs(number(record.accountAmount, number(record.amount)));
+  return number(record.type) === 1 ? amount : -amount;
+}
+
 function categoryIcon(category: string): FilledIconName {
   const value = category.toLowerCase();
   if (value.includes("food") || value.includes("dining")) return "food";
@@ -209,11 +214,8 @@ function belongsToAccount(transaction: JsonObject, account: JsonObject) {
 }
 
 function accountActivityTotals(document: BackupDocument, account: JsonObject) {
-  const currency = text(account.currencyCode, "USD").toUpperCase();
   const records = document.transactions.filter(
-    (item) =>
-      belongsToAccount(item, account) &&
-      text(item.currencyCode, currency).toUpperCase() === currency,
+    (item) => belongsToAccount(item, account),
   );
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
@@ -229,7 +231,11 @@ function accountActivityTotals(document: BackupDocument, account: JsonObject) {
   const total = (items: JsonObject[], type: number) =>
     items
       .filter((item) => item.type === type)
-      .reduce((sum, item) => sum + Math.abs(number(item.amount)), 0);
+      .reduce(
+        (sum, item) =>
+          sum + Math.abs(number(item.accountAmount, number(item.amount))),
+        0,
+      );
   return {
     income: total(records, 1),
     expense: total(records, 0),
@@ -422,6 +428,10 @@ export function selectTransactions(document: BackupDocument): Transaction[] {
         record.currencyCode,
         text(accountRecord?.currencyCode, "USD"),
       ).toUpperCase();
+      const accountCurrencyCode = text(
+        record.accountCurrencyCode,
+        text(accountRecord?.currencyCode, currencyCode),
+      ).toUpperCase();
       return {
         id: recordId(record, index),
         merchant: text(record.name, i18n.t("common.untitledTransaction")),
@@ -433,6 +443,17 @@ export function selectTransactions(document: BackupDocument): Transaction[] {
         amount: type === 1 ? absoluteAmount : -absoluteAmount,
         absoluteAmount,
         currencyCode: /^[A-Z]{3}$/.test(currencyCode) ? currencyCode : "USD",
+        accountAmount: Math.abs(
+          number(record.accountAmount, absoluteAmount),
+        ),
+        accountCurrencyCode: /^[A-Z]{3}$/.test(accountCurrencyCode)
+          ? accountCurrencyCode
+          : "USD",
+        exchangeRate:
+          number(record.exchangeRate) > 0 ? number(record.exchangeRate) : null,
+        exchangeRateDate: text(record.exchangeRateDate) || null,
+        exchangeRateFetchedAt: text(record.exchangeRateFetchedAt) || null,
+        exchangeRateSource: text(record.exchangeRateSource) || null,
         type,
         icon: text(categoryRecord?.icon, categoryIcon(category)),
         iconPath:
@@ -508,7 +529,7 @@ export function selectSearchResults(document: BackupDocument): SearchResult[] {
 }
 
 export function selectMonthlySummary(document: BackupDocument) {
-  const values = includedTransactions(document).map(transactionAmount);
+  const values = includedTransactions(document).map(transactionAccountAmount);
   const income = values.filter((value) => value > 0).reduce((a, b) => a + b, 0);
   const spent = Math.abs(
     values.filter((value) => value < 0).reduce((a, b) => a + b, 0),
@@ -538,7 +559,8 @@ export function selectSpendingCategories(
     );
     totals.set(
       category,
-      (totals.get(category) ?? 0) + Math.abs(number(transaction.amount)),
+      (totals.get(category) ?? 0) +
+        Math.abs(number(transaction.accountAmount, number(transaction.amount))),
     );
   }
   const total = [...totals.values()].reduce((sum, value) => sum + value, 0);
@@ -563,7 +585,8 @@ export function selectDailySpending(document: BackupDocument): DailySpend[] {
     const key = date.toISOString().slice(0, 10);
     dayTotals.set(
       key,
-      (dayTotals.get(key) ?? 0) + Math.abs(number(transaction.amount)),
+      (dayTotals.get(key) ?? 0) +
+        Math.abs(number(transaction.accountAmount, number(transaction.amount))),
     );
   }
 

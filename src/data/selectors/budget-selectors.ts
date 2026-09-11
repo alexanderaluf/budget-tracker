@@ -93,9 +93,10 @@ export function selectBudgets(document: BackupDocument, now = new Date()) {
       (account && !belongsToProfile(document, account))
     )
       return [];
+    const accountAmount = t.accountAmount ?? t.amount;
     if (
-      typeof t.amount !== "number" ||
-      !Number.isFinite(t.amount) ||
+      typeof accountAmount !== "number" ||
+      !Number.isFinite(accountAmount) ||
       ![0, 1, 2].includes(Number(t.type))
     )
       return [];
@@ -107,7 +108,7 @@ export function selectBudgets(document: BackupDocument, now = new Date()) {
       {
         id: identity(t) || `display-${index}`,
         name: String(t.name ?? "Untitled transaction"),
-        amount: Math.abs(t.amount),
+        amount: Math.abs(accountAmount),
         type: Number(t.type),
         timestamp,
         categoryId: category ? identity(category) : "",
@@ -115,7 +116,10 @@ export function selectBudgets(document: BackupDocument, now = new Date()) {
         accountId: account ? identity(account) : "",
         accountName: String(account?.name ?? "No account"),
         currencyCode: String(
-          t.currencyCode ?? account?.currencyCode ?? fallback,
+          t.accountCurrencyCode ??
+            t.currencyCode ??
+            account?.currencyCode ??
+            fallback,
         ).toUpperCase(),
       },
     ];

@@ -23,6 +23,9 @@ require.extensions[".ts"] = (module, filename) => {
 
 const { createDefaultBackup } = require("../src/data/model/default-backup.ts");
 const {
+  normalizeBackupDocument,
+} = require("../src/data/model/normalize-backup.ts");
+const {
   createTransactionDraft,
   deleteTransaction,
   saveTransaction,
@@ -32,6 +35,10 @@ const {
 const {
   createJsonBackupDocument,
 } = require("../src/data/backup/document-export.ts");
+const {
+  selectMonthlySummary,
+  selectTransactions,
+} = require("../src/data/selectors/document-selectors.ts");
 
 const now = "2026-09-09T12:00:00.000Z";
 
@@ -155,6 +162,89 @@ test("transaction drafts round trip optional relationships and receipt data", ()
   assert.equal(restored.placeId, "office");
   assert.equal(restored.personId, "sam");
   assert.equal(restored.receiptPath, "receipt.jpg");
+});
+
+test("foreign-currency transactions preserve the entered amount and snapshot the account conversion", () => {
+  const document = fixture();
+  document.accounts[0].currencyCode = "ILS";
+  const saved = saveTransaction(
+    document,
+    draft({
+      amount: "25",
+      currencyCode: "USD",
+      accountCurrencyCode: "ILS",
+      exchangeRate: 3.02244974,
+      exchangeRateDate: "2026-09-09",
+      exchangeRateFetchedAt: now,
+      exchangeRateSource: "fawazahmed0/currency-api",
+    }),
+    "foreign-transaction",
+    "alex-personal",
+    now,
+  );
+
+  assert.equal(saved.accounts[0].amount, 24.44);
+  assert.deepEqual(
+    {
+      amount: saved.transactions[0].amount,
+      currencyCode: saved.transactions[0].currencyCode,
+      accountAmount: saved.transactions[0].accountAmount,
+      accountCurrencyCode: saved.transactions[0].accountCurrencyCode,
+      exchangeRate: saved.transactions[0].exchangeRate,
+      exchangeRateDate: saved.transactions[0].exchangeRateDate,
+      exchangeRateFetchedAt: saved.transactions[0].exchangeRateFetchedAt,
+      exchangeRateSource: saved.transactions[0].exchangeRateSource,
+    },
+    {
+      amount: 25,
+      currencyCode: "USD",
+      accountAmount: 75.56,
+      accountCurrencyCode: "ILS",
+      exchangeRate: 3.02244974,
+      exchangeRateDate: "2026-09-09",
+      exchangeRateFetchedAt: now,
+      exchangeRateSource: "fawazahmed0/currency-api",
+    },
+  );
+
+  const normalized = normalizeBackupDocument(
+    JSON.parse(JSON.stringify(saved)),
+  );
+  const restored = transactionDraftFromRecord(
+    normalized,
+    "foreign-transaction",
+  );
+  assert.equal(restored.currencyCode, "USD");
+  assert.equal(restored.accountCurrencyCode, "ILS");
+  assert.equal(restored.exchangeRate, 3.02244974);
+
+  const projected = selectTransactions(normalized)[0];
+  assert.equal(projected.amount, -25);
+  assert.equal(projected.absoluteAmount, 25);
+  assert.equal(projected.currencyCode, "USD");
+  assert.equal(projected.accountAmount, 75.56);
+  assert.equal(projected.accountCurrencyCode, "ILS");
+  assert.equal(projected.exchangeRate, 3.02244974);
+  assert.equal(selectMonthlySummary(normalized).spent, 75.56);
+
+  const edited = saveTransaction(
+    normalized,
+    { ...restored, amount: "30" },
+    "foreign-transaction",
+    "alex-personal",
+    now,
+    true,
+  );
+  assert.equal(edited.transactions[0].accountAmount, 90.67);
+  assert.equal(edited.accounts[0].amount, 9.33);
+
+  const deleted = deleteTransaction(
+    edited,
+    "foreign-transaction",
+    "alex-personal",
+    now,
+  );
+  assert.equal(deleted.accounts[0].amount, 100);
 });
 
 test("validation rejects cross-currency and same-account transfers", () => {

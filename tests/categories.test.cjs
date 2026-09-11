@@ -436,8 +436,8 @@ test("v7-to-v13 migration preserves imported category data and survives SQLite r
       sqlite.prepare("SELECT document_json FROM app_document").get()
         .document_json,
     );
-    assert.equal(sqlite.prepare("PRAGMA user_version").get().user_version, 13);
-    assert.equal(restored._local.schemaVersion, 13);
+    assert.equal(sqlite.prepare("PRAGMA user_version").get().user_version, 15);
+    assert.equal(restored._local.schemaVersion, 15);
     assert.equal(restored.categories.length, 1);
     assert.equal(restored.categories[0].parentId, null);
     assert.deepEqual(restored.categories[0].custom, { keep: true });
@@ -663,10 +663,10 @@ test("a device already stuck at the current PRAGMA user_version still gets stale
   try {
     // No `currentVersion < N` block will run because user_version is already current.
     sqlite.exec(
-      "CREATE TABLE app_document (id INTEGER PRIMARY KEY, schema_version INTEGER NOT NULL, document_json TEXT NOT NULL, updated_at TEXT NOT NULL); PRAGMA user_version = 13;",
+      "CREATE TABLE app_document (id INTEGER PRIMARY KEY, schema_version INTEGER NOT NULL, document_json TEXT NOT NULL, updated_at TEXT NOT NULL); PRAGMA user_version = 15;",
     );
     const document = createDefaultBackup();
-    document._local.schemaVersion = 13;
+    document._local.schemaVersion = 15;
     document._local.defaultCategoriesRevision = 0;
     document.categories = [
       { id: 1, uuid: "category-groceries", name: "Groceries", type: 0 },
@@ -698,7 +698,7 @@ test("a device already stuck at the current PRAGMA user_version still gets stale
       sqlite.prepare("SELECT document_json FROM app_document").get()
         .document_json,
     );
-    assert.equal(sqlite.prepare("PRAGMA user_version").get().user_version, 13);
+    assert.equal(sqlite.prepare("PRAGMA user_version").get().user_version, 15);
     assert.equal(restored.categories.length, 19);
     assert.equal(restored._local.defaultCategoriesRevision, 1);
     assert.ok(

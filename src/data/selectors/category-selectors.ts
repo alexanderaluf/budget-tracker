@@ -80,13 +80,17 @@ function transactionValues(
     (record.user == null && account && !belongsToProfile(document, account))
   )
     return null;
-  if (typeof record.amount !== "number" || !Number.isFinite(record.amount))
+  const accountAmount = record.accountAmount ?? record.amount;
+  if (typeof accountAmount !== "number" || !Number.isFinite(accountAmount))
     return null;
   const category = context.categories.get(String(record.category));
   if (!category || !belongsToProfile(document, category)) return null;
   const code = string(
-    record.currencyCode,
-    string(account?.currencyCode, context.fallback),
+    record.accountCurrencyCode,
+    string(
+      record.currencyCode,
+      string(account?.currencyCode, context.fallback),
+    ),
   ).toUpperCase();
   const date = new Date(
     string(record.date, string(record.createdAt)),
@@ -94,7 +98,7 @@ function transactionValues(
   return {
     categoryId: identity(category),
     currencyCode: /^[A-Z]{3}$/.test(code) ? code : context.fallback,
-    amount: Math.abs(record.amount),
+    amount: Math.abs(accountAmount),
     timestamp: Number.isFinite(date) ? date : null,
     type:
       record.type === 1

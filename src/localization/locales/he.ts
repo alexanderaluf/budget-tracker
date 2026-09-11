@@ -114,6 +114,8 @@ export const he = {
       account: "יש לבחור חשבון מהפרופיל הזה.",
       destinationAccount: "יש לבחור חשבון יעד אחר.",
       transferCurrency: "חשבונות ההעברה חייבים להיות באותו מטבע.",
+      exchangeRate:
+        "יש לבחור שוב את מטבע העסקה כדי לטעון את שער החליפין הנוכחי שלו.",
       category: "יש לבחור קטגוריה לסוג העסקה הזה.",
       subcategory: "יש לבחור תת־קטגוריה של {{name}}.",
       relation: "יש לבחור {{label}} תקין בפרופיל הזה.",
@@ -938,6 +940,15 @@ export const he = {
       },
       amount: "סכום העסקה",
       amountPlaceholder: "סכום (לדוגמה 1,000.00)",
+      currencyAccessibility: "בחירת מטבע העסקה, כרגע {{currency}}",
+      transactionCurrency: "מטבע {{type}}: {{currency}}",
+      currencyRateLoading: "שער החליפין הנוכחי נטען...",
+      currencyRateUnavailable:
+        "שער החליפין הנוכחי אינו זמין. יש לבדוק את החיבור ולבחור שוב את המטבע.",
+      currencyRateCached:
+        "אין חיבור: נעשה שימוש בשער החליפין האחרון שנשמר מתאריך {{date}}.",
+      exchangeRateSummary: "1 {{from}} = {{rate}} {{to}} · {{date}}",
+      amountInAccountCurrency: "סכום ב-{{currency}}: {{amount}}",
       description: "תיאור העסקה",
       descriptionPlaceholder: "תיאור (אופציונלי)",
       date: "תאריך",
@@ -987,6 +998,8 @@ export const he = {
         account: "יש לבחור חשבון מהפרופיל הזה.",
         destinationAccount: "יש לבחור חשבון יעד אחר.",
         transferCurrency: "חשבונות ההעברה חייבים להיות באותו מטבע.",
+        exchangeRate:
+          "יש לבחור שוב את מטבע העסקה כדי לטעון את שער החליפין הנוכחי שלו.",
         category: "יש לבחור קטגוריה לסוג העסקה הזה.",
         subcategory: "יש לבחור תת־קטגוריה של {{name}}.",
         relation: "יש לבחור {{relation}} תקין בפרופיל הזה.",
@@ -1019,6 +1032,12 @@ export const he = {
     details: {
       typeAndDate: "{{type}} · {{date}}",
       heading: "פרטי עסקה",
+      conversionTitle: "המרת מטבע",
+      conversionPair: "{{from}} ל-{{to}}",
+      originalAmount: "סכום {{type}}",
+      exchangeRateValue: "1 {{from}} = {{rate}} {{to}}",
+      rateCaptured: "השער נשמר בתאריך {{date}}",
+      accountAmount: "סכום ב-{{currency}}",
       receipt: "קבלה או חשבונית",
       receiptAccessibility: "קבלה עבור {{name}}",
       created: "נוצר בתאריך {{date}}",

@@ -32,6 +32,7 @@ import {
   persistAttachment,
 } from "@/data/attachments/attachment-store";
 import { useLocalData } from "@/data/local-data-provider";
+import { convertCurrency } from "@/data/model/exchange-rate";
 import {
   belongsToProfile,
   identity,
@@ -50,7 +51,11 @@ import {
   selectBudgets,
   selectCategories,
 } from "@/data/selectors/document-selectors";
+import { selectExchangeRates } from "@/data/selectors/exchange-rate-selectors";
+import { CurrencySelectorSheet } from "@/features/profile/components/currency-selector-sheet";
+import { currencies } from "@/features/profile/data/currencies-data";
 import { useProfiles } from "@/features/profile/profile-provider";
+import { formatCurrency } from "@/shared/lib/currency";
 import { colorWithAlpha, useAppThemeColors } from "@/shared/theme/app-theme";
 import { Text } from "@/shared/ui/app-text";
 import { FilledIcon } from "@/shared/ui/filled-icon";
@@ -123,7 +128,7 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
   const params = useLocalSearchParams<{ copyId?: string }>();
   const insets = useSafeAreaInsets();
   const theme = useAppThemeColors();
-  const { document, updateDocument } = useLocalData();
+  const { document, ensureExchangeRates, updateDocument } = useLocalData();
   const { activeProfile } = useProfiles();
   const [profileId] = useState(activeProfile.id);
   const typeOptions = [
@@ -152,6 +157,10 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
     return {
       ...createTransactionDraft(),
       accountId: defaultAccount?.id ?? "",
+      currencyCode:
+        defaultAccount?.currencyCode ?? activeProfile.currencyCode.toUpperCase(),
+      accountCurrencyCode:
+        defaultAccount?.currencyCode ?? activeProfile.currencyCode.toUpperCase(),
     };
   });
   const transactionNamePlaceholder =
@@ -177,6 +186,10 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
   const [datePickerMode, setDatePickerMode] =
     useState<DatePickerMode>(null);
   const [actionMenuOpen, setActionMenuOpen] = useState(false);
+  const [currencySheetOpen, setCurrencySheetOpen] = useState(false);
+  const [currencyRateLoading, setCurrencyRateLoading] = useState(false);
+  const [currencyRateError, setCurrencyRateError] = useState("");
+  const [currencyRateNotice, setCurrencyRateNotice] = useState("");
   const [categorySheetParentId, setCategorySheetParentId] = useState<
     string | null
   >(null);
@@ -185,6 +198,7 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
   const [isSaving, setIsSaving] = useState(false);
   const [headerHidden, setHeaderHidden] = useState(false);
   const saving = useRef(false);
+  const currencyRequest = useRef(0);
   const transactionId = useRef(editId ?? uuid.v4());
   const blurTargetRef = useRef<View | null>(null);
   const [scrollY] = useState(() => new Animated.Value(0));
@@ -195,6 +209,30 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
   const selectedAccount = accounts.find(
     (account) => account.id === draft.accountId,
   );
+  const transactionCurrencyCode =
+    draft.currencyCode ||
+    selectedAccount?.currencyCode ||
+    activeProfile.currencyCode.toUpperCase();
+  const accountCurrencyCode =
+    selectedAccount?.currencyCode ?? draft.accountCurrencyCode;
+  const enteredAmount = Number(draft.amount.replace(",", "."));
+  let convertedAccountAmount: number | null = null;
+  if (
+    Number.isFinite(enteredAmount) &&
+    enteredAmount > 0 &&
+    draft.exchangeRate &&
+    accountCurrencyCode
+  ) {
+    try {
+      convertedAccountAmount = convertCurrency(
+        enteredAmount,
+        draft.exchangeRate,
+        accountCurrencyCode,
+      );
+    } catch {
+      convertedAccountAmount = null;
+    }
+  }
   const accountOptions: TransactionOption[] = accounts.map((account) => ({
     id: account.id,
     name: account.name,
@@ -385,9 +423,90 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
       categoryId: "",
       budgetId: "",
       destinationAccountId: type === 2 ? current.destinationAccountId : "",
+      ...(type === 2 && selectedAccount
+        ? {
+            currencyCode: selectedAccount.currencyCode,
+            accountCurrencyCode: selectedAccount.currencyCode,
+            exchangeRate: null,
+            exchangeRateDate: null,
+            exchangeRateFetchedAt: null,
+            exchangeRateSource: null,
+          }
+        : {}),
     }));
+    currencyRequest.current += 1;
+    setCurrencyRateLoading(false);
+    setCurrencyRateError("");
+    setCurrencyRateNotice("");
     setError("");
     setNotice("");
+  }
+
+  async function selectCurrency(code: string) {
+    if (!selectedAccount || draft.type === 2) return;
+    const accountCode = selectedAccount.currencyCode.toUpperCase();
+    const selectedCode = code.toUpperCase();
+    const request = currencyRequest.current + 1;
+    currencyRequest.current = request;
+    setCurrencyRateError("");
+    setCurrencyRateNotice("");
+    setDraft((current) => ({
+      ...current,
+      currencyCode: selectedCode,
+      accountCurrencyCode: accountCode,
+      exchangeRate: null,
+      exchangeRateDate: null,
+      exchangeRateFetchedAt: null,
+      exchangeRateSource: null,
+    }));
+    if (selectedCode === accountCode) {
+      setCurrencyRateLoading(false);
+      return;
+    }
+    setCurrencyRateLoading(true);
+    try {
+      const snapshot = await ensureExchangeRates(selectedCode);
+      if (request !== currencyRequest.current) return;
+      const rate = snapshot.rates[accountCode];
+      if (!rate) throw new Error("Missing exchange rate");
+      setDraft((current) =>
+        current.currencyCode === selectedCode &&
+        current.accountCurrencyCode === accountCode
+          ? {
+              ...current,
+              exchangeRate: rate,
+              exchangeRateDate: snapshot.date,
+              exchangeRateFetchedAt: snapshot.fetchedAt,
+              exchangeRateSource: snapshot.source,
+            }
+          : current,
+      );
+    } catch {
+      if (request !== currencyRequest.current) return;
+      const saved = selectExchangeRates(document, selectedCode);
+      const rate = saved?.rates[accountCode];
+      if (saved && rate) {
+        setDraft((current) =>
+          current.currencyCode === selectedCode &&
+          current.accountCurrencyCode === accountCode
+            ? {
+                ...current,
+                exchangeRate: rate,
+                exchangeRateDate: saved.date,
+                exchangeRateFetchedAt: saved.fetchedAt,
+                exchangeRateSource: saved.source,
+              }
+            : current,
+        );
+        setCurrencyRateNotice(
+          t("transactions.form.currencyRateCached", { date: saved.date }),
+        );
+      } else {
+        setCurrencyRateError(t("transactions.form.currencyRateUnavailable"));
+      }
+    } finally {
+      if (request === currencyRequest.current) setCurrencyRateLoading(false);
+    }
   }
 
   function goBack() {
@@ -433,6 +552,8 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
         return t("transactions.form.validation.destinationAccount");
       case "Transfer accounts must use the same currency.":
         return t("transactions.form.validation.transferCurrency");
+      case "Choose the transaction currency again to load its current exchange rate.":
+        return t("transactions.form.validation.exchangeRate");
       case "Choose a category for this transaction type.":
         return t("transactions.form.validation.category");
       case "This transaction no longer exists.":
@@ -667,24 +788,99 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
                     maxLength={30}
                     value={draft.amount}
                     onChangeText={(value) => change("amount", value)}
-                    className="h-16 rounded-2xl bg-surface px-4 pr-14 font-manrope-semibold"
+                    className="h-16 rounded-2xl bg-surface px-4 pr-24 font-manrope-semibold"
                     style={{
-                      paddingLeft: I18nManager.isRTL ? 56 : 16,
-                      paddingRight: I18nManager.isRTL ? 16 : 56,
+                      paddingLeft: I18nManager.isRTL ? 96 : 16,
+                      paddingRight: I18nManager.isRTL ? 16 : 96,
                       textAlign: "left",
                     }}
                   />
-                  <View
-                    pointerEvents="none"
-                    className="absolute top-0 h-16 items-center justify-center"
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={t(
+                      "transactions.form.currencyAccessibility",
+                      { currency: transactionCurrencyCode },
+                    )}
+                    accessibilityState={{
+                      disabled: isSaving || draft.type === 2 || !selectedAccount,
+                    }}
+                    disabled={isSaving || draft.type === 2 || !selectedAccount}
+                    onPress={() => {
+                      Keyboard.dismiss();
+                      setCurrencySheetOpen(true);
+                    }}
+                    className="absolute top-0 h-16 flex-row items-center gap-1 px-3"
                     style={{
-                      left: I18nManager.isRTL ? 16 : undefined,
-                      right: I18nManager.isRTL ? undefined : 16,
+                      left: I18nManager.isRTL ? 4 : undefined,
+                      right: I18nManager.isRTL ? undefined : 4,
                     }}
                   >
-                    <FilledIcon name="currency-usd" size={22} tone="muted" />
-                  </View>
+                    <Text className="font-manrope-bold text-sm text-accent">
+                      {transactionCurrencyCode}
+                    </Text>
+                    {draft.type !== 2 ? (
+                      <FilledIcon
+                        name="currency-exchange"
+                        size={18}
+                        tone="accent"
+                      />
+                    ) : null}
+                  </Pressable>
                 </View>
+
+                {selectedAccount &&
+                transactionCurrencyCode !== accountCurrencyCode ? (
+                  <View className="gap-2 rounded-2xl bg-surface-secondary p-4">
+                    <Text className="font-manrope-semibold text-sm text-foreground">
+                      {t("transactions.form.transactionCurrency", {
+                        type: t(
+                          draft.type === 1
+                            ? "transactions.common.types.income"
+                            : "transactions.common.types.expense",
+                        ),
+                        currency: transactionCurrencyCode,
+                      })}
+                    </Text>
+                    {currencyRateLoading ? (
+                      <Text className="font-sans text-sm text-muted">
+                        {t("transactions.form.currencyRateLoading")}
+                      </Text>
+                    ) : null}
+                    {currencyRateError ? (
+                      <Text accessibilityRole="alert" className="font-sans text-sm text-danger">
+                        {currencyRateError}
+                      </Text>
+                    ) : null}
+                    {currencyRateNotice ? (
+                      <Text className="font-sans text-sm text-muted">
+                        {currencyRateNotice}
+                      </Text>
+                    ) : null}
+                    {draft.exchangeRate ? (
+                      <>
+                        <Text className="font-sans text-sm text-muted">
+                          {t("transactions.form.exchangeRateSummary", {
+                            from: transactionCurrencyCode,
+                            rate: draft.exchangeRate,
+                            to: accountCurrencyCode,
+                            date: draft.exchangeRateDate ?? "",
+                          })}
+                        </Text>
+                        {convertedAccountAmount !== null ? (
+                          <Text className="font-manrope-bold text-base text-foreground">
+                            {t("transactions.form.amountInAccountCurrency", {
+                              currency: accountCurrencyCode,
+                              amount: formatCurrency(
+                                convertedAccountAmount,
+                                accountCurrencyCode,
+                              ),
+                            })}
+                          </Text>
+                        ) : null}
+                      </>
+                    ) : null}
+                  </View>
+                ) : null}
 
                 <Input
                   accessibilityLabel={t("transactions.form.description")}
@@ -796,9 +992,24 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
                   disabled={isSaving}
                   onToggle={() => toggleSection("account")}
                   onSelect={(accountId) => {
+                    const account = accounts.find(
+                      (item) => item.id === accountId,
+                    );
+                    const currencyCode =
+                      account?.currencyCode ?? transactionCurrencyCode;
+                    currencyRequest.current += 1;
+                    setCurrencyRateLoading(false);
+                    setCurrencyRateError("");
+                    setCurrencyRateNotice("");
                     setDraft((current) => ({
                       ...current,
                       accountId,
+                      currencyCode,
+                      accountCurrencyCode: currencyCode,
+                      exchangeRate: null,
+                      exchangeRateDate: null,
+                      exchangeRateFetchedAt: null,
+                      exchangeRateSource: null,
                       destinationAccountId:
                         current.destinationAccountId === accountId
                           ? ""
@@ -1202,6 +1413,13 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
           </BottomSheet.Content>
         </BottomSheet.Portal>
       </BottomSheet>
+      <CurrencySelectorSheet
+        currencies={currencies}
+        isOpen={currencySheetOpen}
+        selectedCode={transactionCurrencyCode}
+        onOpenChange={setCurrencySheetOpen}
+        onSelect={(currency) => void selectCurrency(currency.code)}
+      />
       {categorySheetParentOption ? (
         <TransactionCategorySheet
           parent={categorySheetParentOption}

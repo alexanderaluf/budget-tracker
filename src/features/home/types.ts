@@ -11,6 +11,12 @@ export type Transaction = {
   amount: number;
   absoluteAmount: number;
   currencyCode: string;
+  accountAmount: number;
+  accountCurrencyCode: string;
+  exchangeRate: number | null;
+  exchangeRateDate: string | null;
+  exchangeRateFetchedAt: string | null;
+  exchangeRateSource: string | null;
   type: 0 | 1 | 2;
   icon: string;
   iconPath: string | null;

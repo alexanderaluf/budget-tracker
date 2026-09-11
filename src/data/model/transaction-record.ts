@@ -8,6 +8,10 @@ import {
   identity,
   references,
 } from "./category-record";
+import {
+  convertCurrency,
+  currencyCode as normalizeCurrencyCode,
+} from "./exchange-rate";
 import type { JsonObject, JsonValue } from "./json";
 
 export const TRANSACTION_TYPES = [0, 1, 2] as const;
@@ -17,6 +21,12 @@ export type TransactionDraft = {
   type: TransactionType;
   name: string;
   amount: string;
+  currencyCode: string;
+  accountCurrencyCode: string;
+  exchangeRate: number | null;
+  exchangeRateDate: string | null;
+  exchangeRateFetchedAt: string | null;
+  exchangeRateSource: string | null;
   description: string;
   occurredAt: string;
   accountId: string;
@@ -38,6 +48,12 @@ export function createTransactionDraft(
     type,
     name: "",
     amount: "",
+    currencyCode: "",
+    accountCurrencyCode: "",
+    exchangeRate: null,
+    exchangeRateDate: null,
+    exchangeRateFetchedAt: null,
+    exchangeRateSource: null,
     description: "",
     occurredAt: new Date().toISOString(),
     accountId: "",
@@ -77,7 +93,12 @@ function transactionEffect(
   record: JsonObject,
   direction: 1 | -1,
 ) {
-  const amount = Math.abs(Number(record.amount));
+  const storedAccountAmount = record.accountAmount;
+  const amount = Math.abs(
+    Number(
+      storedAccountAmount == null ? record.amount : storedAccountAmount,
+    ),
+  );
   if (!Number.isFinite(amount))
     throw new Error(i18n.t("validation.transaction.invalidAmount"));
   const type = transactionType(record);
@@ -155,12 +176,33 @@ function resolveDraft(
       identity(destination) === identity(account))
   )
     throw new Error(i18n.t("validation.transaction.destinationAccount"));
-  const currencyCode = String(account.currencyCode ?? "USD").toUpperCase();
+  const accountCurrencyCode = normalizeCurrencyCode(
+    String(account.currencyCode ?? "USD"),
+  );
+  const currencyCode = normalizeCurrencyCode(
+    draft.currencyCode || accountCurrencyCode,
+  );
   if (
     draft.type === 2 &&
-    String(destination?.currencyCode ?? "USD").toUpperCase() !== currencyCode
+    String(destination?.currencyCode ?? "USD").toUpperCase() !==
+      accountCurrencyCode
   )
     throw new Error(i18n.t("validation.transaction.transferCurrency"));
+  const usesExchangeRate =
+    draft.type !== 2 && currencyCode !== accountCurrencyCode;
+  if (
+    usesExchangeRate &&
+    (draft.accountCurrencyCode !== accountCurrencyCode ||
+      !Number.isFinite(draft.exchangeRate) ||
+      (draft.exchangeRate ?? 0) <= 0 ||
+      !draft.exchangeRateDate ||
+      !draft.exchangeRateFetchedAt ||
+      !draft.exchangeRateSource)
+  )
+    throw new Error(i18n.t("validation.transaction.exchangeRate"));
+  const accountAmount = usesExchangeRate
+    ? convertCurrency(amount, draft.exchangeRate!, accountCurrencyCode)
+    : amount;
   const category = draft.categoryId
     ? findRecord(document.categories, draft.categoryId)
     : undefined;
@@ -196,9 +238,11 @@ function resolveDraft(
   }
   return {
     account,
+    accountAmount,
+    accountCurrencyCode,
     amount,
     category,
-    currencyCode,
+    currencyCode: draft.type === 2 ? accountCurrencyCode : currencyCode,
     destination,
     occurredAt: occurredAt.toISOString(),
   };
@@ -213,10 +257,35 @@ export function transactionDraftFromRecord(
   );
   if (!record) return null;
   const tags = Array.isArray(record.tags) ? record.tags : [];
+  const account = findRecord(document.accounts, sourceReference(record));
+  const accountCurrencyCode = String(
+    record.accountCurrencyCode ?? account?.currencyCode ?? "USD",
+  ).toUpperCase();
   return {
     type: transactionType(record),
     name: typeof record.name === "string" ? record.name : "",
     amount: String(record.amount ?? ""),
+    currencyCode: String(
+      record.currencyCode ?? accountCurrencyCode,
+    ).toUpperCase(),
+    accountCurrencyCode,
+    exchangeRate:
+      typeof record.exchangeRate === "number" &&
+      Number.isFinite(record.exchangeRate)
+        ? record.exchangeRate
+        : null,
+    exchangeRateDate:
+      typeof record.exchangeRateDate === "string"
+        ? record.exchangeRateDate
+        : null,
+    exchangeRateFetchedAt:
+      typeof record.exchangeRateFetchedAt === "string"
+        ? record.exchangeRateFetchedAt
+        : null,
+    exchangeRateSource:
+      typeof record.exchangeRateSource === "string"
+        ? record.exchangeRateSource
+        : null,
     description:
       typeof record.description === "string" ? record.description : "",
     occurredAt: String(record.date ?? record.createdAt ?? ""),
@@ -265,8 +334,26 @@ export function saveTransaction(
     name: draft.name.trim(),
     description: draft.description.trim(),
     amount: values.amount,
+    accountAmount: values.accountAmount,
     type: draft.type,
     currencyCode: values.currencyCode,
+    accountCurrencyCode: values.accountCurrencyCode,
+    exchangeRate:
+      values.currencyCode === values.accountCurrencyCode
+        ? null
+        : draft.exchangeRate,
+    exchangeRateDate:
+      values.currencyCode === values.accountCurrencyCode
+        ? null
+        : draft.exchangeRateDate,
+    exchangeRateFetchedAt:
+      values.currencyCode === values.accountCurrencyCode
+        ? null
+        : draft.exchangeRateFetchedAt,
+    exchangeRateSource:
+      values.currencyCode === values.accountCurrencyCode
+        ? null
+        : draft.exchangeRateSource,
     account: identity(values.account),
     accountName: values.account.name ?? "",
     category: values.category ? identity(values.category) : null,
@@ -437,7 +524,26 @@ export function saveTransactionTemplate(
         name: draft.name.trim(),
         description: draft.description.trim(),
         amount: values.amount,
+        accountAmount: values.accountAmount,
         type: draft.type,
+        currencyCode: values.currencyCode,
+        accountCurrencyCode: values.accountCurrencyCode,
+        exchangeRate:
+          values.currencyCode === values.accountCurrencyCode
+            ? null
+            : draft.exchangeRate,
+        exchangeRateDate:
+          values.currencyCode === values.accountCurrencyCode
+            ? null
+            : draft.exchangeRateDate,
+        exchangeRateFetchedAt:
+          values.currencyCode === values.accountCurrencyCode
+            ? null
+            : draft.exchangeRateFetchedAt,
+        exchangeRateSource:
+          values.currencyCode === values.accountCurrencyCode
+            ? null
+            : draft.exchangeRateSource,
         account: identity(values.account),
         category: values.category ? identity(values.category) : null,
         budget: draft.budgetId || null,
