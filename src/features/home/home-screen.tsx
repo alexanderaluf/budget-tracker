@@ -11,6 +11,7 @@ import {
   selectTransactions,
 } from "@/data/selectors/document-selectors";
 import { useProfiles } from "@/features/profile/profile-provider";
+import { RecurringSummaryCard } from "@/features/recurring/components/recurring-summary-card";
 import { colorForeground } from "@/shared/icons/colors";
 import { Text } from "@/shared/ui/app-text";
 import { FilledIcon } from "@/shared/ui/filled-icon";
@@ -100,6 +101,8 @@ export function HomeScreen() {
         isBalanceVisible={isBalanceVisible}
         onToggleBalance={() => setIsBalanceVisible((current) => !current)}
       />
+
+      <RecurringSummaryCard now={now} />
 
       <BudgetCard
         budgets={persistedBudgets}

@@ -1,31 +1,47 @@
 import { useSQLiteContext } from "expo-sqlite";
 import {
-    createContext,
-    type PropsWithChildren,
-    useContext,
-    useEffect,
-    useRef,
-    useState,
+  createContext,
+  type PropsWithChildren,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
 } from "react";
 import { ActivityIndicator, AppState, View } from "react-native";
 import { useThemeColor } from "heroui-native";
 
 import { i18n } from "@/localization/i18n";
 
-import { readDocument, writeDocument } from "./database/document-repository";
+import {
+  mutateDocument,
+  readDocument,
+  writeDocument,
+} from "./database/document-repository";
+import {
+  processRecurring,
+  reconcileRecurring,
+} from "./recurring/recurring-service";
+import { registerRecurringBackgroundTask } from "./recurring/recurring-background";
+import { syncRecurringReminders } from "./recurring/recurring-reminders";
 import type {
-    BackupCollectionKey,
-    BackupDocument,
+  BackupCollectionKey,
+  BackupDocument,
 } from "./model/backup-document";
 import { createDefaultBackup } from "./model/default-backup";
-import { selectDueCardPayments, settleDueCardPayments } from "./model/card-payment";
+import {
+  selectDueCardPayments,
+  settleDueCardPayments,
+} from "./model/card-payment";
 import { getExchangeRates } from "./exchange-rates/exchange-rate-service";
-import { storeExchangeRates, type ExchangeRateSnapshot } from "./model/exchange-rate";
+import {
+  storeExchangeRates,
+  type ExchangeRateSnapshot,
+} from "./model/exchange-rate";
 import { selectExchangeRates } from "./selectors/exchange-rate-selectors";
 import type { JsonObject } from "./model/json";
 import {
-    cloneBackupDocument,
-    normalizeBackupDocument,
+  cloneBackupDocument,
+  normalizeBackupDocument,
 } from "./model/normalize-backup";
 
 type DocumentUpdater = (current: BackupDocument) => BackupDocument;
@@ -34,6 +50,14 @@ type LocalDataContextValue = {
   document: BackupDocument;
   isHydrated: boolean;
   paymentError: string;
+  recurringError: string;
+  recurringBackgroundAvailable: boolean;
+  reconcileRecurringPayments: () => Promise<void>;
+  processRecurringPayment: (
+    id: string,
+    key: string,
+    profileId: string,
+  ) => Promise<void>;
   reconcileCardPayments: () => Promise<void>;
   ensureExchangeRates: (base: string) => Promise<ExchangeRateSnapshot>;
   refresh: () => Promise<void>;
@@ -63,6 +87,98 @@ export function LocalDataProvider({ children }: PropsWithChildren) {
   const settlementWork = useRef<Promise<void> | null>(null);
   const rateRequests = useRef(new Map<string, Promise<ExchangeRateSnapshot>>());
   const lastRateAttempt = useRef(new Map<string, number>());
+  const [recurringError, setRecurringError] = useState("");
+  const [reminderError, setReminderError] = useState("");
+  const [recurringBackgroundAvailable, setRecurringBackgroundAvailable] =
+    useState(false);
+  const recurringWork = useRef<Promise<void> | null>(null);
+
+  useEffect(() => {
+    if (!isHydrated) return;
+    const timer = setTimeout(() => {
+      void syncRecurringReminders(document)
+        .then(() => setReminderError(""))
+        .catch((reason) =>
+          setReminderError(
+            reason instanceof Error
+              ? reason.message
+              : "Reminders could not be scheduled.",
+          ),
+        );
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [document, isHydrated]);
+
+  useEffect(() => {
+    if (!isHydrated) return;
+    const run = () => {
+      void reconcileRecurringPayments().catch(() =>
+        setRecurringError(
+          "Recurring payments could not be checked. Please try again.",
+        ),
+      );
+    };
+    run();
+    void registerRecurringBackgroundTask()
+      .then(setRecurringBackgroundAvailable)
+      .catch(() => setRecurringBackgroundAvailable(false));
+    const timer = setInterval(run, 60_000);
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active")
+        void refresh()
+          .then(run)
+          .catch(() =>
+            setRecurringError("Could not reload recurring payments."),
+          );
+    });
+    return () => {
+      clearInterval(timer);
+      subscription.remove();
+    };
+  }, [isHydrated]);
+
+  function recurringStore() {
+    return {
+      read: async () => {
+        await writeQueue.current.catch(() => undefined);
+        return readDocument(database);
+      },
+      update: updateDocument,
+    };
+  }
+  async function reconcileRecurringPayments() {
+    if (!hydrationRef.current) return;
+    if (recurringWork.current) return recurringWork.current;
+    recurringWork.current = reconcileRecurring(recurringStore())
+      .then((result) => {
+        setRecurringError(
+          result.error ||
+            (result.remaining
+              ? "More overdue payments remain. They will continue on the next check."
+              : ""),
+        );
+      })
+      .catch((reason) => {
+        setRecurringError(
+          reason instanceof Error
+            ? reason.message
+            : "Recurring payments could not be checked.",
+        );
+        throw reason;
+      })
+      .finally(() => {
+        recurringWork.current = null;
+      });
+    await recurringWork.current;
+  }
+  async function processRecurringPayment(
+    id: string,
+    key: string,
+    profileId: string,
+  ) {
+    await processRecurring(recurringStore(), id, key, { profileId });
+    setRecurringError("");
+  }
 
   useEffect(() => {
     void refresh();
@@ -109,13 +225,15 @@ export function LocalDataProvider({ children }: PropsWithChildren) {
   }, []);
 
   async function refresh() {
-    writeQueue.current = writeQueue.current.catch(() => undefined).then(async () => {
-      const persisted = await readDocument(database);
-      documentRef.current = persisted;
-      setDocument(persisted);
-      hydrationRef.current = true;
-      setIsHydrated(true);
-    });
+    writeQueue.current = writeQueue.current
+      .catch(() => undefined)
+      .then(async () => {
+        const persisted = await readDocument(database);
+        documentRef.current = persisted;
+        setDocument(persisted);
+        hydrationRef.current = true;
+        setIsHydrated(true);
+      });
     await writeQueue.current;
   }
 
@@ -124,38 +242,62 @@ export function LocalDataProvider({ children }: PropsWithChildren) {
     if (settlementWork.current) return settlementWork.current;
     const work = async () => {
       const now = new Date();
-      const bases = new Set(selectDueCardPayments(documentRef.current, now)
-        .filter(({ card, bank }) => Number(card.amount) < 0 && card.currencyCode !== bank.currencyCode)
-        .map(({ card }) => String(card.currencyCode)));
-      await Promise.all([...bases].map(async (base) => {
-        // Avoid repeated failed downloads on every local write while offline.
-        if (Date.now() - (lastRateAttempt.current.get(base) ?? 0) < 60_000) return;
-        lastRateAttempt.current.set(base, Date.now());
-        try { await ensureExchangeRates(base); } catch { /* Leave payment pending. */ }
-      }));
+      const bases = new Set(
+        selectDueCardPayments(documentRef.current, now)
+          .filter(
+            ({ card, bank }) =>
+              Number(card.amount) < 0 &&
+              card.currencyCode !== bank.currencyCode,
+          )
+          .map(({ card }) => String(card.currencyCode)),
+      );
+      await Promise.all(
+        [...bases].map(async (base) => {
+          // Avoid repeated failed downloads on every local write while offline.
+          if (Date.now() - (lastRateAttempt.current.get(base) ?? 0) < 60_000)
+            return;
+          lastRateAttempt.current.set(base, Date.now());
+          try {
+            await ensureExchangeRates(base);
+          } catch {
+            /* Leave payment pending. */
+          }
+        }),
+      );
       writeQueue.current = writeQueue.current
-      .catch(() => undefined)
-      .then(async () => {
-        const next = settleDueCardPayments(documentRef.current);
-        if (next === documentRef.current) return;
-        const normalized = normalizeBackupDocument(next);
-        await writeDocument(database, normalized);
-        documentRef.current = normalized;
-        setDocument(normalized);
-      });
+        .catch(() => undefined)
+        .then(async () => {
+          if (
+            settleDueCardPayments(documentRef.current) === documentRef.current
+          )
+            return;
+          const normalized = await mutateDocument(database, (current) =>
+            settleDueCardPayments(current),
+          );
+          documentRef.current = normalized;
+          setDocument(normalized);
+        });
       await writeQueue.current;
-      const pending = selectDueCardPayments(documentRef.current).some(({ card }) => Number(card.amount) < 0);
-      setPaymentError(pending
-        ? i18n.t("errors.cardPayments.rateUnavailable")
-        : "");
+      const pending = selectDueCardPayments(documentRef.current).some(
+        ({ card }) => Number(card.amount) < 0,
+      );
+      setPaymentError(
+        pending ? i18n.t("errors.cardPayments.rateUnavailable") : "",
+      );
     };
-    settlementWork.current = work().finally(() => { settlementWork.current = null; });
+    settlementWork.current = work().finally(() => {
+      settlementWork.current = null;
+    });
     await settlementWork.current;
   }
 
   async function retryCardPayments() {
     lastRateAttempt.current.clear();
-    try { await reconcileCardPayments(); } catch { reportPaymentError(); }
+    try {
+      await reconcileCardPayments();
+    } catch {
+      reportPaymentError();
+    }
   }
 
   async function ensureExchangeRates(base: string) {
@@ -165,10 +307,14 @@ export function LocalDataProvider({ children }: PropsWithChildren) {
     if (cached && cached.date === today) return cached;
     const pending = rateRequests.current.get(code);
     if (pending) return pending;
-    const request = getExchangeRates(code).then(async (snapshot) => {
-      await updateDocument((current) => storeExchangeRates(current, snapshot));
-      return snapshot;
-    }).finally(() => rateRequests.current.delete(code));
+    const request = getExchangeRates(code)
+      .then(async (snapshot) => {
+        await updateDocument((current) =>
+          storeExchangeRates(current, snapshot),
+        );
+        return snapshot;
+      })
+      .finally(() => rateRequests.current.delete(code));
     rateRequests.current.set(code, request);
     return request;
   }
@@ -189,12 +335,11 @@ export function LocalDataProvider({ children }: PropsWithChildren) {
     writeQueue.current = writeQueue.current
       .catch(() => undefined)
       .then(async () => {
-        const next = settleDueCardPayments(
-          normalizeBackupDocument(
-            updater(cloneBackupDocument(documentRef.current)),
+        const next = await mutateDocument(database, (current) =>
+          settleDueCardPayments(
+            normalizeBackupDocument(updater(cloneBackupDocument(current))),
           ),
         );
-        await writeDocument(database, next);
         documentRef.current = next;
         setDocument(next);
       });
@@ -254,6 +399,10 @@ export function LocalDataProvider({ children }: PropsWithChildren) {
         document,
         isHydrated,
         paymentError,
+        recurringError: recurringError || reminderError,
+        recurringBackgroundAvailable,
+        reconcileRecurringPayments,
+        processRecurringPayment,
         reconcileCardPayments: retryCardPayments,
         ensureExchangeRates,
         refresh,

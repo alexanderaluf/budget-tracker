@@ -54,7 +54,9 @@
             "android": ["en", "he"]
           }
         }
-      ]
+      ],
+      "expo-background-task",
+      "expo-notifications"
     ],
     "experiments": {
       "typedRoutes": true,

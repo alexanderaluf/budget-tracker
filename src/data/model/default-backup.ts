@@ -26,6 +26,8 @@ export function createDefaultBackup(): BackupDocument {
     backupVersion: BACKUP_VERSION,
     // Daily public rate tables are cached in the canonical document on demand.
     exchangeRates: [],
+    // Schedules are created explicitly; no automatic payments are seeded.
+    recurrings: [],
     _local: {
       schemaVersion: LOCAL_SCHEMA_VERSION,
       defaultCategoriesRevision: DEFAULT_CATEGORIES_REVISION,

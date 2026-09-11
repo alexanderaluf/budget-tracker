@@ -5,7 +5,7 @@ import { createDefaultBackup } from "../model/default-backup";
 import type { JsonValue } from "../model/json";
 import { normalizeBackupDocument } from "../model/normalize-backup";
 
-const DATABASE_VERSION = 15;
+const DATABASE_VERSION = 16;
 // Superseded default category uuids from the pre-v9 seed (Groceries/Housing/Dining/Coffee/Income/Savings goals).
 const LEGACY_DEFAULT_CATEGORY_UUIDS = new Set([
   "category-groceries",
@@ -424,6 +424,23 @@ export async function migrateLocalDatabase(database: SQLiteDatabase) {
         );
       }
       await transaction.execAsync("PRAGMA user_version = 15;");
+    });
+  }
+
+  // v16 adds opt-in recurring schedules and an occurrence ledger; preserves imports.
+  if (currentVersion < 16) {
+    await database.withExclusiveTransactionAsync(async (transaction) => {
+      const stored = await transaction.getFirstAsync<{ document_json: string }>(
+        'SELECT document_json FROM app_document WHERE id = 1',
+      );
+      if (stored) {
+        const document = normalizeBackupDocument(JSON.parse(stored.document_json));
+        await transaction.runAsync(
+          'UPDATE app_document SET schema_version = ?, document_json = ?, updated_at = ? WHERE id = 1',
+          document._local.schemaVersion, JSON.stringify(document), new Date().toISOString(),
+        );
+      }
+      await transaction.execAsync('PRAGMA user_version = 16;');
     });
   }
 

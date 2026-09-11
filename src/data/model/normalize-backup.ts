@@ -1,4 +1,5 @@
 import { normalizeAccountRecord } from "./account-record";
+import { normalizeRecurringRecord } from "./recurring-record";
 import { normalizeBudgetRecord } from "./budget-record";
 import {
     ACCENT_COLOR_IDS,
@@ -132,6 +133,7 @@ export function normalizeBackupDocument(value: unknown): BackupDocument {
     );
   }
   document.accounts = document.accounts.map(normalizeAccountRecord);
+  document.recurrings = document.recurrings.map(normalizeRecurringRecord);
   document.transactions = document.transactions.map(
     normalizeTransactionCurrency,
   );

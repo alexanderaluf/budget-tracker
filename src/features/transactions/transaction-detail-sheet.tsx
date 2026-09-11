@@ -24,6 +24,7 @@ import { colorWithAlpha, useAppThemeColors } from "@/shared/theme/app-theme";
 import { Text } from "@/shared/ui/app-text";
 import { FilledIcon, type FilledIconName } from "@/shared/ui/filled-icon";
 import { RecordIcon } from "@/shared/ui/record-icon";
+import { RecurringPaymentSnapshot } from './recurring-payment-snapshot';
 
 // The portal sits outside app context; compensate for native mirroring only once.
 function useSheetDirection() {
@@ -417,6 +418,7 @@ export function TransactionDetailSheet({
                     }
                     value={transaction.accountName}
                   />
+                  <RecurringPaymentSnapshot transactionId={transaction.id} />
                   {hasCurrencyConversion ? (
                     <View
                       className="gap-4 border-y border-border py-3"

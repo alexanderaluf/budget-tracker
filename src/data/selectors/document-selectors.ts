@@ -25,6 +25,7 @@ import type { BackupDocument } from "../model/backup-document";
 import type { JsonObject, JsonValue } from "../model/json";
 
 export { selectBudgets, selectBudgetCurrency } from "./budget-selectors";
+export { selectRecurrings, selectRecurringEvents, selectRecurringSummary, selectRecurringRelations, recurringTotals } from './recurring-selectors';
 export {
   selectCategories,
   selectCategoryMonthlyTotals,

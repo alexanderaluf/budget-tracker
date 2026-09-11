@@ -73,6 +73,7 @@ function mountSheet(language, nativeRTL) {
     },
     "@/shared/ui/filled-icon": { FilledIcon: "FilledIcon" },
     "@/shared/ui/record-icon": { RecordIcon: "RecordIcon" },
+    "./recurring-payment-snapshot": { RecurringPaymentSnapshot: "RecurringPaymentSnapshot" },
   };
   function load(relative) {
     const filename = require.resolve(`../src/${relative}`);
