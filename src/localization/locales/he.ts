@@ -1,6 +1,4 @@
-import { recurringHe } from './recurring';
 export const he = {
-  recurring: recurringHe,
   common: {
     back: "חזרה",
     beta: "בטא",

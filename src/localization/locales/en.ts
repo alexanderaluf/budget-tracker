@@ -1,6 +1,4 @@
-import { recurringEn } from './recurring';
 export const en = {
-  recurring: recurringEn,
   common: {
     back: "Go back",
     beta: "Beta",
