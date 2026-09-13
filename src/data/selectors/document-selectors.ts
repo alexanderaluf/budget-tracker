@@ -28,8 +28,10 @@ export { selectBudgets, selectBudgetCurrency } from "./budget-selectors";
 export { selectRecurrings, selectRecurringEvents, selectRecurringSummary, selectRecurringRelations, recurringTotals } from './recurring-selectors';
 export {
   selectCategories,
+  selectCategoryRootId,
   selectCategoryMonthlyTotals,
   selectCategoryTransactions,
+  selectTopLevelCategories,
 } from "./category-selectors";
 
 const colors = ["#70d2eb", "#b89cf5", "#f2c66d", "#ef8175"];

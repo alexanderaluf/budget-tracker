@@ -47,6 +47,34 @@ export function selectCategories(document: BackupDocument): Category[] {
   });
 }
 
+export function selectTopLevelCategories(
+  document: BackupDocument,
+): Category[] {
+  return selectCategories(document).filter(
+    (category) => category.parentId === null,
+  );
+}
+
+export function selectCategoryRootId(
+  document: BackupDocument,
+  categoryId: string,
+): string {
+  const categories = selectCategories(document);
+  const byId = new Map(categories.map((category) => [category.id, category]));
+  const selected = byId.get(categoryId);
+  if (!selected) return "";
+
+  let current = selected;
+  const visited = new Set<string>();
+  while (current.parentId && !visited.has(current.id)) {
+    visited.add(current.id);
+    const parent = byId.get(current.parentId);
+    if (!parent) break;
+    current = parent;
+  }
+  return current.id;
+}
+
 function transactionContext(document: BackupDocument) {
   const accounts = new Map<string, JsonObject>();
   const categories = new Map<string, JsonObject>();

@@ -47,7 +47,9 @@ import {
 import {
   selectAccounts,
   selectBudgets,
+  selectCategoryRootId,
   selectCategories,
+  selectTopLevelCategories,
 } from "@/data/selectors/document-selectors";
 import { selectExchangeRates } from "@/data/selectors/exchange-rate-selectors";
 import { CurrencySelectorSheet } from "@/features/profile/components/currency-selector-sheet";
@@ -141,6 +143,7 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
   );
   const accounts = selectAccounts(document);
   const categories = selectCategories(document);
+  const topLevelCategories = selectTopLevelCategories(document);
   const budgets = selectBudgets(document);
   const defaultAccount =
     accounts.find((account) => account.isDefault) ?? accounts[0];
@@ -252,18 +255,20 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
       (!selectedAccount || account?.currencyCode === selectedAccount.currencyCode)
     );
   });
-  const categoryOptions: TransactionOption[] = categories
+  const categoryOptions: TransactionOption[] = topLevelCategories
     .filter((category) => category.type === draft.type)
     .map((category) => ({
       id: category.id,
-      name: category.parentId
-        ? `${categories.find((item) => item.id === category.parentId)?.name ?? t("transactions.common.categoryFallback")} / ${category.name}`
-        : category.name,
+      name: category.name,
       description: category.description,
       icon: category.icon,
       iconPath: category.iconPath,
       color: category.color,
     }));
+  const selectedCategoryRootId = selectCategoryRootId(
+    document,
+    draft.categoryId,
+  );
   const categorySheetParent = categorySheetParentId
     ? categories.find((category) => category.id === categorySheetParentId)
     : undefined;
@@ -1048,7 +1053,7 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
                   placeholder={t("transactions.form.selectCategory")}
                   icon="chart-donut-variant"
                   options={categoryOptions}
-                  selectedId={draft.categoryId}
+                  selectedId={selectedCategoryRootId}
                   expanded={expanded.category}
                   compact
                   disabled={isSaving}
@@ -1501,10 +1506,20 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 10,
     paddingHorizontal: 16,
-    borderTopLeftRadius: 29,
-    borderBottomLeftRadius: 29,
-    borderTopRightRadius: 8,
-    borderBottomRightRadius: 8,
+    ...Platform.select({
+      android: {
+        borderTopLeftRadius: 29,
+        borderBottomLeftRadius: 29,
+        borderTopRightRadius: 8,
+        borderBottomRightRadius: 8,
+      },
+      ios: {
+        borderStartStartRadius: 29,
+        borderEndStartRadius: 29,
+        borderStartEndRadius: 8,
+        borderEndEndRadius: 8,
+      },
+    }),
     overflow: "hidden",
   },
   secondaryActionButton: {
@@ -1512,10 +1527,20 @@ const styles = StyleSheet.create({
     height: 58,
     alignItems: "center",
     justifyContent: "center",
-    borderTopLeftRadius: 8,
-    borderBottomLeftRadius: 8,
-    borderTopRightRadius: 29,
-    borderBottomRightRadius: 29,
+    ...Platform.select({
+      android: {
+        borderTopLeftRadius: 8,
+        borderBottomLeftRadius: 8,
+        borderTopRightRadius: 29,
+        borderBottomRightRadius: 29,
+      },
+      ios: {
+        borderStartStartRadius: 8,
+        borderEndStartRadius: 8,
+        borderStartEndRadius: 29,
+        borderEndEndRadius: 29,
+      },
+    }),
     overflow: "hidden",
   },
   actionPressed: { opacity: 0.78 },

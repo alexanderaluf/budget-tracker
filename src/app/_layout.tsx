@@ -6,12 +6,19 @@ import { Manrope_600SemiBold } from "@expo-google-fonts/manrope/600SemiBold";
 import { Manrope_700Bold } from "@expo-google-fonts/manrope/700Bold";
 import { useFonts } from "expo-font";
 import { NavigationBar } from "expo-navigation-bar";
-import { Stack } from "expo-router";
+import {
+  DarkTheme,
+  DefaultTheme,
+  Stack,
+  ThemeProvider,
+  type Theme,
+} from "expo-router";
 import { SQLiteProvider } from "expo-sqlite";
 import { StatusBar } from "expo-status-bar";
 import * as SystemUI from "expo-system-ui";
 import { HeroUINativeProvider } from "heroui-native";
 import { useEffect } from "react";
+import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useUniwind } from "uniwind";
 
@@ -24,24 +31,52 @@ import {
     useAppThemeColors,
 } from "@/shared/theme/app-theme";
 
-function SystemBars() {
+const ROOT_BACKGROUNDS = {
+  dark: "#000000",
+  light: "#DCE7E0",
+} as const;
+
+function AppNavigation() {
   const { theme } = useUniwind();
-  const { background } = useAppThemeColors();
+  const { accent, background, border, danger, foreground } =
+    useAppThemeColors();
   const isDark = theme === "dark";
+  const baseNavigationTheme = isDark ? DarkTheme : DefaultTheme;
+  const navigationTheme: Theme = {
+    ...baseNavigationTheme,
+    colors: {
+      ...baseNavigationTheme.colors,
+      primary: accent,
+      background,
+      card: background,
+      text: foreground,
+      border,
+      notification: danger,
+    },
+  };
 
   useEffect(() => {
     void SystemUI.setBackgroundColorAsync(background);
   }, [background]);
 
   return (
-    <>
-      <StatusBar style={isDark ? "light" : "dark"} />
-      <NavigationBar style={isDark ? "light" : "dark"} />
-    </>
+    <ThemeProvider value={navigationTheme}>
+      <View style={{ flex: 1, backgroundColor: background }}>
+        <StatusBar style={isDark ? "light" : "dark"} />
+        <NavigationBar style={isDark ? "light" : "dark"} />
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: background },
+          }}
+        />
+      </View>
+    </ThemeProvider>
   );
 }
 
 export default function RootLayout() {
+  const { theme } = useUniwind();
   const [fontsLoaded, fontError] = useFonts({
     Manrope_400Regular,
     Manrope_500Medium,
@@ -52,7 +87,13 @@ export default function RootLayout() {
   if (!fontsLoaded && !fontError) return null;
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView
+      style={{
+        flex: 1,
+        backgroundColor:
+          ROOT_BACKGROUNDS[theme === "dark" ? "dark" : "light"],
+      }}
+    >
       <HeroUINativeProvider>
         <SQLiteProvider
           databaseName="budget-manager.db"
@@ -62,12 +103,7 @@ export default function RootLayout() {
             <LocalizationProvider>
               <AppThemeController />
               <ProfileProvider>
-                <SystemBars />
-                <Stack
-                  screenOptions={{
-                    headerShown: false,
-                  }}
-                />
+                <AppNavigation />
               </ProfileProvider>
             </LocalizationProvider>
           </LocalDataProvider>

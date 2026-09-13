@@ -1,23 +1,24 @@
 import { View } from "react-native";
 import { useTranslation } from "react-i18next";
-import { useLocalData } from "@/data/local-data-provider";
-import { selectRecurringTransactionSnapshot } from "@/data/selectors/recurring-selectors";
+import type { selectRecurringTransactionSnapshot } from "@/data/selectors/recurring-selectors";
 import { formatCurrency } from "@/shared/lib/currency";
 import { Text } from "@/shared/ui/app-text";
 
+type RecurringTransactionSnapshot = NonNullable<
+  ReturnType<typeof selectRecurringTransactionSnapshot>
+>;
+
 export function RecurringPaymentSnapshot({
-  transactionId,
+  snapshot,
 }: {
-  transactionId: string;
+  snapshot: RecurringTransactionSnapshot | null;
 }) {
-  const { document } = useLocalData(),
-    { t, i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const rtl = i18n.dir(i18n.resolvedLanguage ?? i18n.language) === "rtl";
   const textStyle = {
     writingDirection: rtl ? ("rtl" as const) : ("ltr" as const),
     textAlign: rtl ? ("right" as const) : ("left" as const),
   };
-  const snapshot = selectRecurringTransactionSnapshot(document, transactionId);
   if (!snapshot) return null;
   const date = (value: string) =>
     new Date(value).toLocaleString(i18n.resolvedLanguage, {

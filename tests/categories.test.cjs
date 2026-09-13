@@ -30,8 +30,10 @@ const {
 } = require("../src/data/model/category-record.ts");
 const {
   selectCategories,
+  selectCategoryRootId,
   selectCategoryMonthlyTotals,
   selectCategoryTransactions,
+  selectTopLevelCategories,
 } = require("../src/data/selectors/category-selectors.ts");
 const {
   createJsonBackupDocument,
@@ -70,6 +72,19 @@ function tree() {
     { name: "Lunch", parentId: "restaurant" },
   );
 }
+
+test("transaction category grid exposes roots and highlights a selected descendant's root", () => {
+  const document = add(tree(), "other", { name: "Other" });
+
+  assert.deepEqual(
+    selectTopLevelCategories(document).map((category) => category.id),
+    ["food", "other"],
+  );
+  assert.equal(selectCategoryRootId(document, "lunch"), "food");
+  assert.equal(selectCategoryRootId(document, "restaurant"), "food");
+  assert.equal(selectCategoryRootId(document, "other"), "other");
+  assert.equal(selectCategoryRootId(document, "missing"), "");
+});
 
 test("create, rename, reparent, defaults and unknown data survive backup round trips", () => {
   let document = tree();

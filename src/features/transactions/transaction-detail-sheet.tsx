@@ -17,6 +17,7 @@ import {
 } from "@/data/attachments/attachment-store";
 import { useLocalData } from "@/data/local-data-provider";
 import { deleteTransaction } from "@/data/model/transaction-record";
+import { selectRecurringTransactionSnapshot } from "@/data/selectors/recurring-selectors";
 import { useProfiles } from "@/features/profile/profile-provider";
 import type { Transaction } from "@/features/home/types";
 import { formatCurrency } from "@/shared/lib/currency";
@@ -91,7 +92,7 @@ export function TransactionDetailSheet({
   const insets = useSafeAreaInsets();
   const theme = useAppThemeColors();
   const dangerForeground = useThemeColor("danger-foreground");
-  const { updateDocument } = useLocalData();
+  const { document, updateDocument } = useLocalData();
   const { activeProfile } = useProfiles();
   const [isOpen, setIsOpen] = useState(false);
   const initialPositionFix = useBottomSheetInitialPositionFix(isOpen);
@@ -143,6 +144,10 @@ export function TransactionDetailSheet({
       })
     : (transaction.exchangeRateDate ?? "");
   const displayedExchangeRate = transaction.exchangeRate?.toFixed(2) ?? "";
+  const recurringSnapshot = selectRecurringTransactionSnapshot(
+    document,
+    transaction.id,
+  );
 
   useEffect(() => {
     return () => {
@@ -422,7 +427,7 @@ export function TransactionDetailSheet({
                     }
                     value={transaction.accountName}
                   />
-                  <RecurringPaymentSnapshot transactionId={transaction.id} />
+                  <RecurringPaymentSnapshot snapshot={recurringSnapshot} />
                   {hasCurrencyConversion ? (
                     <View
                       className="gap-4 border-y border-border py-3"

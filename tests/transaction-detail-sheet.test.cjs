@@ -60,8 +60,16 @@ function mountSheet(language, nativeRTL) {
     "expo-router": { useRouter: () => ({}) },
     "heroui-native": { BottomSheet: bottomSheet, Button: button, useThemeColor: () => "#ffffff" },
     "@/data/attachments/attachment-store": {},
-    "@/data/local-data-provider": { useLocalData: () => ({ updateDocument: async () => {} }) },
+    "@/data/local-data-provider": {
+      useLocalData: () => ({ document: {}, updateDocument: async () => {} }),
+    },
     "@/data/model/transaction-record": {},
+    "@/data/selectors/recurring-selectors": {
+      selectRecurringTransactionSnapshot: (document, transactionId) => ({
+        document,
+        transactionId,
+      }),
+    },
     "@/features/profile/profile-provider": { useProfiles: () => ({ activeProfile: { id: "profile" } }) },
     "@/localization/localization-provider": {
       useAppLocalization: () => ({ isRTL: false, direction: "ltr", language: "en" }),
@@ -73,6 +81,12 @@ function mountSheet(language, nativeRTL) {
     },
     "@/shared/ui/filled-icon": { FilledIcon: "FilledIcon" },
     "@/shared/ui/record-icon": { RecordIcon: "RecordIcon" },
+    "@/shared/ui/use-bottom-sheet-initial-position-fix": {
+      useBottomSheetInitialPositionFix: () => ({
+        containerStyle: undefined,
+        onChange: () => {},
+      }),
+    },
     "./recurring-payment-snapshot": { RecurringPaymentSnapshot: "RecurringPaymentSnapshot" },
   };
   function load(relative) {
@@ -121,6 +135,10 @@ for (const language of ["en", "he"]) {
     test(`${language} details mirror once on a native ${nativeRTL ? "RTL" : "LTR"} layout`, () => {
       const sheet = mountSheet(language, nativeRTL);
       const nodes = sheet.render();
+      const recurringSnapshot = nodes.find(
+        (node) => node.type === "RecurringPaymentSnapshot",
+      ).props.snapshot;
+      assert.equal(recurringSnapshot.transactionId, "transaction");
       const desiredRTL = language === "he";
       const direction = desiredRTL ? "rtl" : "ltr";
       const text = (key) => {
