@@ -1,31 +1,30 @@
-import { useMemo, useRef, useState } from "react";
-import { useRouter } from "expo-router";
-import { Button } from "heroui-native";
-import { FlatList, I18nManager, View } from "react-native";
-import { useTranslation } from "react-i18next";
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
 import { useLocalData } from "@/data/local-data-provider";
 import { belongsToProfile, identity } from "@/data/model/category-record";
 import { selectBudgets } from "@/data/selectors/document-selectors";
 import { useCategoryClock } from "@/features/categories/use-category-clock";
-import { useAppThemeColors } from "@/shared/theme/app-theme";
 import { formatCurrency } from "@/shared/lib/currency";
+import { useAppThemeColors } from "@/shared/theme/app-theme";
 import { Text } from "@/shared/ui/app-text";
 import { FilledIcon } from "@/shared/ui/filled-icon";
+import { useBottomSheetInitialPositionFix } from "@/shared/ui/use-bottom-sheet-initial-position-fix";
+import { useRouter } from "expo-router";
+import { BottomSheet, Button } from "heroui-native";
+import { useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { FlatList, I18nManager, View } from "react-native";
 import {
-  BudgetBadge,
-  BudgetChart,
-  BudgetHeader,
-  BudgetPanel,
-  BudgetProgress,
-  BudgetSheet,
-  BudgetSummary,
-  BudgetToggle,
+    SafeAreaView,
+    useSafeAreaInsets,
+} from "react-native-safe-area-context";
+import {
+    BudgetBadge,
+    BudgetChart,
+    BudgetHeader,
+    BudgetPanel,
+    BudgetProgress,
+    BudgetSummary,
+    BudgetToggle,
 } from "./components/budget-ui";
-import { BudgetTransactionSheet } from "./components/budget-transaction-sheet";
 
 export function BudgetDetailsScreen({ id }: { id: string }) {
   const { t, i18n } = useTranslation();
@@ -35,17 +34,23 @@ export function BudgetDetailsScreen({ id }: { id: string }) {
     insets = useSafeAreaInsets(),
     c = useAppThemeColors();
   const budget = useMemo(
-    () => selectBudgets(document, new Date()).find((b) => b.id === id),
+    () => selectBudgets(document, now).find((b) => b.id === id),
     [document, now, id],
   );
-  const [sheet, setSheet] = useState<"delete" | "transaction" | null>(null),
+  const [sheet, setSheet] = useState<"delete" | null>(null),
     [error, setError] = useState(""),
-    [busy, setBusy] = useState(false);
+    [busy, setBusy] = useState(false),
+    [showOnHome, setShowOnHome] = useState(() => budget?.showOnHome ?? false);
+  const deleteSheetInitialPositionFix = useBottomSheetInitialPositionFix(
+    sheet === "delete",
+  );
   const saving = useRef(false);
   async function mutate(action: "delete" | "home", value?: boolean) {
     if (saving.current) return;
     saving.current = true;
-    setBusy(true);
+    const previousShowOnHome = showOnHome;
+    if (action === "delete") setBusy(true);
+    else setShowOnHome(value === true);
     setError("");
     try {
       await updateDocument((current) => {
@@ -73,6 +78,7 @@ export function BudgetDetailsScreen({ id }: { id: string }) {
         router.replace("/budgets");
       }
     } catch (reason) {
+      if (action === "home") setShowOnHome(previousShowOnHome);
       setError(
         reason instanceof Error
           ? reason.message
@@ -80,7 +86,7 @@ export function BudgetDetailsScreen({ id }: { id: string }) {
       );
     } finally {
       saving.current = false;
-      setBusy(false);
+      if (action === "delete") setBusy(false);
     }
   }
   if (!budget)
@@ -104,7 +110,12 @@ export function BudgetDetailsScreen({ id }: { id: string }) {
           variant="ghost"
           isIconOnly
           accessibilityLabel={t("budgets.details.addTransaction")}
-          onPress={() => setSheet("transaction")}
+          onPress={() =>
+            router.push({
+              pathname: "/transactions/create",
+              params: { budgetId: b.id },
+            })
+          }
         >
           <FilledIcon name="plus" size={26} />
         </Button>
@@ -114,9 +125,7 @@ export function BudgetDetailsScreen({ id }: { id: string }) {
           accessibilityLabel={t("budgets.details.deleteAccessibility")}
           onPress={() => setSheet("delete")}
         >
-          <Text className="font-manrope-semibold text-danger">
-            {t("budgets.details.delete")}
-          </Text>
+          <FilledIcon name="delete" size={25} tone="danger" />
         </Button>
       </BudgetHeader>
       <FlatList
@@ -134,7 +143,7 @@ export function BudgetDetailsScreen({ id }: { id: string }) {
               <BudgetToggle
                 title={t("budgets.details.showBudget")}
                 description={t("budgets.details.showBudgetHelp")}
-                value={b.showOnHome}
+                value={showOnHome}
                 disabled={busy}
                 onChange={(v) => mutate("home", v)}
               />
@@ -258,34 +267,73 @@ export function BudgetDetailsScreen({ id }: { id: string }) {
           <Button.Label>{t("budgets.details.edit")}</Button.Label>
         </Button>
       </View>
-      {sheet === "transaction" && (
-        <BudgetTransactionSheet budget={b} onClose={() => setSheet(null)} />
-      )}
-      {sheet === "delete" && (
-        <BudgetSheet
-          title={t("budgets.details.deleteTitle")}
-          busy={busy}
-          onClose={() => setSheet(null)}
-        >
-          <Text className="text-base leading-6 text-foreground">
-            {t("budgets.details.deleteDescription", { name: b.name })}
-          </Text>
-          {!!error && (
-            <Text accessibilityRole="alert" className="text-danger">
-              {error}
-            </Text>
-          )}
-          <Button
-            variant="danger"
-            isDisabled={busy}
-            onPress={() => mutate("delete")}
+      <BottomSheet
+        isOpen={sheet === "delete"}
+        onOpenChange={(open) => {
+          if (!open && !busy) setSheet(null);
+        }}
+      >
+        <BottomSheet.Portal unstable_accessibilityContainerViewIsModal>
+          <BottomSheet.Overlay isCloseOnPress={!busy} />
+          <BottomSheet.Content
+            containerStyle={deleteSheetInitialPositionFix.containerStyle}
+            onChange={deleteSheetInitialPositionFix.onChange}
+            topInset={insets.top}
+            bottomInset={insets.bottom}
+            enablePanDownToClose={!busy}
+            enableHandlePanningGesture={!busy}
+            enableContentPanningGesture={!busy}
+            contentContainerClassName="px-5 pb-0 pt-2"
+            backgroundClassName="rounded-t-[28px] bg-surface"
+            handleIndicatorClassName="w-10 bg-muted/40"
           >
-            {busy
-              ? t("budgets.details.deleting")
-              : t("budgets.details.deleteBudget")}
-          </Button>
-        </BudgetSheet>
-      )}
+            <View
+              className="gap-5"
+              style={{ paddingBottom: Math.max(insets.bottom, 16) + 12 }}
+            >
+              <View className="items-center gap-3">
+                <View className="size-14 items-center justify-center rounded-full bg-danger/10">
+                  <FilledIcon name="delete" size={30} tone="danger" />
+                </View>
+                <BottomSheet.Title className="text-center text-danger">
+                  {t("budgets.details.deleteTitle")}
+                </BottomSheet.Title>
+              </View>
+              <BottomSheet.Description className="font-sans text-base leading-6">
+                {t("budgets.details.deleteDescription", { name: b.name })}
+              </BottomSheet.Description>
+              {!!error && (
+                <Text accessibilityRole="alert" className="text-danger">
+                  {error}
+                </Text>
+              )}
+              <View className="flex-row gap-3">
+                <Button
+                  variant="tertiary"
+                  className="flex-1"
+                  isDisabled={busy}
+                  onPress={() => setSheet(null)}
+                >
+                  <Button.Label>{t("budgets.common.cancel")}</Button.Label>
+                </Button>
+                <Button
+                  variant="danger"
+                  className="flex-1"
+                  isDisabled={busy}
+                  accessibilityState={{ busy }}
+                  onPress={() => mutate("delete")}
+                >
+                  <Button.Label>
+                    {busy
+                      ? t("budgets.details.deleting")
+                      : t("budgets.details.deleteBudget")}
+                  </Button.Label>
+                </Button>
+              </View>
+            </View>
+          </BottomSheet.Content>
+        </BottomSheet.Portal>
+      </BottomSheet>
     </SafeAreaView>
   );
 }

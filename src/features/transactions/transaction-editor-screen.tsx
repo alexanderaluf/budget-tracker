@@ -124,7 +124,7 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
   const { t, i18n } = useTranslation();
   const { direction } = useAppLocalization();
   const router = useRouter();
-  const params = useLocalSearchParams<{ copyId?: string }>();
+  const params = useLocalSearchParams<{ copyId?: string; budgetId?: string }>();
   const insets = useSafeAreaInsets();
   const theme = useAppThemeColors();
   const { document, ensureExchangeRates, updateDocument } = useLocalData();
@@ -143,6 +143,10 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
   const categories = selectCategories(document);
   const topLevelCategories = selectTopLevelCategories(document);
   const budgets = selectBudgets(document);
+  const presetBudget =
+    !sourceId && params.budgetId
+      ? budgets.find((budget) => budget.id === params.budgetId)
+      : null;
   const defaultAccount =
     accounts.find((account) => account.isDefault) ?? accounts[0];
   const [draft, setDraft] = useState<TransactionDraft>(() => {
@@ -154,6 +158,26 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
             receiptAttachmentId: null,
           }
         : sourceDraft;
+    if (presetBudget) {
+      const eligibleAccounts = accounts.filter(
+        (account) =>
+          account.currencyCode === presetBudget.currencyCode &&
+          (!presetBudget.accounts.length ||
+            presetBudget.accounts.includes(account.id)),
+      );
+      const account =
+        eligibleAccounts.find((candidate) => candidate.isDefault) ??
+        eligibleAccounts[0];
+
+      return {
+        ...createTransactionDraft(),
+        type: presetBudget.transactionType,
+        budgetId: presetBudget.id,
+        accountId: account?.id ?? "",
+        currencyCode: presetBudget.currencyCode,
+        accountCurrencyCode: account?.currencyCode ?? presetBudget.currencyCode,
+      };
+    }
     return {
       ...createTransactionDraft(),
       accountId: defaultAccount?.id ?? "",

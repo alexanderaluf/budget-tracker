@@ -7,7 +7,7 @@ import { Text } from "@/shared/ui/app-text";
 import { FilledIcon, type FilledIconName } from "@/shared/ui/filled-icon";
 import { RecordIcon } from "@/shared/ui/record-icon";
 import { useRouter } from "expo-router";
-import { Button } from "heroui-native";
+import { Button, Switch as HeroSwitch } from "heroui-native";
 import type { PropsWithChildren, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -16,7 +16,6 @@ import {
     Platform,
     Pressable,
     ScrollView,
-    Switch,
     TextInput,
     View,
     type TextInputProps,
@@ -201,9 +200,15 @@ export function BudgetToggle({
   onChange: (value: boolean) => void;
   disabled?: boolean;
 }) {
-  const c = useAppThemeColors();
   return (
-    <View className="flex-row items-center gap-3 py-3">
+    <Pressable
+      accessibilityRole="switch"
+      accessibilityLabel={title}
+      accessibilityState={{ checked: value, disabled }}
+      disabled={disabled}
+      onPress={() => onChange(!value)}
+      className="flex-row items-center gap-3 py-3"
+    >
       <View className="flex-1">
         <Text className="font-manrope-semibold text-lg text-foreground">
           {title}
@@ -212,14 +217,20 @@ export function BudgetToggle({
           {description}
         </Text>
       </View>
-      <Switch
-        accessibilityLabel={title}
-        disabled={disabled}
-        value={value}
-        onValueChange={onChange}
-        trackColor={{ true: c.accent, false: c.border }}
-      />
-    </View>
+      <View
+        pointerEvents="none"
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
+        <HeroSwitch
+          isSelected={value}
+          isDisabled={disabled}
+          style={{ width: 60, height: 28 }}
+        >
+          <HeroSwitch.Thumb style={{ width: 36, height: 24 }} />
+        </HeroSwitch>
+      </View>
+    </Pressable>
   );
 }
 // A separate native modal keeps the keyboard, Android back, and focus inside each sheet.
