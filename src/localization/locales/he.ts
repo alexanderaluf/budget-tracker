@@ -13,6 +13,20 @@ export const he = {
     unknownDate: "תאריך לא ידוע",
     untitledTransaction: "עסקה ללא שם",
   },
+  iconPicker: {
+    title: "בחירת סמל",
+    close: "סגירת בורר הסמלים",
+    search: "חיפוש סמלים",
+    empty: "לא נמצאו סמלים. נסו חיפוש אחר.",
+    done: "סיום",
+    doneAccessibility: "סיום בחירת הסמל",
+    groups: {
+      moneyAccounts: "כסף וחשבונות",
+      everydaySpending: "הוצאות יומיומיות",
+      goalsInterests: "יעדים ותחומי עניין",
+      more: "עוד",
+    },
+  },
   validation: {
     account: {
       invalidAmount: "יש להזין סכום תקין ללא מפרידי אלפים, לדוגמה 1250.50.",

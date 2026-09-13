@@ -41,6 +41,7 @@ import {
 import { CurrencySelectorSheet } from "@/features/profile/components/currency-selector-sheet";
 import { currencies } from "@/features/profile/data/currencies-data";
 import { useProfiles } from "@/features/profile/profile-provider";
+import { useAppLocalization } from "@/localization/localization-provider";
 import { colorWithAlpha, useAppThemeColors } from "@/shared/theme/app-theme";
 import { Text } from "@/shared/ui/app-text";
 import { FilledIcon, type FilledIconName } from "@/shared/ui/filled-icon";
@@ -149,9 +150,15 @@ function OptionRow({
 
 export function AccountCreateScreen({ editId }: { editId?: string }) {
   const { t } = useTranslation();
+  const { direction } = useAppLocalization();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const theme = useAppThemeColors();
+  const inputDirectionStyle = {
+    direction,
+    textAlign: "auto" as const,
+    writingDirection: direction,
+  };
   const { document, updateDocument } = useLocalData();
   const { activeProfile } = useProfiles();
   // Capture the owner for this draft; a later profile change cannot reassign it.
@@ -352,7 +359,8 @@ export function AccountCreateScreen({ editId }: { editId?: string }) {
                       value={draft.name}
                       onChangeText={(value) => change("name", value)}
                       containerClassName="flex-1"
-                      className="h-16 rounded-2xl bg-surface text-left font-manrope-semibold"
+                      className="h-16 rounded-2xl bg-surface font-manrope-semibold"
+                      style={inputDirectionStyle}
                     />
                   </View>
                 </View>
@@ -392,7 +400,8 @@ export function AccountCreateScreen({ editId }: { editId?: string }) {
                       value={draft.amount}
                       onChangeText={(value) => change("amount", value)}
                       containerClassName="flex-1"
-                      className="h-14 rounded-2xl bg-surface text-left"
+                      className="h-14 rounded-2xl bg-surface"
+                      style={inputDirectionStyle}
                     />
                   </View>
                   {(draft.accountType === "card" ||
@@ -413,7 +422,8 @@ export function AccountCreateScreen({ editId }: { editId?: string }) {
                     maxLength={64}
                     value={draft.accountNumber}
                     onChangeText={(value) => change("accountNumber", value)}
-                    className="h-14 rounded-2xl bg-surface text-left"
+                    className="h-14 rounded-2xl bg-surface"
+                    style={inputDirectionStyle}
                   />
                 </View>
                 {draft.accountType === "bank" && (
@@ -434,7 +444,8 @@ export function AccountCreateScreen({ editId }: { editId?: string }) {
                         maxLength={100}
                         value={draft.bankName}
                         onChangeText={(value) => change("bankName", value)}
-                        className="h-14 rounded-2xl bg-surface text-left"
+                        className="h-14 rounded-2xl bg-surface"
+                        style={inputDirectionStyle}
                       />
                     </View>
                   </View>
@@ -470,7 +481,8 @@ export function AccountCreateScreen({ editId }: { editId?: string }) {
                         maxLength={4}
                         value={draft.cardLastFour}
                         onChangeText={(value) => change("cardLastFour", value)}
-                        className="h-14 rounded-2xl bg-surface text-left"
+                        className="h-14 rounded-2xl bg-surface"
+                        style={inputDirectionStyle}
                       />
                     </View>
                     <View>
@@ -650,7 +662,8 @@ export function AccountCreateScreen({ editId }: { editId?: string }) {
                     maxLength={7}
                     value={draft.color}
                     onChangeText={(value) => change("color", value)}
-                    className="rounded-xl bg-surface text-left"
+                    className="rounded-xl bg-surface"
+                    style={inputDirectionStyle}
                   />
                   <Text className="font-sans text-xs text-muted">
                     {t("accounts.form.colorHelp")}

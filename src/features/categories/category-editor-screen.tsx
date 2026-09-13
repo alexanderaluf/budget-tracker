@@ -1,22 +1,22 @@
-import { KeyboardArrowUpFill } from "@material-symbols-svg/react-native/rounded/icons/keyboard-arrow-up";
-import Animated from "react-native-reanimated";
+import { BlurTargetView } from "expo-blur";
+import Reanimated from "react-native-reanimated";
+import { LinearGradient } from "expo-linear-gradient";
 import {
   CategoryFormSections,
   categoryEntrance,
 } from "./components/category-motion";
-import { CategoryParentOptions } from "./components/category-parent-options";
 import { uuid } from "expo-modules-core";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Button, Input, Switch as HeroSwitch } from "heroui-native";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  I18nManager,
+  Animated,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  ScrollView,
+  StyleSheet,
   View,
 } from "react-native";
 import {
@@ -32,23 +32,28 @@ import {
 } from "@/data/model/category-record";
 import { selectCategories } from "@/data/selectors/document-selectors";
 import { useProfiles } from "@/features/profile/profile-provider";
+import { TransactionSelectionSection } from "@/features/transactions/components/transaction-selection-section";
+import { useAppLocalization } from "@/localization/localization-provider";
 import { ICON_COLORS, colorForeground } from "@/shared/icons/colors";
 import { Text } from "@/shared/ui/app-text";
 import { FilledIcon } from "@/shared/ui/filled-icon";
 import { IconPicker } from "@/shared/ui/icon-picker";
 import { RecordIcon } from "@/shared/ui/record-icon";
-import { useAppThemeColors } from "@/shared/theme/app-theme";
-import {
-  CategoryChip,
-  CategoryHeader,
-  CategoryTypeSelector,
-} from "./components/category-ui";
+import { colorWithAlpha, useAppThemeColors } from "@/shared/theme/app-theme";
+import { CategoryTypeSelector } from "./components/category-ui";
 
 export function CategoryEditorScreen({ editId }: { editId?: string }) {
   const { t } = useTranslation();
+  const { direction } = useAppLocalization();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const theme = useAppThemeColors();
+  const inputDirectionStyle = {
+    direction,
+    textAlign: direction === "rtl" ? ("right" as const) : ("left" as const),
+    textAlignVertical: "center" as const,
+    writingDirection: direction,
+  };
   const params = useLocalSearchParams<{ parentId?: string; type?: string }>();
   const { document, updateDocument } = useLocalData();
   const { activeProfile } = useProfiles();
@@ -80,6 +85,7 @@ export function CategoryEditorScreen({ editId }: { editId?: string }) {
   );
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [headerHidden, setHeaderHidden] = useState(false);
   const paletteLabels = {
     Primary: t("categories.form.palette.primary"),
     Accent: t("categories.form.palette.accent"),
@@ -87,6 +93,18 @@ export function CategoryEditorScreen({ editId }: { editId?: string }) {
   };
   const saving = useRef(false);
   const id = useRef(editId ?? uuid.v4());
+  const blurTargetRef = useRef<View | null>(null);
+  const [scrollY] = useState(() => new Animated.Value(0));
+  const topControlsTranslateY = scrollY.interpolate({
+    inputRange: [0, 56],
+    outputRange: [0, -56],
+    extrapolate: "clamp",
+  });
+  const headerOpacity = scrollY.interpolate({
+    inputRange: [0, 40],
+    outputRange: [1, 0],
+    extrapolate: "clamp",
+  });
   const family = useMemo(
     () =>
       editId ? categoryFamily(document.categories, editId) : new Set<string>(),
@@ -97,12 +115,33 @@ export function CategoryEditorScreen({ editId }: { editId?: string }) {
   );
   const parent = categories.find((category) => category.id === draft.parentId);
   const color = /^#[a-f\d]{6}$/i.test(draft.color) ? draft.color : "#70d2eb";
+  const title = editId
+    ? t("categories.form.editTitle")
+    : t("categories.form.title");
+
+  useEffect(() => {
+    let wasHidden = false;
+    const listener = scrollY.addListener(({ value }) => {
+      const hidden = value >= 40;
+      if (hidden !== wasHidden) {
+        wasHidden = hidden;
+        setHeaderHidden(hidden);
+      }
+    });
+    return () => scrollY.removeListener(listener);
+  }, [scrollY]);
+
   function change<K extends keyof CategoryDraft>(
     key: K,
     value: CategoryDraft[K],
   ) {
     setDraft((current) => ({ ...current, [key]: value }));
     setError("");
+  }
+  function goBack() {
+    if (isSaving) return;
+    if (router.canGoBack()) router.back();
+    else router.replace("/categories");
   }
   async function save() {
     if (saving.current) return;
@@ -150,43 +189,38 @@ export function CategoryEditorScreen({ editId }: { editId?: string }) {
       : ICON_COLORS;
   return (
     <SafeAreaView
-      edges={["top", "bottom"]}
-      style={{ flex: 1, backgroundColor: theme.background }}
+      edges={["top"]}
+      style={[styles.fill, { backgroundColor: theme.background }]}
     >
-      <CategoryHeader
-        title={
-          editId
-            ? t("categories.form.editTitle")
-            : t("categories.form.title")
-        }
-        disabled={isSaving}
-      />
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        className="flex-1"
+        style={styles.fill}
       >
-        <ScrollView
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{
-            padding: 20,
-            gap: 22,
-            paddingBottom: 108 + insets.bottom,
-          }}
-        >
-          {editId && !existing ? (
-            <Text className="text-danger">{t("categories.form.missing")}</Text>
-          ) : (
-            <CategoryFormSections
-              pointerEvents={isSaving ? "none" : "auto"}
-              className="gap-5"
+        <View style={styles.fill}>
+          <BlurTargetView ref={blurTargetRef} style={styles.fill}>
+            <Animated.ScrollView
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={{
+                paddingBottom: 104 + insets.bottom,
+              }}
+              showsVerticalScrollIndicator={false}
+              scrollEventThrottle={16}
+              onScroll={Animated.event(
+                [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+                { useNativeDriver: true },
+              )}
             >
-              <CategoryTypeSelector
-                value={draft.type}
-                onChange={(type) => {
-                  setDraft((current) => ({ ...current, type, parentId: null }));
-                  setError("");
-                }}
-              />
+              <View style={styles.headerSpace} />
+              <View style={styles.selectorSpace} />
+              {editId && !existing ? (
+                <Text className="px-5 text-danger">
+                  {t("categories.form.missing")}
+                </Text>
+              ) : (
+                <CategoryFormSections
+                  pointerEvents={isSaving ? "none" : "auto"}
+                  className="gap-5 px-5"
+                >
               <View className="flex-row items-center gap-3">
                 <Pressable
                   accessibilityRole="button"
@@ -206,10 +240,7 @@ export function CategoryEditorScreen({ editId }: { editId?: string }) {
                   />
                   <View
                     className="absolute -bottom-1 rounded-full border-2 border-background bg-surface p-1"
-                    style={{
-                      left: I18nManager.isRTL ? -4 : undefined,
-                      right: I18nManager.isRTL ? undefined : -4,
-                    }}
+                    style={{ end: -4 }}
                   >
                     <FilledIcon name="pencil" size={14} />
                   </View>
@@ -222,7 +253,7 @@ export function CategoryEditorScreen({ editId }: { editId?: string }) {
                   onChangeText={(value) => change("name", value)}
                   containerClassName="flex-1"
                   className="h-16 rounded-2xl bg-surface"
-                  style={{ textAlign: "left" }}
+                  style={inputDirectionStyle}
                 />
               </View>
               <Input
@@ -233,7 +264,7 @@ export function CategoryEditorScreen({ editId }: { editId?: string }) {
                 value={draft.description}
                 onChangeText={(value) => change("description", value)}
                 className="h-14 min-h-14 rounded-2xl bg-surface"
-                style={{ textAlign: "left" }}
+                style={inputDirectionStyle}
               />
               <Pressable
                 accessibilityRole="switch"
@@ -268,57 +299,26 @@ export function CategoryEditorScreen({ editId }: { editId?: string }) {
                   </HeroSwitch>
                 </View>
               </Pressable>
-              <View>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityState={{ expanded: showParents }}
-                  onPress={() => setShowParents((value) => !value)}
-                  className="min-h-16 flex-row items-center gap-3"
-                >
-                  <FilledIcon name="filter" size={27} />
-                  <View className="flex-1 gap-1">
-                    <Text className="font-manrope-semibold text-lg text-foreground">
-                      {t("categories.form.parentCategory")}
-                    </Text>
-                    <Text className="font-sans text-base text-muted">
-                      {parent?.name ?? t("categories.form.noParent")}
-                    </Text>
-                  </View>
-                  <View
-                    style={{
-                      transform: [{ rotate: showParents ? "180deg" : "0deg" }],
-                    }}
-                  >
-                    <KeyboardArrowUpFill color={theme.accent} size={26} />
-                  </View>
-                </Pressable>
-                <CategoryParentOptions open={showParents}>
-                  <View className="flex-row flex-wrap gap-2">
-                    <Pressable
-                      accessibilityRole="button"
-                      onPress={() => change("parentId", null)}
-                      className="min-h-11 justify-center rounded-full border px-4"
-                      style={{
-                        borderColor: !draft.parentId
-                          ? theme.accent
-                          : theme.border,
-                      }}
-                    >
-                      <Text className="font-manrope-medium text-foreground">
-                        {t("categories.form.none")}
-                      </Text>
-                    </Pressable>
-                    {parents.map((category) => (
-                      <CategoryChip
-                        key={category.id}
-                        category={category}
-                        selected={draft.parentId === category.id}
-                        onPress={() => change("parentId", category.id)}
-                      />
-                    ))}
-                  </View>
-                </CategoryParentOptions>
-              </View>
+              <TransactionSelectionSection
+                title={t("categories.form.parentCategory")}
+                placeholder={t("categories.form.noParent")}
+                icon="filter"
+                options={parents.map((category) => ({
+                  id: category.id,
+                  name: category.name,
+                  description: category.description,
+                  icon: category.icon,
+                  iconPath: category.iconPath,
+                  color: category.color,
+                }))}
+                selectedId={parent?.id ?? ""}
+                expanded={showParents}
+                disabled={isSaving}
+                optional
+                compactOptions
+                onToggle={() => setShowParents((value) => !value)}
+                onSelect={(parentId) => change("parentId", parentId || null)}
+              />
               <Text className="mt-2 font-manrope-semibold text-lg text-foreground">
                 {t("categories.form.colors")}
               </Text>
@@ -354,7 +354,7 @@ export function CategoryEditorScreen({ editId }: { editId?: string }) {
                   maxLength={7}
                   value={draft.color}
                   onChangeText={(value) => change("color", value)}
-                  style={{ textAlign: "left" }}
+                  style={inputDirectionStyle}
                 />
               ) : (
                 <View className="flex-row flex-wrap gap-2">
@@ -391,43 +391,151 @@ export function CategoryEditorScreen({ editId }: { editId?: string }) {
                   ))}
                 </View>
               )}
-            </CategoryFormSections>
-          )}
-          {error ? (
+                </CategoryFormSections>
+              )}
+            </Animated.ScrollView>
+          </BlurTargetView>
+
+          <LinearGradient
+            colors={[
+              theme.background,
+              colorWithAlpha(theme.background, 0.82),
+              colorWithAlpha(theme.background, 0),
+            ]}
+            locations={[0, 0.58, 1]}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 1 }}
+            pointerEvents="none"
+            style={styles.topScrim}
+          />
+
+          <View
+            pointerEvents={headerHidden ? "none" : "box-none"}
+            accessibilityElementsHidden={headerHidden}
+            importantForAccessibility={
+              headerHidden ? "no-hide-descendants" : "auto"
+            }
+            style={styles.headerClip}
+          >
+            <Animated.View
+              style={[
+                styles.headerDock,
+                {
+                  opacity: headerOpacity,
+                  transform: [{ translateY: topControlsTranslateY }],
+                },
+              ]}
+            >
+              <Button
+                isIconOnly
+                variant="ghost"
+                accessibilityLabel={t("categories.common.back")}
+                isDisabled={isSaving}
+                onPress={goBack}
+              >
+                <FilledIcon name="arrow-left" size={24} />
+              </Button>
+              <Text
+                accessibilityRole="header"
+                numberOfLines={1}
+                className="flex-1 font-manrope-bold text-xl text-foreground"
+              >
+                {title}
+              </Text>
+            </Animated.View>
+          </View>
+
+          <Animated.View
+            pointerEvents={isSaving ? "none" : "auto"}
+            style={[
+              styles.selectorDock,
+              { transform: [{ translateY: topControlsTranslateY }] },
+            ]}
+          >
+            <CategoryTypeSelector
+              blurTarget={blurTargetRef}
+              minHeight={Platform.OS === "android" ? 52 : 48}
+              value={draft.type}
+              onChange={(type) => {
+                setDraft((current) => ({ ...current, type, parentId: null }));
+                setError("");
+              }}
+            />
+          </Animated.View>
+
+          <LinearGradient
+            colors={[
+              colorWithAlpha(theme.background, 0),
+              colorWithAlpha(theme.background, 0.72),
+              theme.background,
+              theme.background,
+            ]}
+            locations={[
+              0,
+              (128 * 0.54) / (128 + insets.bottom),
+              128 / (128 + insets.bottom),
+              1,
+            ]}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 1 }}
+            pointerEvents="none"
+            style={[styles.bottomScrim, { height: 128 + insets.bottom }]}
+          />
+
+          <Reanimated.View
+            entering={categoryEntrance(220)}
+            pointerEvents="box-none"
+            style={[styles.actionDock, { bottom: Math.max(insets.bottom, 10) }]}
+          >
+          {!!error && (
             <Text
               accessibilityRole="alert"
-              className="font-sans text-base text-danger"
+              accessibilityLiveRegion="polite"
+              className="font-sans text-sm text-danger"
             >
               {error}
             </Text>
-          ) : null}
-        </ScrollView>
-        <Animated.View
-          entering={categoryEntrance(220)}
-          style={{
-            position: "absolute",
-            left: 20,
-            right: 20,
-            bottom: 12,
-            zIndex: 20,
-          }}
-        >
-          <Button
-            size="lg"
-            isDisabled={isSaving || (!!editId && !existing)}
+          )}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={
+              isSaving
+                ? t("categories.form.saving")
+                : editId
+                  ? t("categories.form.save")
+                  : t("categories.form.add")
+            }
+            accessibilityState={{
+              busy: isSaving,
+              disabled: isSaving || (!!editId && !existing),
+            }}
+            disabled={isSaving || (!!editId && !existing)}
             onPress={save}
-            className="rounded-full bg-accent"
+            android_ripple={{
+              color: colorWithAlpha(theme.accentForeground, 0.16),
+              borderless: false,
+            }}
+            style={({ pressed }) => [
+              styles.actionButton,
+              { backgroundColor: theme.accent },
+              (isSaving || (!!editId && !existing)) && styles.actionDisabled,
+              Platform.OS === "ios" && pressed && styles.actionPressed,
+            ]}
           >
             <FilledIcon name="check" size={24} tone="accent-foreground" />
-            <Button.Label>
+            <Text
+              numberOfLines={1}
+              className="shrink font-manrope-bold text-base text-accent-foreground"
+            >
               {isSaving
                 ? t("categories.form.saving")
                 : editId
                   ? t("categories.form.save")
                   : t("categories.form.add")}
-            </Button.Label>
-          </Button>
-        </Animated.View>
+            </Text>
+          </Pressable>
+          </Reanimated.View>
+        </View>
       </KeyboardAvoidingView>
       {showIcons && (
         <IconPicker
@@ -446,3 +554,66 @@ export function CategoryEditorScreen({ editId }: { editId?: string }) {
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  fill: { flex: 1 },
+  headerSpace: { height: 56 },
+  selectorSpace: { height: 84 },
+  topScrim: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 80,
+    zIndex: 10,
+  },
+  headerClip: {
+    position: "absolute",
+    top: 0,
+    left: 16,
+    right: 16,
+    height: 56,
+    overflow: "hidden",
+    zIndex: 20,
+  },
+  headerDock: {
+    height: 56,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  selectorDock: {
+    position: "absolute",
+    top: 64,
+    left: 12,
+    right: 12,
+    zIndex: 20,
+  },
+  bottomScrim: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+  },
+  actionDock: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    paddingHorizontal: 12,
+    gap: 6,
+    zIndex: 20,
+  },
+  actionButton: {
+    height: 58,
+    borderRadius: 29,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    paddingHorizontal: 16,
+    overflow: "hidden",
+  },
+  actionPressed: { opacity: 0.72 },
+  actionDisabled: { opacity: 0.5 },
+});

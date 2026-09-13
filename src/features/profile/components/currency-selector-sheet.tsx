@@ -20,6 +20,7 @@ type CurrencySelectorSheetProps = {
   currencies: CurrencyOption[];
   isOpen: boolean;
   selectedCode: string;
+  closeOnSelect?: boolean;
   onOpenChange: (isOpen: boolean) => void;
   onSelect: (currency: CurrencyOption) => void;
 };
@@ -190,6 +191,7 @@ export function CurrencySelectorSheet({
   currencies,
   isOpen,
   selectedCode,
+  closeOnSelect = true,
   onOpenChange,
   onSelect,
 }: CurrencySelectorSheetProps) {
@@ -225,7 +227,7 @@ export function CurrencySelectorSheet({
             selectedCode={selectedCode}
             onSelect={(currency) => {
               onSelect(currency);
-              handleOpenChange(false);
+              if (closeOnSelect) handleOpenChange(false);
             }}
           />
         </BottomSheet.Content>

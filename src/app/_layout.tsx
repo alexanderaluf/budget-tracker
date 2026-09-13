@@ -14,15 +14,18 @@ import { SQLiteProvider } from "expo-sqlite";
 import { StatusBar } from "expo-status-bar";
 import * as SystemUI from "expo-system-ui";
 import { HeroUINativeProvider } from "heroui-native";
-import { useEffect } from "react";
+import { useEffect, type PropsWithChildren } from "react";
 import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { useUniwind } from "uniwind";
+import { LayoutDirection, useUniwind } from "uniwind";
 
 import { migrateLocalDatabase } from "@/data/database/migrations";
 import { LocalDataProvider } from "@/data/local-data-provider";
 import { ProfileProvider } from "@/features/profile/profile-provider";
-import { LocalizationProvider } from "@/localization/localization-provider";
+import {
+  LocalizationProvider,
+  useAppLocalization,
+} from "@/localization/localization-provider";
 import {
     AppThemeController,
     useAppThemeColors,
@@ -32,6 +35,18 @@ const ROOT_BACKGROUNDS = {
   dark: "#000000",
   light: "#DCE7E0",
 } as const;
+
+function LocalizedHeroUIProvider({ children }: PropsWithChildren) {
+  const { isRTL } = useAppLocalization();
+
+  return (
+    <LayoutDirection rtl={isRTL}>
+      <HeroUINativeProvider config={{ isRTL }}>
+        {children}
+      </HeroUINativeProvider>
+    </LayoutDirection>
+  );
+}
 
 function AppNavigation() {
   const { theme } = useUniwind();
@@ -87,21 +102,21 @@ export default function RootLayout() {
         backgroundColor: ROOT_BACKGROUNDS[theme === "dark" ? "dark" : "light"],
       }}
     >
-      <HeroUINativeProvider>
-        <SQLiteProvider
-          databaseName="budget-manager.db"
-          onInit={migrateLocalDatabase}
-        >
-          <LocalDataProvider>
-            <LocalizationProvider>
+      <SQLiteProvider
+        databaseName="budget-manager.db"
+        onInit={migrateLocalDatabase}
+      >
+        <LocalDataProvider>
+          <LocalizationProvider>
+            <LocalizedHeroUIProvider>
               <AppThemeController />
               <ProfileProvider>
                 <AppNavigation />
               </ProfileProvider>
-            </LocalizationProvider>
-          </LocalDataProvider>
-        </SQLiteProvider>
-      </HeroUINativeProvider>
+            </LocalizedHeroUIProvider>
+          </LocalizationProvider>
+        </LocalDataProvider>
+      </SQLiteProvider>
     </GestureHandlerRootView>
   );
 }

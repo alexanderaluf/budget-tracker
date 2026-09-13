@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { useRouter } from "expo-router";
 import { BlurTargetView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
-import { Button } from "heroui-native";
+import { BottomSheet, Button } from "heroui-native";
 import { FlatList, I18nManager, Pressable, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import {
@@ -17,6 +17,7 @@ import { formatCurrency } from "@/shared/lib/currency";
 import { Text } from "@/shared/ui/app-text";
 import { FilledIcon } from "@/shared/ui/filled-icon";
 import { GlassSegmentedControl } from "@/shared/ui/glass-segmented-control";
+import { useBottomSheetInitialPositionFix } from "@/shared/ui/use-bottom-sheet-initial-position-fix";
 import {
   BudgetHeader,
   BudgetOption,
@@ -26,6 +27,75 @@ import {
   BudgetSummary,
   useBudgetLabels,
 } from "./components/budget-ui";
+
+type BudgetSort = "newest" | "name" | "mostUsed";
+
+function BudgetSortSheet({
+  isOpen,
+  value,
+  onChange,
+  onClose,
+}: {
+  isOpen: boolean;
+  value: BudgetSort;
+  onChange: (value: BudgetSort) => void;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
+  const initialPositionFix = useBottomSheetInitialPositionFix(isOpen);
+  const options = [
+    ["newest", t("budgets.list.sort.newest")],
+    ["name", t("budgets.list.sort.name")],
+    ["mostUsed", t("budgets.list.sort.mostUsed")],
+  ] as const;
+
+  return (
+    <BottomSheet
+      isOpen={isOpen}
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
+      <BottomSheet.Portal unstable_accessibilityContainerViewIsModal>
+        <BottomSheet.Overlay />
+        <BottomSheet.Content
+          containerStyle={initialPositionFix.containerStyle}
+          onChange={initialPositionFix.onChange}
+          snapPoints={["48%"]}
+          enableDynamicSizing={false}
+          enableOverDrag={false}
+          topInset={insets.top}
+          bottomInset={insets.bottom}
+          contentContainerClassName="h-full px-5 pb-0 pt-2"
+          backgroundClassName="rounded-t-[28px] bg-surface"
+          handleIndicatorClassName="w-10 bg-muted/40"
+        >
+          <View className="flex-1 gap-3">
+            <View className="border-b border-border pb-4">
+              <BottomSheet.Title>
+                {t("budgets.list.sortTitle")}
+              </BottomSheet.Title>
+            </View>
+            <View
+              className="gap-2"
+              style={{ paddingBottom: Math.max(insets.bottom, 16) + 16 }}
+            >
+              {options.map(([option, title]) => (
+                <BudgetOption
+                  key={option}
+                  title={title}
+                  selected={value === option}
+                  onPress={() => onChange(option)}
+                />
+              ))}
+            </View>
+          </View>
+        </BottomSheet.Content>
+      </BottomSheet.Portal>
+    </BottomSheet>
+  );
+}
 
 export function BudgetsScreen() {
   const { t, i18n } = useTranslation();
@@ -38,9 +108,9 @@ export function BudgetsScreen() {
   const target = useRef<View | null>(null);
   const [type, setType] = useState(0),
     [compact, setCompact] = useState(false);
-  const [sort, setSort] = useState<"newest" | "name" | "mostUsed">("newest"),
+  const [sort, setSort] = useState<BudgetSort>("newest"),
     [sheet, setSheet] = useState<"info" | "sort" | null>(null);
-  const all = useMemo(() => selectBudgets(document, new Date()), [document, now]);
+  const all = useMemo(() => selectBudgets(document, now), [document, now]);
   const budgets = all
     .filter((b) => b.transactionType === type)
     .sort((a, b) =>
@@ -234,46 +304,28 @@ export function BudgetsScreen() {
           <FilledIcon name="plus" size={30} tone="accent-foreground" />
         </Button>
       </View>
-      {sheet && (
+      {sheet === "info" && (
         <BudgetSheet
-          title={
-            sheet === "info"
-              ? t("budgets.list.howItWorks")
-              : t("budgets.list.sortTitle")
-          }
+          title={t("budgets.list.howItWorks")}
           onClose={() => setSheet(null)}
         >
-          {sheet === "info" ? (
-            <>
-              <Text className="text-base leading-7 text-foreground">
-                {t("budgets.list.infoTracking")}
-              </Text>
-              <Text className="text-base leading-7 text-muted">
-                {t("budgets.list.infoTotals")}
-              </Text>
-              <Text className="text-base leading-7 text-muted">
-                {t("budgets.list.infoPeriods")}
-              </Text>
-            </>
-          ) : (
-            ([
-              ["newest", t("budgets.list.sort.newest")],
-              ["name", t("budgets.list.sort.name")],
-              ["mostUsed", t("budgets.list.sort.mostUsed")],
-            ] as const).map(([value, title]) => (
-              <BudgetOption
-                key={value}
-                title={title}
-                selected={sort === value}
-                onPress={() => {
-                  setSort(value);
-                  setSheet(null);
-                }}
-              />
-            ))
-          )}
+          <Text className="text-base leading-7 text-foreground">
+            {t("budgets.list.infoTracking")}
+          </Text>
+          <Text className="text-base leading-7 text-muted">
+            {t("budgets.list.infoTotals")}
+          </Text>
+          <Text className="text-base leading-7 text-muted">
+            {t("budgets.list.infoPeriods")}
+          </Text>
         </BudgetSheet>
       )}
+      <BudgetSortSheet
+        isOpen={sheet === "sort"}
+        value={sort}
+        onChange={setSort}
+        onClose={() => setSheet(null)}
+      />
     </SafeAreaView>
   );
 }

@@ -60,10 +60,12 @@ export function CategoryHeader({
 
 export function CategoryTypeSelector({
   blurTarget,
+  minHeight,
   value,
   onChange,
 }: {
   blurTarget?: RefObject<View | null>;
+  minHeight?: number;
   value: CategoryType;
   onChange: (value: CategoryType) => void;
 }) {
@@ -80,6 +82,7 @@ export function CategoryTypeSelector({
     <GlassSegmentedControl
       accessibilityLabel={t("categories.common.transactionType")}
       blurTarget={blurTarget}
+      minHeight={minHeight}
       onChange={onChange}
       options={options}
       textSize={16}

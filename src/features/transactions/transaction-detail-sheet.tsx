@@ -28,7 +28,6 @@ import { RecordIcon } from "@/shared/ui/record-icon";
 import { useBottomSheetInitialPositionFix } from "@/shared/ui/use-bottom-sheet-initial-position-fix";
 import { RecurringPaymentSnapshot } from './recurring-payment-snapshot';
 
-// The portal sits outside app context; compensate for native mirroring only once.
 function useSheetDirection() {
   const { i18n } = useTranslation();
   const isRTL = i18n.dir(i18n.resolvedLanguage ?? i18n.language) === "rtl";

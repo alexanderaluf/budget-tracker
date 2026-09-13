@@ -10,7 +10,6 @@ import { useTranslation } from "react-i18next";
 import {
     Alert,
     Animated,
-    I18nManager,
     Image,
     Keyboard,
     KeyboardAvoidingView,
@@ -52,6 +51,7 @@ import { selectExchangeRates } from "@/data/selectors/exchange-rate-selectors";
 import { CurrencySelectorSheet } from "@/features/profile/components/currency-selector-sheet";
 import { currencies } from "@/features/profile/data/currencies-data";
 import { useProfiles } from "@/features/profile/profile-provider";
+import { useAppLocalization } from "@/localization/localization-provider";
 import { formatCurrency } from "@/shared/lib/currency";
 import { colorWithAlpha, useAppThemeColors } from "@/shared/theme/app-theme";
 import { Text } from "@/shared/ui/app-text";
@@ -122,6 +122,7 @@ function formatTransactionTime(value: Date, locale?: string) {
 
 export function TransactionEditorScreen({ editId }: { editId?: string }) {
   const { t, i18n } = useTranslation();
+  const { direction } = useAppLocalization();
   const router = useRouter();
   const params = useLocalSearchParams<{ copyId?: string }>();
   const insets = useSafeAreaInsets();
@@ -777,7 +778,11 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
                   value={draft.name}
                   onChangeText={(value) => change("name", value)}
                   className="h-16 rounded-2xl bg-surface px-4 font-manrope-semibold"
-                  style={{ textAlign: "left" }}
+                  style={{
+                    direction,
+                    textAlign: "auto",
+                    writingDirection: direction,
+                  }}
                 />
 
                 <View className="relative">
@@ -788,11 +793,13 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
                     maxLength={30}
                     value={draft.amount}
                     onChangeText={(value) => change("amount", value)}
-                    className="h-16 rounded-2xl bg-surface px-4 pr-24 font-manrope-semibold"
+                    className="h-16 rounded-2xl bg-surface font-manrope-semibold"
                     style={{
-                      paddingLeft: I18nManager.isRTL ? 96 : 16,
-                      paddingRight: I18nManager.isRTL ? 16 : 96,
-                      textAlign: "left",
+                      direction,
+                      paddingStart: 16,
+                      paddingEnd: 96,
+                      textAlign: "auto",
+                      writingDirection: direction,
                     }}
                   />
                   <Pressable
@@ -811,10 +818,7 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
                       setCurrencySheetOpen(true);
                     }}
                     className="absolute top-0 h-16 flex-row items-center gap-1 px-3"
-                    style={{
-                      left: I18nManager.isRTL ? 4 : undefined,
-                      right: I18nManager.isRTL ? undefined : 4,
-                    }}
+                    style={{ end: 4 }}
                   >
                     <Text className="font-manrope-bold text-sm text-accent">
                       {transactionCurrencyCode}
@@ -893,7 +897,11 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
                   value={draft.description}
                   onChangeText={(value) => change("description", value)}
                   className="h-16 rounded-2xl bg-surface px-4"
-                  style={{ textAlign: "left" }}
+                  style={{
+                    direction,
+                    textAlign: direction === "rtl" ? "right" : "left",
+                    writingDirection: direction,
+                  }}
                 />
 
                 <View className="flex-row gap-3">
@@ -1007,7 +1015,7 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
                   options={accountOptions}
                   selectedId={draft.accountId}
                   expanded={expanded.account}
-                  compact
+                  compactOptions
                   disabled={isSaving}
                   onToggle={() => toggleSection("account")}
                   onSelect={(accountId) => {
@@ -1049,7 +1057,7 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
                     options={destinationOptions}
                     selectedId={draft.destinationAccountId}
                     expanded={expanded.destination}
-                    compact
+                    compactOptions
                     disabled={isSaving}
                     onToggle={() => toggleSection("destination")}
                     onSelect={(value) => change("destinationAccountId", value)}
@@ -1064,7 +1072,7 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
                   options={categoryOptions}
                   selectedId={selectedCategoryRootId}
                   expanded={expanded.category}
-                  compact
+                  compactOptions
                   disabled={isSaving}
                   optional
                   onToggle={() => toggleSection("category")}
@@ -1090,7 +1098,7 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
                   options={budgetOptions}
                   selectedId={draft.budgetId}
                   expanded={expanded.budget}
-                  compact
+                  compactOptions
                   disabled={isSaving}
                   optional
                   onToggle={() => toggleSection("budget")}

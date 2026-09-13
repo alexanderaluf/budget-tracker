@@ -13,6 +13,20 @@ export const en = {
     unknownDate: "Unknown date",
     untitledTransaction: "Untitled transaction",
   },
+  iconPicker: {
+    title: "Choose icon",
+    close: "Close icon picker",
+    search: "Search icons",
+    empty: "No icons found. Try a different search.",
+    done: "Done",
+    doneAccessibility: "Done choosing an icon",
+    groups: {
+      moneyAccounts: "Money & accounts",
+      everydaySpending: "Everyday spending",
+      goalsInterests: "Goals & interests",
+      more: "More",
+    },
+  },
   validation: {
     account: {
       invalidAmount:

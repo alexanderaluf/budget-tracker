@@ -1,13 +1,16 @@
-import { useRef, useState } from "react";
+import { BottomSheetScrollView } from "@gorhom/bottom-sheet";
+import { LinearGradient } from "expo-linear-gradient";
+import { useRef, useState, type PropsWithChildren } from "react";
 import { useRouter } from "expo-router";
 import { uuid } from "expo-modules-core";
-import { Button } from "heroui-native";
+import { BottomSheet, Button } from "heroui-native";
 import { useTranslation } from "react-i18next";
 import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
+  StyleSheet,
   View,
 } from "react-native";
 import {
@@ -30,20 +33,19 @@ import {
   selectAccounts,
   selectCategories,
 } from "@/data/selectors/document-selectors";
+import { CurrencySelectorSheet } from "@/features/profile/components/currency-selector-sheet";
 import { currencies } from "@/features/profile/data/currencies-data";
-import { ICON_COLORS } from "@/shared/icons/colors";
-import { MATERIAL_ROUNDED_FILLED_ICONS } from "@/shared/icons/material-rounded-filled-icons";
 import { FilledIcon, type FilledIconName } from "@/shared/ui/filled-icon";
-import { RecordIcon } from "@/shared/ui/record-icon";
-import { useAppThemeColors } from "@/shared/theme/app-theme";
+import { colorWithAlpha, useAppThemeColors } from "@/shared/theme/app-theme";
 import { Text } from "@/shared/ui/app-text";
+import { IconPicker } from "@/shared/ui/icon-picker";
+import { useBottomSheetInitialPositionFix } from "@/shared/ui/use-bottom-sheet-initial-position-fix";
 import { BudgetColorPicker } from "./components/budget-color-picker";
 import {
   BudgetBadge,
   BudgetField,
   BudgetHeader,
   BudgetOption,
-  BudgetSheet,
   BudgetToggle,
   useBudgetLabels,
 } from "./components/budget-ui";
@@ -55,12 +57,73 @@ type Sheet =
   | "period"
   | "categories"
   | "accounts"
-  | "settings"
-  | "icon"
-  | "color"
-  | "currency";
+  | "settings";
 const toggleId = (values: string[], id: string) =>
   values.includes(id) ? values.filter((v) => v !== id) : [...values, id];
+
+function BudgetEditorSheet({
+  isOpen,
+  title,
+  children,
+  onClose,
+  busy = false,
+}: PropsWithChildren<{
+  isOpen: boolean;
+  title: string;
+  onClose: () => void;
+  busy?: boolean;
+}>) {
+  const insets = useSafeAreaInsets();
+  const initialPositionFix = useBottomSheetInitialPositionFix(isOpen);
+
+  return (
+    <BottomSheet
+      isOpen={isOpen}
+      onOpenChange={(open) => {
+        if (!open && !busy) onClose();
+      }}
+    >
+      <BottomSheet.Portal unstable_accessibilityContainerViewIsModal>
+        <BottomSheet.Overlay isCloseOnPress={!busy} />
+        <BottomSheet.Content
+          containerStyle={initialPositionFix.containerStyle}
+          onChange={initialPositionFix.onChange}
+          snapPoints={["85%"]}
+          enableDynamicSizing={false}
+          enableOverDrag={false}
+          enablePanDownToClose={!busy}
+          topInset={insets.top}
+          bottomInset={insets.bottom}
+          keyboardBehavior="interactive"
+          keyboardBlurBehavior="restore"
+          android_keyboardInputMode="adjustResize"
+          contentContainerClassName="h-full px-0 pb-0 pt-2"
+          backgroundClassName="rounded-t-[28px] bg-surface"
+          handleIndicatorClassName="w-10 bg-muted/40"
+        >
+          <View className="flex-1">
+            <View className="border-b border-border px-5 pb-4">
+              <BottomSheet.Title>{title}</BottomSheet.Title>
+            </View>
+            <BottomSheetScrollView
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{
+                gap: 10,
+                paddingHorizontal: 18,
+                paddingTop: 12,
+                paddingBottom: Math.max(insets.bottom, 16) + 24,
+              }}
+            >
+              {children}
+            </BottomSheetScrollView>
+          </View>
+        </BottomSheet.Content>
+      </BottomSheet.Portal>
+    </BottomSheet>
+  );
+}
 
 export function BudgetEditorScreen({ editId }: { editId?: string }) {
   const { t, i18n } = useTranslation();
@@ -76,14 +139,15 @@ export function BudgetEditorScreen({ editId }: { editId?: string }) {
       : { ...budgetDefaults(), currencyCode: selectBudgetCurrency(document) },
   );
   const [sheet, setSheet] = useState<Sheet | null>(null);
-  const [pending, setPending] = useState(draft);
+  const [currencySheetOpen, setCurrencySheetOpen] = useState(false);
+  const [iconPickerOpen, setIconPickerOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const saving = useRef(false),
     id = useRef(editId ?? uuid.v4());
   const categories = selectCategories(document).filter(
-    (cat) => cat.type === pending.transactionType,
+    (cat) => cat.type === draft.transactionType,
   );
   const accounts = selectAccounts(document);
   const titles: Record<Sheet, string> = {
@@ -94,20 +158,18 @@ export function BudgetEditorScreen({ editId }: { editId?: string }) {
     categories: t("budgets.form.sheetTitles.categories"),
     accounts: t("budgets.form.sheetTitles.accounts"),
     settings: t("budgets.form.sheetTitles.settings"),
-    icon: t("budgets.form.sheetTitles.icon"),
-    color: t("budgets.form.sheetTitles.color"),
-    currency: t("budgets.form.sheetTitles.currency"),
   };
   const change = <K extends keyof BudgetDraft>(key: K, value: BudgetDraft[K]) =>
-    setPending((d) => ({ ...d, [key]: value }));
+    setDraft((current) => ({ ...current, [key]: value }));
+  function select<K extends keyof BudgetDraft>(
+    key: K,
+    value: BudgetDraft[K],
+  ) {
+    change(key, value);
+  }
   function open(value: Sheet) {
-    setPending({ ...draft });
     setQuery("");
     setSheet(value);
-  }
-  function apply() {
-    setDraft(pending);
-    setSheet(null);
   }
   async function save() {
     if (saving.current) return;
@@ -146,7 +208,7 @@ export function BudgetEditorScreen({ editId }: { editId?: string }) {
       </SafeAreaView>
     );
   const row = (
-    key: Sheet,
+    key: Sheet | "currency",
     title: string,
     description: string,
     current: string,
@@ -155,7 +217,9 @@ export function BudgetEditorScreen({ editId }: { editId?: string }) {
     <Pressable
       accessibilityRole="button"
       disabled={busy}
-      onPress={() => open(key)}
+      onPress={() =>
+        key === "currency" ? setCurrencySheetOpen(true) : open(key)
+      }
       className="flex-row items-center gap-4 py-4"
     >
       <FilledIcon name={icon} size={26} tone="accent" />
@@ -181,23 +245,24 @@ export function BudgetEditorScreen({ editId }: { editId?: string }) {
         disabled={busy}
       />
       <KeyboardAvoidingView
-        style={{ flex: 1 }}
+        style={styles.fill}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <ScrollView
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{
-            paddingHorizontal: 20,
-            paddingTop: 14,
-            paddingBottom: 24,
-          }}
-        >
+        <View style={styles.fill}>
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{
+              paddingHorizontal: 20,
+              paddingTop: 14,
+              paddingBottom: 104 + insets.bottom,
+            }}
+          >
           <View className="mb-4 flex-row items-center gap-3">
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={t("budgets.form.chooseIcon")}
               disabled={busy}
-              onPress={() => open("icon")}
+              onPress={() => setIconPickerOpen(true)}
             >
               <BudgetBadge budget={draft} />
             </Pressable>
@@ -312,70 +377,94 @@ export function BudgetEditorScreen({ editId }: { editId?: string }) {
             onChangeText={(notes) => setDraft((d) => ({ ...d, notes }))}
             style={{ minHeight: 120, textAlignVertical: "top", marginTop: 12 }}
           />
-          {row(
-            "color",
-            t("budgets.form.colors"),
-            t("budgets.form.colorsHelp"),
-            draft.color,
-            "format-paint",
-          )}
-          <View className="flex-row flex-wrap gap-2">
-            {ICON_COLORS.slice(0, 10).map((color) => (
-              <Pressable
-                key={color}
-                accessibilityRole="button"
-                accessibilityLabel={t("budgets.form.chooseColor", { color })}
-                accessibilityState={{ selected: draft.color === color }}
-                disabled={busy}
-                onPress={() => setDraft((d) => ({ ...d, color }))}
-                style={{
-                  backgroundColor: color,
-                  width: 32,
-                  height: 32,
-                  borderRadius: 10,
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                {draft.color === color && (
-                  <FilledIcon name="check" size={20} color="#000" />
-                )}
-              </Pressable>
-            ))}
-          </View>
-        </ScrollView>
-        <View
-          className="gap-2 border-t border-border bg-background px-5 pt-3"
-          style={{ paddingBottom: Math.max(insets.bottom, 12) }}
-        >
-          {!!error && (
-            <Text accessibilityRole="alert" className="text-danger">
-              {error}
+            <Text className="mt-2 font-manrope-semibold text-lg text-foreground">
+              {t("budgets.form.colors")}
             </Text>
-          )}
-          <Button
-            isDisabled={busy}
-            accessibilityState={{ busy }}
-            className="h-14 rounded-full"
-            onPress={save}
+            <Text className="text-sm leading-5 text-muted">
+              {t("budgets.form.colorsHelp")}
+            </Text>
+            <BudgetColorPicker
+              value={draft.color}
+              onChange={(color) => setDraft((current) => ({ ...current, color }))}
+            />
+          </ScrollView>
+
+          <LinearGradient
+            colors={[
+              colorWithAlpha(c.background, 0),
+              colorWithAlpha(c.background, 0.72),
+              c.background,
+              c.background,
+            ]}
+            locations={[
+              0,
+              (128 * 0.54) / (128 + insets.bottom),
+              128 / (128 + insets.bottom),
+              1,
+            ]}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 1 }}
+            pointerEvents="none"
+            style={[styles.bottomScrim, { height: 128 + insets.bottom }]}
+          />
+
+          <View
+            pointerEvents="box-none"
+            style={[styles.actionDock, { bottom: Math.max(insets.bottom, 10) }]}
           >
-            <FilledIcon name="wallet" size={24} tone="accent-foreground" />
-            <Button.Label>
-              {busy
-                ? t("budgets.form.saving")
-                : editId
-                  ? t("budgets.form.save")
-                  : t("budgets.form.add")}
-            </Button.Label>
-          </Button>
+            {!!error && (
+              <Text
+                accessibilityRole="alert"
+                accessibilityLiveRegion="polite"
+                className="font-sans text-sm text-danger"
+              >
+                {error}
+              </Text>
+            )}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={
+                busy
+                  ? t("budgets.form.saving")
+                  : editId
+                    ? t("budgets.form.save")
+                    : t("budgets.form.add")
+              }
+              accessibilityState={{ busy, disabled: busy }}
+              disabled={busy}
+              onPress={save}
+              android_ripple={{
+                color: colorWithAlpha(c.accentForeground, 0.16),
+                borderless: false,
+              }}
+              style={({ pressed }) => [
+                styles.actionButton,
+                { backgroundColor: c.accent },
+                busy && styles.actionDisabled,
+                Platform.OS === "ios" && pressed && styles.actionPressed,
+              ]}
+            >
+              <FilledIcon name="wallet" size={24} tone="accent-foreground" />
+              <Text
+                numberOfLines={1}
+                className="shrink font-manrope-bold text-base text-accent-foreground"
+              >
+                {busy
+                  ? t("budgets.form.saving")
+                  : editId
+                    ? t("budgets.form.save")
+                    : t("budgets.form.add")}
+              </Text>
+            </Pressable>
+          </View>
         </View>
       </KeyboardAvoidingView>
-      {sheet && (
-        <BudgetSheet
-          title={titles[sheet]}
-          onClose={() => setSheet(null)}
-          onDone={apply}
-        >
+      <BudgetEditorSheet
+        isOpen={sheet !== null}
+        title={sheet ? titles[sheet] : ""}
+        busy={busy}
+        onClose={() => setSheet(null)}
+      >
           {sheet === "type" &&
             labels.types.map((label, index) => (
               <BudgetOption
@@ -388,14 +477,17 @@ export function BudgetEditorScreen({ editId }: { editId?: string }) {
                       ? t("budgets.form.typeDescriptions.income")
                       : t("budgets.form.typeDescriptions.transfer")
                 }
-                selected={pending.transactionType === index}
-                onPress={() =>
-                  setPending((d) => ({
-                    ...d,
+                selected={draft.transactionType === index}
+                onPress={() => {
+                  setDraft((current) => ({
+                    ...current,
                     transactionType: index as 0 | 1 | 2,
-                    categories: d.transactionType === index ? d.categories : [],
-                  }))
-                }
+                    categories:
+                      current.transactionType === index
+                        ? current.categories
+                        : [],
+                  }));
+                }}
               />
             ))}
           {sheet === "mode" && (
@@ -409,8 +501,8 @@ export function BudgetEditorScreen({ editId }: { editId?: string }) {
                       ? t("budgets.form.modeDescriptions.automatic")
                       : t("budgets.form.modeDescriptions.manual")
                   }
-                  selected={pending.budgetMode === mode}
-                  onPress={() => change("budgetMode", mode)}
+                  selected={draft.budgetMode === mode}
+                  onPress={() => select("budgetMode", mode)}
                 />
               ))}
             </>
@@ -428,8 +520,8 @@ export function BudgetEditorScreen({ editId }: { editId?: string }) {
                       ? t("budgets.form.scopeDescriptions.category")
                       : t("budgets.form.scopeDescriptions.overall")
                   }
-                  selected={pending.budgetType === scope}
-                  onPress={() => change("budgetType", scope)}
+                  selected={draft.budgetType === scope}
+                  onPress={() => select("budgetType", scope)}
                 />
               ))}
             </>
@@ -449,11 +541,11 @@ export function BudgetEditorScreen({ editId }: { editId?: string }) {
                           ),
                         })
                   }
-                  selected={pending.period === period}
-                  onPress={() => change("period", period)}
+                  selected={draft.period === period}
+                  onPress={() => select("period", period)}
                 />
               ))}
-              {pending.period === "Monthly" && (
+              {draft.period === "Monthly" && (
                 <>
                   <Text className="mt-3 font-manrope-semibold text-lg text-foreground">
                     {t("budgets.form.customMonthlyCycle")}
@@ -462,7 +554,7 @@ export function BudgetEditorScreen({ editId }: { editId?: string }) {
                     accessibilityLabel={t("budgets.form.startDay")}
                     placeholder={t("budgets.form.startDayPlaceholder")}
                     keyboardType="number-pad"
-                    value={pending.cycleDay}
+                    value={draft.cycleDay}
                     maxLength={2}
                     onChangeText={(v) => change("cycleDay", v)}
                   />
@@ -471,18 +563,18 @@ export function BudgetEditorScreen({ editId }: { editId?: string }) {
                   </Text>
                 </>
               )}
-              {pending.period === "Custom" && (
+              {draft.period === "Custom" && (
                 <>
                   <BudgetField
                     accessibilityLabel={t("budgets.form.startDate")}
                     placeholder={t("budgets.form.startDatePlaceholder")}
-                    value={pending.startDate}
+                    value={draft.startDate}
                     onChangeText={(v) => change("startDate", v)}
                   />
                   <BudgetField
                     accessibilityLabel={t("budgets.form.endDate")}
                     placeholder={t("budgets.form.endDatePlaceholder")}
-                    value={pending.endDate}
+                    value={draft.endDate}
                     onChangeText={(v) => change("endDate", v)}
                   />
                   <Text className="text-sm text-muted">
@@ -496,7 +588,7 @@ export function BudgetEditorScreen({ editId }: { editId?: string }) {
             <>
               <Text className="text-muted">
                 {t("budgets.form.categorySelection", {
-                  selected: pending.categories.length,
+                  selected: draft.categories.length,
                   total: categories.length,
                 })}
               </Text>
@@ -523,7 +615,7 @@ export function BudgetEditorScreen({ editId }: { editId?: string }) {
                           })
                         : undefined
                     }
-                    selected={pending.categories.some((id) =>
+                    selected={draft.categories.some((id) =>
                       references(
                         document.categories.find(
                           (r) => identity(r) === cat.id,
@@ -532,7 +624,7 @@ export function BudgetEditorScreen({ editId }: { editId?: string }) {
                       ),
                     )}
                     onPress={() =>
-                      change("categories", toggleId(pending.categories, cat.id))
+                      select("categories", toggleId(draft.categories, cat.id))
                     }
                   >
                     <BudgetBadge budget={cat} />
@@ -542,17 +634,17 @@ export function BudgetEditorScreen({ editId }: { editId?: string }) {
                 <Text className="py-4 text-muted">
                   {t("budgets.form.noCategories", {
                     type: labels.types[
-                      pending.transactionType
+                      draft.transactionType
                     ].toLocaleLowerCase(i18n.resolvedLanguage),
                   })}
                 </Text>
               )}
-              {pending.budgetMode === "Manual" ? (
+              {draft.budgetMode === "Manual" ? (
                 <BudgetToggle
                   title={t("budgets.form.includeSubcategories")}
                   description={t("budgets.form.includeSubcategoriesHelp")}
-                  value={pending.includeSubcategories}
-                  onChange={(v) => change("includeSubcategories", v)}
+                  value={draft.includeSubcategories}
+                  onChange={(v) => select("includeSubcategories", v)}
                 />
               ) : (
                 <Text className="py-3 text-muted">
@@ -563,7 +655,7 @@ export function BudgetEditorScreen({ editId }: { editId?: string }) {
                 <Button
                   variant="secondary"
                   onPress={() =>
-                    change(
+                    select(
                       "categories",
                       categories.map((cat) => cat.id),
                     )
@@ -573,7 +665,7 @@ export function BudgetEditorScreen({ editId }: { editId?: string }) {
                 </Button>
                 <Button
                   variant="ghost"
-                  onPress={() => change("categories", [])}
+                  onPress={() => select("categories", [])}
                 >
                   {t("budgets.form.clearAll")}
                 </Button>
@@ -584,7 +676,7 @@ export function BudgetEditorScreen({ editId }: { editId?: string }) {
             <>
               <Text className="text-muted">
                 {t("budgets.form.accountSelection", {
-                  selected: pending.accounts.length,
+                  selected: draft.accounts.length,
                   total: accounts.length,
                 })}
               </Text>
@@ -593,9 +685,9 @@ export function BudgetEditorScreen({ editId }: { editId?: string }) {
                   key={a.id}
                   title={a.name}
                   description={`${a.ownerName} · ${a.currencyCode}`}
-                  selected={pending.accounts.includes(a.id)}
+                  selected={draft.accounts.includes(a.id)}
                   onPress={() =>
-                    change("accounts", toggleId(pending.accounts, a.id))
+                    select("accounts", toggleId(draft.accounts, a.id))
                   }
                   icon="bank"
                 />
@@ -604,7 +696,7 @@ export function BudgetEditorScreen({ editId }: { editId?: string }) {
                 <Button
                   variant="secondary"
                   onPress={() =>
-                    change(
+                    select(
                       "accounts",
                       accounts.map((a) => a.id),
                     )
@@ -612,7 +704,7 @@ export function BudgetEditorScreen({ editId }: { editId?: string }) {
                 >
                   {t("budgets.form.selectAll")}
                 </Button>
-                <Button variant="ghost" onPress={() => change("accounts", [])}>
+                <Button variant="ghost" onPress={() => select("accounts", [])}>
                   {t("budgets.form.clearAll")}
                 </Button>
               </View>
@@ -623,113 +715,75 @@ export function BudgetEditorScreen({ editId }: { editId?: string }) {
               <BudgetToggle
                 title={t("budgets.common.rollingBudget")}
                 description={
-                  pending.period === "Custom"
+                  draft.period === "Custom"
                     ? t("budgets.form.rollingCustomHelp")
                     : t("budgets.form.rollingHelp")
                 }
-                disabled={pending.period === "Custom"}
-                value={pending.rolling}
-                onChange={(v) => change("rolling", v)}
+                disabled={draft.period === "Custom"}
+                value={draft.rolling}
+                onChange={(v) => select("rolling", v)}
               />
               <BudgetToggle
                 title={t("budgets.form.showBudget")}
                 description={t("budgets.form.showBudgetHelp")}
-                value={pending.showOnHome}
-                onChange={(v) => change("showOnHome", v)}
+                value={draft.showOnHome}
+                onChange={(v) => select("showOnHome", v)}
               />
             </>
           )}
-          {sheet === "currency" && (
-            <>
-              <BudgetField
-                accessibilityLabel={t("budgets.form.searchCurrencies")}
-                placeholder={t("budgets.form.searchCurrencies")}
-                value={query}
-                onChangeText={setQuery}
-              />
-              <Text className="text-sm text-muted">
-                {t("budgets.form.currencyContribution")}
-              </Text>
-              {currencies
-                .filter((v) =>
-                  `${v.code} ${v.name}`
-                    .toLowerCase()
-                    .includes(query.toLowerCase()),
-                )
-                .map((v) => (
-                  <BudgetOption
-                    key={v.code}
-                    title={`${v.code.toUpperCase()} · ${v.name}`}
-                    selected={pending.currencyCode === v.code.toUpperCase()}
-                    onPress={() => change("currencyCode", v.code.toUpperCase())}
-                  />
-                ))}
-            </>
-          )}
-          {sheet === "icon" && (
-            <>
-              <BudgetField
-                accessibilityLabel={t("budgets.form.searchBudgetIcons")}
-                placeholder={t("budgets.form.searchIcons")}
-                value={query}
-                onChangeText={setQuery}
-              />
-              <View className="flex-row flex-wrap gap-2">
-                {MATERIAL_ROUNDED_FILLED_ICONS.filter((i) =>
-                  i.searchText.includes(query.toLowerCase()),
-                )
-                  .slice(0, 180)
-                  .map((i) => (
-                    <Pressable
-                      key={i.name}
-                      accessibilityRole="button"
-                      accessibilityLabel={i.label}
-                      accessibilityState={{
-                        selected: pending.icon === `material:${i.name}`,
-                      }}
-                      onPress={() =>
-                        setPending((d) => ({
-                          ...d,
-                          icon: `material:${i.name}`,
-                          iconPath: i.pathData,
-                        }))
-                      }
-                      style={{
-                        width: 52,
-                        height: 52,
-                        borderRadius: 16,
-                        backgroundColor: c.surface,
-                        borderWidth: 2,
-                        borderColor:
-                          pending.icon === `material:${i.name}`
-                            ? c.accent
-                            : "transparent",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <RecordIcon
-                        name={`material:${i.name}`}
-                        pathData={i.pathData}
-                        color={c.foreground}
-                        size={27}
-                      />
-                    </Pressable>
-                  ))}
-              </View>
-              <Text className="text-sm text-muted">
-                {t("budgets.form.searchMoreIcons")}
-              </Text>
-            </>
-          )}
-          {sheet === "color" && (
-            <BudgetColorPicker
-              value={pending.color}
-              onChange={(v) => change("color", v)}
-            />
-          )}
-        </BudgetSheet>
+      </BudgetEditorSheet>
+      <CurrencySelectorSheet
+        currencies={currencies}
+        isOpen={currencySheetOpen}
+        selectedCode={draft.currencyCode}
+        closeOnSelect={false}
+        onOpenChange={setCurrencySheetOpen}
+        onSelect={(currency) => change("currencyCode", currency.code)}
+      />
+      {iconPickerOpen && (
+        <IconPicker
+          selected={{ name: draft.icon, pathData: draft.iconPath }}
+          onClose={() => setIconPickerOpen(false)}
+          onSelect={(icon) => {
+            setDraft((current) => ({
+              ...current,
+              icon: icon.name,
+              iconPath: icon.pathData,
+            }));
+          }}
+        />
       )}
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  fill: { flex: 1 },
+  bottomScrim: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+  },
+  actionDock: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    paddingHorizontal: 12,
+    gap: 6,
+    zIndex: 20,
+  },
+  actionButton: {
+    height: 58,
+    borderRadius: 29,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    paddingHorizontal: 16,
+    overflow: "hidden",
+  },
+  actionPressed: { opacity: 0.72 },
+  actionDisabled: { opacity: 0.5 },
+});

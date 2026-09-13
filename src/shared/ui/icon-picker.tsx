@@ -6,6 +6,7 @@ import {
   useState,
   type PropsWithChildren,
 } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Modal,
   Platform,
@@ -21,6 +22,7 @@ import {
 } from "react-native-safe-area-context";
 import { FilledIcon } from "@/shared/ui/filled-icon";
 import { Text } from "@/shared/ui/app-text";
+import { useAppLocalization } from "@/localization/localization-provider";
 import { ICON_GROUPS } from "@/shared/icons/icon-options";
 import { MATERIAL_ROUNDED_FILLED_ICONS } from "@/shared/icons/material-rounded-filled-icons";
 import { RecordIcon, type IconSelection } from "./record-icon";
@@ -59,6 +61,7 @@ export function PickerModal({
   title: string;
   onClose: () => void;
 }>) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const colors = useAppThemeColors();
   const topInset = Math.max(insets.top, initialWindowMetrics?.insets.top ?? 0);
@@ -88,7 +91,7 @@ export function PickerModal({
             <Button
               isIconOnly
               variant="ghost"
-              accessibilityLabel="Close picker"
+              accessibilityLabel={t("iconPicker.close")}
               onPress={onClose}
             >
               <FilledIcon name="arrow-left" size={24} />
@@ -118,6 +121,8 @@ export function IconPicker({
   onSelect: (icon: IconSelection) => void;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
+  const { direction } = useAppLocalization();
   const insets = useSafeAreaInsets();
   const colors = useAppThemeColors();
   const [query, setQuery] = useState("");
@@ -156,21 +161,37 @@ export function IconPicker({
             ]
           : curatedIcons;
 
-      return { title: group.title, data: rowsOfSix(icons) };
+      const groupKey =
+        group.title === "Money & accounts"
+          ? "moneyAccounts"
+          : group.title === "Everyday spending"
+            ? "everydaySpending"
+            : group.title === "Goals & interests"
+              ? "goalsInterests"
+              : "more";
+
+      return {
+        title: t(`iconPicker.groups.${groupKey}`),
+        data: rowsOfSix(icons),
+      };
     }).filter((section) => section.data.length > 0);
-  }, [deferredQuery]);
+  }, [deferredQuery, t]);
 
   return (
-    <PickerModal title="Choose icon" onClose={onClose}>
+    <PickerModal title={t("iconPicker.title")} onClose={onClose}>
       <View style={{ flex: 1 }}>
         <View className="px-5 pb-3">
           <Input
-            accessibilityLabel="Search icons"
-            className="text-left"
-            placeholder="Search icons"
+            accessibilityLabel={t("iconPicker.search")}
+            placeholder={t("iconPicker.search")}
             value={query}
             onChangeText={setQuery}
             autoCorrect={false}
+            style={{
+              direction,
+              textAlign: direction === "rtl" ? "right" : "left",
+              writingDirection: direction,
+            }}
           />
         </View>
         <SectionList<PickerIcon[], PickerSection>
@@ -235,7 +256,7 @@ export function IconPicker({
           )}
           ListEmptyComponent={
             <Text className="px-5 py-8 text-center text-muted">
-              No icons found. Try a different search.
+              {t("iconPicker.empty")}
             </Text>
           }
         />
@@ -262,7 +283,7 @@ export function IconPicker({
         ]}
       >
         <Pressable
-          accessibilityLabel="Done choosing an icon"
+          accessibilityLabel={t("iconPicker.doneAccessibility")}
           accessibilityRole="button"
           onPress={() => {
             onSelect(draft);
@@ -279,7 +300,7 @@ export function IconPicker({
         >
           <FilledIcon name="check" size={24} tone="accent-foreground" />
           <Text className="font-manrope-bold text-base text-accent-foreground">
-            Done
+            {t("iconPicker.done")}
           </Text>
         </Pressable>
       </View>

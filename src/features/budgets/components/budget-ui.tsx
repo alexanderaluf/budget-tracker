@@ -1,4 +1,5 @@
 import type { Budget } from "@/data/selectors/budget-selectors";
+import { useAppLocalization } from "@/localization/localization-provider";
 import { colorForeground } from "@/shared/icons/colors";
 import { formatCurrency } from "@/shared/lib/currency";
 import { useAppThemeColors } from "@/shared/theme/app-theme";
@@ -92,6 +93,7 @@ export function BudgetPanel({ children }: PropsWithChildren) {
 }
 export function BudgetField(props: TextInputProps) {
   const c = useAppThemeColors();
+  const { direction } = useAppLocalization();
   return (
     <TextInput
       placeholderTextColor={c.muted}
@@ -108,7 +110,9 @@ export function BudgetField(props: TextInputProps) {
           fontSize: 17,
           borderWidth: 1,
           borderColor: c.border,
-          textAlign: "left",
+          direction,
+          textAlign: "auto",
+          writingDirection: direction,
         },
         props.style,
       ]}
@@ -223,17 +227,16 @@ export function BudgetSheet({
   title,
   children,
   onClose,
-  onDone,
   busy = false,
 }: PropsWithChildren<{
   title: string;
   onClose: () => void;
-  onDone?: () => void;
   busy?: boolean;
 }>) {
   const c = useAppThemeColors(),
     insets = useSafeAreaInsets();
   const { t } = useTranslation();
+  const { direction } = useAppLocalization();
   return (
     <Modal
       transparent
@@ -246,6 +249,7 @@ export function BudgetSheet({
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{
           flex: 1,
+          direction,
           justifyContent: "flex-end",
           backgroundColor: "rgba(0,0,0,.64)",
           paddingTop: insets.top + 16,
@@ -297,16 +301,6 @@ export function BudgetSheet({
           >
             {children}
           </ScrollView>
-          <View className="flex-row justify-end gap-3 px-5 pt-3">
-            <Button variant="ghost" isDisabled={busy} onPress={onClose}>
-              <Button.Label>{t("budgets.common.cancel")}</Button.Label>
-            </Button>
-            {onDone && (
-              <Button isDisabled={busy} onPress={onDone}>
-                <Button.Label>{t("budgets.common.done")}</Button.Label>
-              </Button>
-            )}
-          </View>
         </View>
       </KeyboardAvoidingView>
     </Modal>

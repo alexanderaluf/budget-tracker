@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Pressable, View } from "react-native";
 import Svg, {
   Circle,
@@ -31,10 +32,12 @@ export function BudgetColorPicker({
   value: string;
   onChange: (value: string) => void;
 }) {
-  const [tab, setTab] = useState("Primary"),
+  const { t } = useTranslation();
+  const tabs = ["primary", "accent", "wheel"] as const;
+  const [tab, setTab] = useState<(typeof tabs)[number]>("primary"),
     c = useAppThemeColors();
   const palette =
-    tab === "Accent"
+    tab === "accent"
       ? ICON_COLORS.map((color) => {
           const channels = [1, 3, 5].map((i) =>
             Math.round(parseInt(color.slice(i, i + 2), 16) * 0.6 + 255 * 0.4)
@@ -60,38 +63,39 @@ export function BudgetColorPicker({
         accessibilityRole="tablist"
         className="flex-row rounded-2xl bg-surface p-1"
       >
-        {["Primary", "Accent", "Wheel"].map((t) => (
+        {tabs.map((tabId) => (
           <Pressable
-            key={t}
+            key={tabId}
             accessibilityRole="tab"
-            accessibilityState={{ selected: tab === t }}
-            onPress={() => setTab(t)}
+            accessibilityState={{ selected: tab === tabId }}
+            onPress={() => setTab(tabId)}
             style={{
               flex: 1,
               minHeight: 44,
               borderRadius: 12,
-              backgroundColor: tab === t ? c.accent : "transparent",
+              backgroundColor: tab === tabId ? c.accent : "transparent",
               alignItems: "center",
               justifyContent: "center",
             }}
           >
             <Text
               style={{
-                color: tab === t ? colorForeground(c.accent) : c.foreground,
+                color:
+                  tab === tabId ? colorForeground(c.accent) : c.foreground,
               }}
             >
-              {t}
+              {t(`budgets.colorPicker.tabs.${tabId}`)}
             </Text>
           </Pressable>
         ))}
       </View>
-      {tab !== "Wheel" ? (
+      {tab !== "wheel" ? (
         <View className="flex-row flex-wrap gap-3">
           {palette.map((color) => (
             <Pressable
               key={color}
               accessibilityRole="button"
-              accessibilityLabel={`Choose ${color}`}
+              accessibilityLabel={t("budgets.colorPicker.choose", { color })}
               accessibilityState={{ selected: value.toLowerCase() === color }}
               onPress={() => onChange(color)}
               style={{
@@ -116,7 +120,7 @@ export function BudgetColorPicker({
       ) : (
         <View
           style={{ alignSelf: "center", width: 240, height: 240 }}
-          accessibilityLabel="Color wheel. A custom hex field is also available below."
+          accessibilityLabel={t("budgets.colorPicker.wheelAccessibility")}
           onStartShouldSetResponder={() => true}
           onResponderGrant={(e) =>
             pick(e.nativeEvent.locationX, e.nativeEvent.locationY)
@@ -147,30 +151,15 @@ export function BudgetColorPicker({
           </Svg>
         </View>
       )}
-      <Text className="text-muted">Custom hex color</Text>
+      <Text className="text-muted">{t("budgets.colorPicker.customHex")}</Text>
       <BudgetField
-        accessibilityLabel="Custom hex color"
-        placeholder="#5C6BC0"
+        accessibilityLabel={t("budgets.colorPicker.customHex")}
+        placeholder={t("budgets.colorPicker.hexPlaceholder")}
         maxLength={7}
         autoCapitalize="characters"
         value={value}
         onChangeText={onChange}
       />
-      {/^#[a-f\d]{6}$/i.test(value) && (
-        <View
-          style={{
-            height: 44,
-            borderRadius: 14,
-            backgroundColor: value,
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Text style={{ color: colorForeground(value) }}>
-            {value.toUpperCase()}
-          </Text>
-        </View>
-      )}
     </View>
   );
 }

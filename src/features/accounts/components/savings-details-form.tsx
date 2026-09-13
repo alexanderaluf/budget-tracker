@@ -19,6 +19,7 @@ import {
     TAX_TREATMENT_OPTIONS,
     type SavingsDetailsDraft,
 } from "@/data/model/savings-account";
+import { useAppLocalization } from "@/localization/localization-provider";
 import { formatCurrency } from "@/shared/lib/currency";
 import { useAppThemeColors } from "@/shared/theme/app-theme";
 import { Text } from "@/shared/ui/app-text";
@@ -38,6 +39,7 @@ export function SavingsDetailsForm({
   onChange,
 }: SavingsDetailsFormProps) {
   const { t } = useTranslation();
+  const { direction } = useAppLocalization();
   const theme = useAppThemeColors();
   const [showProducts, setShowProducts] = useState(false);
   const productOptions = SAVINGS_PRODUCT_OPTIONS.map((option) => ({
@@ -382,7 +384,9 @@ export function SavingsDetailsForm({
             {
               backgroundColor: theme.surface,
               color: theme.foreground,
-              textAlign: "left",
+              direction,
+              textAlign: "auto",
+              writingDirection: direction,
             },
           ]}
           textAlignVertical="top"
@@ -481,14 +485,17 @@ function TextField({
   placeholder: string;
   value: string;
 }) {
+  const { direction } = useAppLocalization();
+
   return (
     <View className="gap-2">
       <FieldLabel>{label}</FieldLabel>
       <Input
         accessibilityLabel={label}
-        className="h-14 rounded-2xl bg-surface text-left"
+        className="h-14 rounded-2xl bg-surface"
         onChangeText={onChange}
         placeholder={placeholder}
+        style={{ direction, textAlign: "auto", writingDirection: direction }}
         value={value}
       />
     </View>
@@ -506,15 +513,18 @@ function NumberField({
   placeholder: string;
   value: string;
 }) {
+  const { direction } = useAppLocalization();
+
   return (
     <View className="gap-2">
       <FieldLabel>{label}</FieldLabel>
       <Input
         accessibilityLabel={label}
-        className="h-14 rounded-2xl bg-surface text-left"
+        className="h-14 rounded-2xl bg-surface"
         keyboardType="decimal-pad"
         onChangeText={onChange}
         placeholder={placeholder}
+        style={{ direction, textAlign: "auto", writingDirection: direction }}
         value={value}
       />
     </View>
