@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { colorWithAlpha, useAppThemeColors } from "@/shared/theme/app-theme";
 import { Text } from "@/shared/ui/app-text";
+import { useBottomSheetInitialPositionFix } from "@/shared/ui/use-bottom-sheet-initial-position-fix";
 import { FilledIcon } from "@/shared/ui/filled-icon";
 import { RecordIcon } from "@/shared/ui/record-icon";
 
@@ -80,6 +81,7 @@ export function TransactionCategorySheet({
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [isOpen, setIsOpen] = useState(false);
+  const initialPositionFix = useBottomSheetInitialPositionFix(isOpen);
   const opened = useRef(false);
   const openingFrame = useRef<number | null>(null);
 
@@ -120,6 +122,8 @@ export function TransactionCategorySheet({
       <BottomSheet.Portal unstable_accessibilityContainerViewIsModal>
         <BottomSheet.Overlay />
         <BottomSheet.Content
+          containerStyle={initialPositionFix.containerStyle}
+          onChange={initialPositionFix.onChange}
           snapPoints={["72%"]}
           enableDynamicSizing={false}
           enableOverDrag={false}

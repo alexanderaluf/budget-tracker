@@ -1,5 +1,6 @@
 import { useThemeColor } from "heroui-native";
 import { useEffect } from "react";
+import { Appearance } from "react-native";
 import { Uniwind, useUniwind } from "uniwind";
 
 import { useLocalData } from "@/data/local-data-provider";
@@ -143,6 +144,9 @@ export function AppThemeController() {
       "--focus": accent.dark.accent,
       "--link": accent.dark.accent,
     });
+    Appearance.setColorScheme(
+      themeMode === "system" ? "unspecified" : themeMode,
+    );
     Uniwind.setTheme(themeMode);
   }, [accentColor, themeMode]);
 

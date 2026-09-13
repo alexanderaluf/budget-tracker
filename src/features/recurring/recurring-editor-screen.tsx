@@ -1,9 +1,11 @@
-import DateTimePicker from "@react-native-community/datetimepicker";
+import { DateTimePicker } from "@expo/ui/community/datetime-picker";
 import { uuid } from "expo-modules-core";
 import { useRouter } from "expo-router";
-import { useRef, useState } from "react";
+import { BottomSheet, Button, Switch as HeroSwitch } from "heroui-native";
+import { useRef, useState, type PropsWithChildren } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, Pressable, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalData } from "@/data/local-data-provider";
 import { requestRecurringReminderPermission } from "@/data/recurring/recurring-reminders";
 import {
@@ -21,8 +23,6 @@ import {
 import {
   BudgetField,
   BudgetOption,
-  BudgetSheet,
-  BudgetToggle,
 } from "@/features/budgets/components/budget-ui";
 import { BudgetColorPicker } from "@/features/budgets/components/budget-color-picker";
 import { CurrencySelectorSheet } from "@/features/profile/components/currency-selector-sheet";
@@ -33,11 +33,60 @@ import { useAppThemeColors } from "@/shared/theme/app-theme";
 import { IconPicker } from "@/shared/ui/icon-picker";
 import { Text } from "@/shared/ui/app-text";
 import { FilledIcon } from "@/shared/ui/filled-icon";
+import { useBottomSheetInitialPositionFix } from "@/shared/ui/use-bottom-sheet-initial-position-fix";
 import {
   RecurringAction,
   RecurringBadge,
   RecurringEditorShell,
 } from "./components/recurring-ui";
+import { RecurringDateTimePopover } from "./components/recurring-date-time-popover";
+
+function RecurringOptionsSheet({
+  children,
+  isOpen,
+  title,
+  onOpenChange,
+}: PropsWithChildren<{
+  isOpen: boolean;
+  title: string;
+  onOpenChange: (open: boolean) => void;
+}>) {
+  const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
+  const initialPositionFix = useBottomSheetInitialPositionFix(isOpen);
+
+  return (
+    <BottomSheet isOpen={isOpen} onOpenChange={onOpenChange}>
+      <BottomSheet.Portal unstable_accessibilityContainerViewIsModal>
+        <BottomSheet.Overlay />
+        <BottomSheet.Content
+          containerStyle={initialPositionFix.containerStyle}
+          onChange={initialPositionFix.onChange}
+          topInset={insets.top}
+          backgroundClassName="rounded-t-[28px] bg-surface"
+          handleIndicatorClassName="w-10 bg-muted/40"
+          contentContainerClassName="px-5 pt-2"
+        >
+          <View
+            className="gap-3"
+            style={{ paddingBottom: Math.max(insets.bottom, 16) + 8 }}
+          >
+            <View className="flex-row items-center gap-3">
+              <BottomSheet.Title className="flex-1">
+                {title}
+              </BottomSheet.Title>
+              <BottomSheet.Close />
+            </View>
+            <View className="gap-2">{children}</View>
+            <Button variant="ghost" onPress={() => onOpenChange(false)}>
+              <Button.Label>{t("recurring.cancel")}</Button.Label>
+            </Button>
+          </View>
+        </BottomSheet.Content>
+      </BottomSheet.Portal>
+    </BottomSheet>
+  );
+}
 
 export function RecurringEditorScreen({ editId }: { editId?: string }) {
   const { document, updateDocument, reconcileRecurringPayments } =
@@ -75,6 +124,29 @@ export function RecurringEditorScreen({ editId }: { editId?: string }) {
   ) => setDraft((current) => ({ ...current, [key]: value }));
   const back = () =>
     router.canGoBack() ? router.back() : router.replace("/recurring");
+  function updateDateTime(
+    mode: Exclude<typeof datePicker, null>,
+    selected: Date,
+  ) {
+    const field = mode === "end" ? "endAt" : "startAt";
+    const current = new Date(
+      mode === "end" ? (draft.endAt ?? draft.startAt) : draft.startAt,
+    );
+    const next = new Date(current);
+
+    if (mode === "time") {
+      next.setHours(selected.getHours(), selected.getMinutes(), 0, 0);
+    } else {
+      next.setFullYear(
+        selected.getFullYear(),
+        selected.getMonth(),
+        selected.getDate(),
+      );
+    }
+
+    change(field, next.toISOString());
+    if (Platform.OS === "android") setDatePicker(null);
+  }
   async function save() {
     if (saving.current) return;
     saving.current = true;
@@ -153,6 +225,24 @@ export function RecurringEditorScreen({ editId }: { editId?: string }) {
       options: selectRecurringRelations(document, "peoples"),
     },
   ] as const;
+  const androidDateTimePicker =
+    Platform.OS === "android" && datePicker ? (
+    <DateTimePicker
+      accentColor={c.accent}
+      display="default"
+      mode={datePicker === "time" ? "time" : "date"}
+      presentation="dialog"
+      value={
+        new Date(
+          datePicker === "end"
+            ? (draft.endAt ?? draft.startAt)
+            : draft.startAt,
+        )
+      }
+      onValueChange={(_, value) => updateDateTime(datePicker, value)}
+      onDismiss={() => setDatePicker(null)}
+    />
+    ) : null;
   return (
     <>
       <RecurringEditorShell
@@ -253,6 +343,18 @@ export function RecurringEditorScreen({ editId }: { editId?: string }) {
                           { hour: "2-digit", minute: "2-digit" },
                         )}
                   </Text>
+                  <RecurringDateTimePopover
+                    accentColor={c.accent}
+                    isDark={c.isDark}
+                    isPresented={datePicker === key}
+                    mode={key === "time" ? "time" : "date"}
+                    title={t(`recurring.${key}`)}
+                    value={new Date(draft.startAt)}
+                    onDismiss={() => {
+                      if (datePicker === key) setDatePicker(null);
+                    }}
+                    onValueChange={(value) => updateDateTime(key, value)}
+                  />
                 </Pressable>
               ))}
             </View>
@@ -283,6 +385,11 @@ export function RecurringEditorScreen({ editId }: { editId?: string }) {
                 selectedId={draft[relation.key]}
                 options={relation.options}
                 expanded={expanded === relation.key}
+                compactOptions={
+                  relation.key === "account" ||
+                  relation.key === "category" ||
+                  relation.key === "budget"
+                }
                 onToggle={() =>
                   setExpanded(expanded === relation.key ? "" : relation.key)
                 }
@@ -297,12 +404,38 @@ export function RecurringEditorScreen({ editId }: { editId?: string }) {
                 }
               />
             ))}
-            <BudgetToggle
-              title={t("recurring.automatic")}
-              description={t("recurring.automaticHint")}
-              value={draft.automatic}
-              onChange={(v) => change("automatic", v)}
-            />
+            <Pressable
+              accessibilityRole="switch"
+              accessibilityLabel={t("recurring.automatic")}
+              accessibilityHint={t("recurring.automaticHint")}
+              accessibilityState={{ checked: draft.automatic, disabled: busy }}
+              disabled={busy}
+              onPress={() => change("automatic", !draft.automatic)}
+              className="flex-row items-center gap-3 py-3"
+            >
+              <View className="flex-1">
+                <Text className="font-manrope-semibold text-lg text-foreground">
+                  {t("recurring.automatic")}
+                </Text>
+                <Text className="mt-1 font-sans text-sm leading-5 text-muted">
+                  {t("recurring.automaticHint")}
+                </Text>
+              </View>
+              <View
+                pointerEvents="none"
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
+                className="shrink-0"
+              >
+                <HeroSwitch
+                  isSelected={draft.automatic}
+                  isDisabled={busy}
+                  style={{ width: 60, height: 28 }}
+                >
+                  <HeroSwitch.Thumb style={{ width: 36, height: 24 }} />
+                </HeroSwitch>
+              </View>
+            </Pressable>
             <Pressable
               accessibilityRole="button"
               onPress={() => setSheet("reminder")}
@@ -341,6 +474,18 @@ export function RecurringEditorScreen({ editId }: { editId?: string }) {
                     )
                   : t("recurring.noEnd")}
               </Text>
+              <RecurringDateTimePopover
+                accentColor={c.accent}
+                isDark={c.isDark}
+                isPresented={datePicker === "end"}
+                mode="date"
+                title={t("recurring.end")}
+                value={new Date(draft.endAt ?? draft.startAt)}
+                onDismiss={() => {
+                  if (datePicker === "end") setDatePicker(null);
+                }}
+                onValueChange={(value) => updateDateTime("end", value)}
+              />
             </Pressable>
             {draft.endAt && (
               <Pressable
@@ -394,11 +539,11 @@ export function RecurringEditorScreen({ editId }: { editId?: string }) {
           onClose={() => setSheet(null)}
         />
       )}
-      {sheet === "period" && (
-        <BudgetSheet
-          title={t("recurring.period")}
-          onClose={() => setSheet(null)}
-        >
+      <RecurringOptionsSheet
+        isOpen={sheet === "period"}
+        title={t("recurring.period")}
+        onOpenChange={(open) => !open && setSheet(null)}
+      >
           {RECURRING_PERIODS.map((p) => (
             <BudgetOption
               key={p}
@@ -410,13 +555,12 @@ export function RecurringEditorScreen({ editId }: { editId?: string }) {
               }}
             />
           ))}
-        </BudgetSheet>
-      )}
-      {sheet === "reminder" && (
-        <BudgetSheet
-          title={t("recurring.reminder")}
-          onClose={() => setSheet(null)}
-        >
+      </RecurringOptionsSheet>
+      <RecurringOptionsSheet
+        isOpen={sheet === "reminder"}
+        title={t("recurring.reminder")}
+        onOpenChange={(open) => !open && setSheet(null)}
+      >
           {[null, 0, 1, 2, 7].map((days) => (
             <BudgetOption
               key={String(days)}
@@ -447,36 +591,8 @@ export function RecurringEditorScreen({ editId }: { editId?: string }) {
               }}
             />
           ))}
-        </BudgetSheet>
-      )}
-      {!!datePicker && (
-        <BudgetSheet
-          title={t(`recurring.${datePicker}`)}
-          onClose={() => setDatePicker(null)}
-          onDone={() => setDatePicker(null)}
-        >
-          <DateTimePicker
-            value={
-              new Date(
-                datePicker === "end"
-                  ? (draft.endAt ?? draft.startAt)
-                  : draft.startAt,
-              )
-            }
-            mode={datePicker === "time" ? "time" : "date"}
-            display={Platform.OS === "ios" ? "spinner" : "default"}
-            themeVariant={c.isDark ? "dark" : "light"}
-            onChange={(event, value) => {
-              if (event.type === "set" && value)
-                change(
-                  datePicker === "end" ? "endAt" : "startAt",
-                  value.toISOString(),
-                );
-              if (Platform.OS !== "ios") setDatePicker(null);
-            }}
-          />
-        </BudgetSheet>
-      )}
+      </RecurringOptionsSheet>
+      {androidDateTimePicker}
     </>
   );
 }

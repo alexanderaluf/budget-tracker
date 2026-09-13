@@ -9,6 +9,7 @@ import { deleteCategory } from "@/data/model/category-record";
 import type { Category } from "@/data/selectors/category-selectors";
 import { selectCategories } from "@/data/selectors/document-selectors";
 import { Text } from "@/shared/ui/app-text";
+import { useBottomSheetInitialPositionFix } from "@/shared/ui/use-bottom-sheet-initial-position-fix";
 
 export function CategoryDeleteSheet({
   category,
@@ -23,6 +24,7 @@ export function CategoryDeleteSheet({
   const insets = useSafeAreaInsets();
   const { document, updateDocument } = useLocalData();
   const [isOpen, setIsOpen] = useState(false);
+  const initialPositionFix = useBottomSheetInitialPositionFix(isOpen);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const saving = useRef(false);
@@ -85,6 +87,8 @@ export function CategoryDeleteSheet({
       <BottomSheet.Portal unstable_accessibilityContainerViewIsModal>
         <BottomSheet.Overlay isCloseOnPress={!busy} />
         <BottomSheet.Content
+          containerStyle={initialPositionFix.containerStyle}
+          onChange={initialPositionFix.onChange}
           topInset={insets.top}
           bottomInset={insets.bottom}
           enablePanDownToClose={!busy}

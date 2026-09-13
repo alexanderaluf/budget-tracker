@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Text } from "@/shared/ui/app-text";
 import { FilledIcon } from "@/shared/ui/filled-icon";
+import { useBottomSheetInitialPositionFix } from "@/shared/ui/use-bottom-sheet-initial-position-fix";
 
 import type { CurrencyOption } from "../data/currencies-data";
 
@@ -193,6 +194,7 @@ export function CurrencySelectorSheet({
   onSelect,
 }: CurrencySelectorSheetProps) {
   const insets = useSafeAreaInsets();
+  const initialPositionFix = useBottomSheetInitialPositionFix(isOpen);
 
   function handleOpenChange(open: boolean) {
     if (!open) Keyboard.dismiss();
@@ -204,6 +206,8 @@ export function CurrencySelectorSheet({
       <BottomSheet.Portal unstable_accessibilityContainerViewIsModal>
         <BottomSheet.Overlay />
         <BottomSheet.Content
+          containerStyle={initialPositionFix.containerStyle}
+          onChange={initialPositionFix.onChange}
           snapPoints={["85%"]}
           topInset={insets.top}
           enableDynamicSizing={false}

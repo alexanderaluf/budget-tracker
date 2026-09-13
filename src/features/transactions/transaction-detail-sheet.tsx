@@ -24,6 +24,7 @@ import { colorWithAlpha, useAppThemeColors } from "@/shared/theme/app-theme";
 import { Text } from "@/shared/ui/app-text";
 import { FilledIcon, type FilledIconName } from "@/shared/ui/filled-icon";
 import { RecordIcon } from "@/shared/ui/record-icon";
+import { useBottomSheetInitialPositionFix } from "@/shared/ui/use-bottom-sheet-initial-position-fix";
 import { RecurringPaymentSnapshot } from './recurring-payment-snapshot';
 
 // The portal sits outside app context; compensate for native mirroring only once.
@@ -93,6 +94,7 @@ export function TransactionDetailSheet({
   const { updateDocument } = useLocalData();
   const { activeProfile } = useProfiles();
   const [isOpen, setIsOpen] = useState(false);
+  const initialPositionFix = useBottomSheetInitialPositionFix(isOpen);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [deleteConfirmationVisible, setDeleteConfirmationVisible] =
@@ -245,6 +247,8 @@ export function TransactionDetailSheet({
       <BottomSheet.Portal unstable_accessibilityContainerViewIsModal>
         <BottomSheet.Overlay isCloseOnPress={!busy} />
         <BottomSheet.Content
+          containerStyle={initialPositionFix.containerStyle}
+          onChange={initialPositionFix.onChange}
           snapPoints={[deleteConfirmationVisible ? "38%" : "80%"]}
           enableDynamicSizing={false}
           enableOverDrag={false}

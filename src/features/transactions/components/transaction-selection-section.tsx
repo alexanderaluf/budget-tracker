@@ -31,6 +31,7 @@ type TransactionSelectionSectionProps = {
   disabled?: boolean;
   optional?: boolean;
   compact?: boolean;
+  compactOptions?: boolean;
   onToggle: () => void;
   onSelect: (id: string) => void;
   onAdd?: () => void;
@@ -46,6 +47,7 @@ export function TransactionSelectionSection({
   disabled = false,
   optional = false,
   compact = false,
+  compactOptions = compact,
   onToggle,
   onSelect,
   onAdd,
@@ -114,7 +116,7 @@ export function TransactionSelectionSection({
           layout={LinearTransition.duration(220).reduceMotion(
             ReduceMotion.System,
           )}
-          className={`flex-row flex-wrap ${compact ? "gap-1.5 pt-1" : "gap-2 pt-2"}`}
+          className={`flex-row flex-wrap ${compactOptions ? "gap-1.5 pt-1" : "gap-2 pt-2"}`}
         >
           {options.map((option) => {
             const isSelected = option.id === selectedId;
@@ -137,7 +139,7 @@ export function TransactionSelectionSection({
                 accessibilityState={{ checked: isSelected, disabled }}
                 disabled={disabled}
                 onPress={() => onSelect(isSelected ? "" : option.id)}
-                className={`${compact ? "min-h-9" : "min-h-11"} max-w-full flex-row items-center gap-2 rounded-full border px-3`}
+                className={`${compactOptions ? "min-h-9 gap-1.5 px-2.5" : "min-h-11 gap-2 px-3"} max-w-full flex-row items-center rounded-full border`}
                 style={({ pressed }) => [
                   {
                     backgroundColor: isSelected
@@ -152,7 +154,7 @@ export function TransactionSelectionSection({
                   color={option.color}
                   name={option.icon}
                   pathData={option.iconPath}
-                  size={compact ? 18 : 20}
+                  size={compactOptions ? 17 : 20}
                 />
                 <Text
                   numberOfLines={1}
@@ -181,15 +183,15 @@ export function TransactionSelectionSection({
               )}
               disabled={disabled}
               onPress={onAdd}
-              className={`${compact ? "h-9" : "h-11"} flex-row items-center gap-2 rounded-full border border-border bg-surface px-3`}
+              className={`${compactOptions ? "h-9 gap-1.5 px-2.5" : "h-11 gap-2 px-3"} flex-row items-center rounded-full border border-border bg-surface`}
               style={({ pressed }) => ({ opacity: pressed ? 0.68 : 1 })}
             >
               <View
-                className={`${compact ? "size-5" : "size-6"} items-center justify-center rounded-full border border-accent`}
+                className={`${compactOptions ? "size-5" : "size-6"} items-center justify-center rounded-full border border-accent`}
               >
                 <FilledIcon
                   name="plus"
-                  size={compact ? 15 : 17}
+                  size={compactOptions ? 15 : 17}
                   tone="accent"
                 />
               </View>

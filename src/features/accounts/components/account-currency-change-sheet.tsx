@@ -7,6 +7,7 @@ import { useLocalData } from "@/data/local-data-provider";
 import { convertCurrency, type ExchangeRateSnapshot } from "@/data/model/exchange-rate";
 import { selectExchangeRates } from "@/data/selectors/exchange-rate-selectors";
 import { Text } from "@/shared/ui/app-text";
+import { useBottomSheetInitialPositionFix } from "@/shared/ui/use-bottom-sheet-initial-position-fix";
 
 export type CurrencyChangeRequest = { from: string; to: string; amount: number };
 
@@ -18,6 +19,8 @@ export function AccountCurrencyChangeSheet({ request, onClose, onApply }: {
   const { t } = useTranslation();
   const { document, ensureExchangeRates } = useLocalData();
   const insets = useSafeAreaInsets();
+  const isOpen = request !== null;
+  const initialPositionFix = useBottomSheetInitialPositionFix(isOpen);
   const [snapshot, setSnapshot] = useState<ExchangeRateSnapshot | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -79,11 +82,17 @@ export function AccountCurrencyChangeSheet({ request, onClose, onApply }: {
   const oldRate = snapshot && snapshot.date !== new Date().toISOString().slice(0, 10);
 
   return (
-    <BottomSheet isOpen={request !== null} onOpenChange={(open) => { if (!open) onClose(); }}>
+    <BottomSheet isOpen={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
       <BottomSheet.Portal unstable_accessibilityContainerViewIsModal>
         <BottomSheet.Overlay />
-        <BottomSheet.Content topInset={insets.top} backgroundClassName="rounded-t-[28px] bg-surface"
-          handleIndicatorClassName="w-10 bg-muted/40" contentContainerClassName="px-5 pt-2">
+        <BottomSheet.Content
+          containerStyle={initialPositionFix.containerStyle}
+          onChange={initialPositionFix.onChange}
+          topInset={insets.top}
+          backgroundClassName="rounded-t-[28px] bg-surface"
+          handleIndicatorClassName="w-10 bg-muted/40"
+          contentContainerClassName="px-5 pt-2"
+        >
           {request && <View className="gap-4" style={{ paddingBottom: insets.bottom + 16 }}>
             <BottomSheet.Title>
               {t("accounts.currencyChange.title")}

@@ -1,6 +1,4 @@
-import DateTimePicker, {
-  type DateTimePickerEvent,
-} from "@react-native-community/datetimepicker";
+import { DateTimePicker } from "@expo/ui/community/datetime-picker";
 import { BlurTargetView } from "expo-blur";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
@@ -60,6 +58,7 @@ import { colorWithAlpha, useAppThemeColors } from "@/shared/theme/app-theme";
 import { Text } from "@/shared/ui/app-text";
 import { FilledIcon } from "@/shared/ui/filled-icon";
 import { GlassSegmentedControl } from "@/shared/ui/glass-segmented-control";
+import { useBottomSheetInitialPositionFix } from "@/shared/ui/use-bottom-sheet-initial-position-fix";
 
 import {
   TransactionSelectionSection,
@@ -186,6 +185,8 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
   const [datePickerMode, setDatePickerMode] =
     useState<DatePickerMode>(null);
   const [actionMenuOpen, setActionMenuOpen] = useState(false);
+  const actionSheetInitialPositionFix =
+    useBottomSheetInitialPositionFix(actionMenuOpen);
   const [currencySheetOpen, setCurrencySheetOpen] = useState(false);
   const [currencyRateLoading, setCurrencyRateLoading] = useState(false);
   const [currencyRateError, setCurrencyRateError] = useState("");
@@ -517,11 +518,9 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
 
   function updateDateTime(
     mode: Exclude<DatePickerMode, null>,
-    event: DateTimePickerEvent,
-    selected?: Date,
+    selected: Date,
   ) {
     if (Platform.OS === "android") setDatePickerMode(null);
-    if (event.type === "dismissed" || !selected) return;
     const next = new Date(safeOccurredAt);
     if (mode === "date")
       next.setFullYear(
@@ -954,13 +953,19 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
                 {datePickerMode ? (
                   <View className="overflow-hidden rounded-2xl bg-surface p-2">
                     <DateTimePicker
-                      display={Platform.OS === "ios" ? "spinner" : "default"}
+                      accentColor={theme.accent}
+                      display="default"
                       maximumDate={new Date()}
                       mode={datePickerMode}
-                      value={safeOccurredAt}
-                      onChange={(event, selected) =>
-                        updateDateTime(datePickerMode, event, selected)
+                      presentation={
+                        Platform.OS === "android" ? "dialog" : "inline"
                       }
+                      themeVariant={theme.isDark ? "dark" : "light"}
+                      value={safeOccurredAt}
+                      onValueChange={(_, selected) =>
+                        updateDateTime(datePickerMode, selected)
+                      }
+                      onDismiss={() => setDatePickerMode(null)}
                     />
                     {Platform.OS === "ios" ? (
                       <Button
@@ -1377,6 +1382,8 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
         <BottomSheet.Portal unstable_accessibilityContainerViewIsModal>
           <BottomSheet.Overlay />
           <BottomSheet.Content
+            containerStyle={actionSheetInitialPositionFix.containerStyle}
+            onChange={actionSheetInitialPositionFix.onChange}
             topInset={insets.top}
             bottomInset={insets.bottom}
             contentContainerClassName="px-5 pb-0 pt-2"
