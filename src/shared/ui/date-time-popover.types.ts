@@ -1,7 +1,8 @@
-export type RecurringDateTimePopoverProps = {
+export type DateTimePopoverProps = {
   accentColor: string;
   isDark: boolean;
   isPresented: boolean;
+  maximumDate?: Date;
   mode: "date" | "time";
   title: string;
   value: Date;

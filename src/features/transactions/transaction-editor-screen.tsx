@@ -8,48 +8,45 @@ import { BottomSheet, Button, Input } from "heroui-native";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  Alert,
-  Animated,
-  Image,
-  I18nManager,
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  StyleSheet,
-  View,
+    Alert,
+    Animated,
+    I18nManager,
+    Image,
+    Keyboard,
+    KeyboardAvoidingView,
+    Platform,
+    Pressable,
+    StyleSheet,
+    View,
 } from "react-native";
 import {
-  SafeAreaView,
-  useSafeAreaInsets,
+    SafeAreaView,
+    useSafeAreaInsets,
 } from "react-native-safe-area-context";
 
 import {
-  deleteAttachment,
-  getAttachmentFile,
-  persistAttachment,
+    deleteAttachment,
+    getAttachmentFile,
+    persistAttachment,
 } from "@/data/attachments/attachment-store";
 import { useLocalData } from "@/data/local-data-provider";
+import { belongsToProfile, identity } from "@/data/model/category-record";
 import { convertCurrency } from "@/data/model/exchange-rate";
-import {
-  belongsToProfile,
-  identity,
-} from "@/data/model/category-record";
 import type { JsonObject } from "@/data/model/json";
 import {
-  createTransactionDraft,
-  saveTransaction,
-  saveTransactionTemplate,
-  transactionDraftFromRecord,
-  type TransactionDraft,
-  type TransactionType,
+    createTransactionDraft,
+    saveTransaction,
+    saveTransactionTemplate,
+    transactionDraftFromRecord,
+    type TransactionDraft,
+    type TransactionType,
 } from "@/data/model/transaction-record";
 import {
-  selectAccounts,
-  selectBudgets,
-  selectCategoryRootId,
-  selectCategories,
-  selectTopLevelCategories,
+    selectAccounts,
+    selectBudgets,
+    selectCategories,
+    selectCategoryRootId,
+    selectTopLevelCategories,
 } from "@/data/selectors/document-selectors";
 import { selectExchangeRates } from "@/data/selectors/exchange-rate-selectors";
 import { CurrencySelectorSheet } from "@/features/profile/components/currency-selector-sheet";
@@ -58,15 +55,16 @@ import { useProfiles } from "@/features/profile/profile-provider";
 import { formatCurrency } from "@/shared/lib/currency";
 import { colorWithAlpha, useAppThemeColors } from "@/shared/theme/app-theme";
 import { Text } from "@/shared/ui/app-text";
+import { DateTimePopover } from "@/shared/ui/date-time-popover";
 import { FilledIcon } from "@/shared/ui/filled-icon";
 import { GlassSegmentedControl } from "@/shared/ui/glass-segmented-control";
 import { useBottomSheetInitialPositionFix } from "@/shared/ui/use-bottom-sheet-initial-position-fix";
 
-import {
-  TransactionSelectionSection,
-  type TransactionOption,
-} from "./components/transaction-selection-section";
 import { TransactionCategorySheet } from "./components/transaction-category-sheet";
+import {
+    TransactionSelectionSection,
+    type TransactionOption,
+} from "./components/transaction-selection-section";
 
 type SaveMode = "transaction" | "another" | "template";
 type DatePickerMode = "date" | "time" | null;
@@ -90,17 +88,16 @@ function recordOptions(
 ): TransactionOption[] {
   return records
     .filter(
-      (record) => identity(record) && belongsToProfile(document, record, profileId),
+      (record) =>
+        identity(record) && belongsToProfile(document, record, profileId),
     )
     .map((record) => ({
       id: identity(record),
-      name:
-        typeof record.name === "string" ? record.name : fallbackName,
+      name: typeof record.name === "string" ? record.name : fallbackName,
       description:
         typeof record.description === "string" ? record.description : "",
       icon: typeof record.icon === "string" ? record.icon : fallbackIcon,
-      iconPath:
-        typeof record.iconPath === "string" ? record.iconPath : null,
+      iconPath: typeof record.iconPath === "string" ? record.iconPath : null,
       color:
         typeof record.color === "string" && /^#[a-f\d]{6}$/i.test(record.color)
           ? record.color
@@ -160,9 +157,11 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
       ...createTransactionDraft(),
       accountId: defaultAccount?.id ?? "",
       currencyCode:
-        defaultAccount?.currencyCode ?? activeProfile.currencyCode.toUpperCase(),
+        defaultAccount?.currencyCode ??
+        activeProfile.currencyCode.toUpperCase(),
       accountCurrencyCode:
-        defaultAccount?.currencyCode ?? activeProfile.currencyCode.toUpperCase(),
+        defaultAccount?.currencyCode ??
+        activeProfile.currencyCode.toUpperCase(),
     };
   });
   const transactionNamePlaceholder =
@@ -185,8 +184,7 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
     uri: string;
     mimeType: string;
   } | null>(null);
-  const [datePickerMode, setDatePickerMode] =
-    useState<DatePickerMode>(null);
+  const [datePickerMode, setDatePickerMode] = useState<DatePickerMode>(null);
   const [actionMenuOpen, setActionMenuOpen] = useState(false);
   const actionSheetInitialPositionFix =
     useBottomSheetInitialPositionFix(actionMenuOpen);
@@ -252,7 +250,8 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
     const account = accounts.find((item) => item.id === option.id);
     return (
       option.id !== draft.accountId &&
-      (!selectedAccount || account?.currencyCode === selectedAccount.currencyCode)
+      (!selectedAccount ||
+        account?.currencyCode === selectedAccount.currencyCode)
     );
   });
   const categoryOptions: TransactionOption[] = topLevelCategories
@@ -300,9 +299,7 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
           }
           return (
             isDescendant &&
-            !categories.some(
-              (candidate) => candidate.parentId === category.id,
-            )
+            !categories.some((candidate) => candidate.parentId === category.id)
           );
         })
         .map((category) => ({
@@ -387,14 +384,16 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
     outputRange: [1, 0],
     extrapolate: "clamp",
   });
-  const receiptUri = pendingReceipt?.uri ?? (() => {
-    if (!draft.receiptPath) return null;
-    try {
-      return getAttachmentFile(draft.receiptPath).uri;
-    } catch {
-      return null;
-    }
-  })();
+  const receiptUri =
+    pendingReceipt?.uri ??
+    (() => {
+      if (!draft.receiptPath) return null;
+      try {
+        return getAttachmentFile(draft.receiptPath).uri;
+      } catch {
+        return null;
+      }
+    })();
 
   useEffect(() => {
     let wasHidden = false;
@@ -521,10 +520,7 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
     else router.replace("/");
   }
 
-  function updateDateTime(
-    mode: Exclude<DatePickerMode, null>,
-    selected: Date,
-  ) {
+  function updateDateTime(mode: Exclude<DatePickerMode, null>, selected: Date) {
     if (Platform.OS === "android") setDatePickerMode(null);
     const next = new Date(safeOccurredAt);
     if (mode === "date")
@@ -806,7 +802,8 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
                       { currency: transactionCurrencyCode },
                     )}
                     accessibilityState={{
-                      disabled: isSaving || draft.type === 2 || !selectedAccount,
+                      disabled:
+                        isSaving || draft.type === 2 || !selectedAccount,
                     }}
                     disabled={isSaving || draft.type === 2 || !selectedAccount}
                     onPress={() => {
@@ -851,7 +848,10 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
                       </Text>
                     ) : null}
                     {currencyRateError ? (
-                      <Text accessibilityRole="alert" className="font-sans text-sm text-danger">
+                      <Text
+                        accessibilityRole="alert"
+                        className="font-sans text-sm text-danger"
+                      >
                         {currencyRateError}
                       </Text>
                     ) : null}
@@ -924,6 +924,19 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
                         i18n.resolvedLanguage,
                       )}
                     </Text>
+                    <DateTimePopover
+                      accentColor={theme.accent}
+                      isDark={theme.isDark}
+                      isPresented={datePickerMode === "date"}
+                      maximumDate={new Date()}
+                      mode="date"
+                      title={t("transactions.form.date")}
+                      value={safeOccurredAt}
+                      onDismiss={() => {
+                        if (datePickerMode === "date") setDatePickerMode(null);
+                      }}
+                      onValueChange={(value) => updateDateTime("date", value)}
+                    />
                   </Pressable>
                   <Pressable
                     accessibilityRole="button"
@@ -952,39 +965,35 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
                         i18n.resolvedLanguage,
                       )}
                     </Text>
+                    <DateTimePopover
+                      accentColor={theme.accent}
+                      isDark={theme.isDark}
+                      isPresented={datePickerMode === "time"}
+                      maximumDate={new Date()}
+                      mode="time"
+                      title={t("transactions.form.time")}
+                      value={safeOccurredAt}
+                      onDismiss={() => {
+                        if (datePickerMode === "time") setDatePickerMode(null);
+                      }}
+                      onValueChange={(value) => updateDateTime("time", value)}
+                    />
                   </Pressable>
                 </View>
 
-                {datePickerMode ? (
-                  <View className="overflow-hidden rounded-2xl bg-surface p-2">
-                    <DateTimePicker
-                      accentColor={theme.accent}
-                      display="default"
-                      maximumDate={new Date()}
-                      mode={datePickerMode}
-                      presentation={
-                        Platform.OS === "android" ? "dialog" : "inline"
-                      }
-                      themeVariant={theme.isDark ? "dark" : "light"}
-                      value={safeOccurredAt}
-                      onValueChange={(_, selected) =>
-                        updateDateTime(datePickerMode, selected)
-                      }
-                      onDismiss={() => setDatePickerMode(null)}
-                    />
-                    {Platform.OS === "ios" ? (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="self-end"
-                        onPress={() => setDatePickerMode(null)}
-                      >
-                        <Button.Label>
-                          {t("transactions.form.done")}
-                        </Button.Label>
-                      </Button>
-                    ) : null}
-                  </View>
+                {Platform.OS === "android" && datePickerMode ? (
+                  <DateTimePicker
+                    accentColor={theme.accent}
+                    display="default"
+                    maximumDate={new Date()}
+                    mode={datePickerMode}
+                    presentation="dialog"
+                    value={safeOccurredAt}
+                    onValueChange={(_, selected) =>
+                      updateDateTime(datePickerMode, selected)
+                    }
+                    onDismiss={() => setDatePickerMode(null)}
+                  />
                 ) : null}
 
                 <TransactionSelectionSection
@@ -1330,9 +1339,7 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
                   styles.primaryActionButton,
                   { backgroundColor: theme.accent },
                   (isSaving || missingSource) && styles.actionDisabled,
-                  Platform.OS === "ios" &&
-                    pressed &&
-                    styles.actionPressed,
+                  Platform.OS === "ios" && pressed && styles.actionPressed,
                 ]}
               >
                 <FilledIcon name="save" size={24} tone="accent-foreground" />
@@ -1364,9 +1371,7 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
                   styles.secondaryActionButton,
                   { backgroundColor: theme.accent },
                   (isSaving || missingSource) && styles.actionDisabled,
-                  Platform.OS === "ios" &&
-                    pressed &&
-                    styles.actionPressed,
+                  Platform.OS === "ios" && pressed && styles.actionPressed,
                 ]}
               >
                 <FilledIcon
@@ -1380,10 +1385,7 @@ export function TransactionEditorScreen({ editId }: { editId?: string }) {
         </View>
       </KeyboardAvoidingView>
 
-      <BottomSheet
-        isOpen={actionMenuOpen}
-        onOpenChange={setActionMenuOpen}
-      >
+      <BottomSheet isOpen={actionMenuOpen} onOpenChange={setActionMenuOpen}>
         <BottomSheet.Portal unstable_accessibilityContainerViewIsModal>
           <BottomSheet.Overlay />
           <BottomSheet.Content

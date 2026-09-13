@@ -1,17 +1,14 @@
 import "../../global.css";
 
-import { Manrope_400Regular } from "@expo-google-fonts/manrope/400Regular";
-import { Manrope_500Medium } from "@expo-google-fonts/manrope/500Medium";
-import { Manrope_600SemiBold } from "@expo-google-fonts/manrope/600SemiBold";
-import { Manrope_700Bold } from "@expo-google-fonts/manrope/700Bold";
+import { Huninn_400Regular } from "@expo-google-fonts/huninn/400Regular";
 import { useFonts } from "expo-font";
 import { NavigationBar } from "expo-navigation-bar";
 import {
-  DarkTheme,
-  DefaultTheme,
-  Stack,
-  ThemeProvider,
-  type Theme,
+    DarkTheme,
+    DefaultTheme,
+    Stack,
+    ThemeProvider,
+    type Theme,
 } from "expo-router";
 import { SQLiteProvider } from "expo-sqlite";
 import { StatusBar } from "expo-status-bar";
@@ -78,10 +75,7 @@ function AppNavigation() {
 export default function RootLayout() {
   const { theme } = useUniwind();
   const [fontsLoaded, fontError] = useFonts({
-    Manrope_400Regular,
-    Manrope_500Medium,
-    Manrope_600SemiBold,
-    Manrope_700Bold,
+    Huninn_400Regular,
   });
 
   if (!fontsLoaded && !fontError) return null;
@@ -90,8 +84,7 @@ export default function RootLayout() {
     <GestureHandlerRootView
       style={{
         flex: 1,
-        backgroundColor:
-          ROOT_BACKGROUNDS[theme === "dark" ? "dark" : "light"],
+        backgroundColor: ROOT_BACKGROUNDS[theme === "dark" ? "dark" : "light"],
       }}
     >
       <HeroUINativeProvider>

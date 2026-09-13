@@ -6,10 +6,10 @@
 @source "./node_modules/heroui-native/lib";
 
 @theme {
-  --font-sans: "Manrope_400Regular";
-  --font-manrope-medium: "Manrope_500Medium";
-  --font-manrope-semibold: "Manrope_600SemiBold";
-  --font-manrope-bold: "Manrope_700Bold";
+  --font-sans: "Huninn_400Regular";
+  --font-manrope-medium: "Huninn_400Regular";
+  --font-manrope-semibold: "Huninn_400Regular";
+  --font-manrope-bold: "Huninn_400Regular";
 }
 
 @layer theme {

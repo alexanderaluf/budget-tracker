@@ -21,7 +21,9 @@ export function ProfileAvatar({
 }: ProfileAvatarProps) {
   const { t } = useTranslation();
   const theme = useAppThemeColors();
-  const backgroundColor = imageUri ? theme.surfaceTertiary : color ?? theme.accent;
+  const backgroundColor = imageUri
+    ? theme.surfaceTertiary
+    : (color ?? theme.accent);
 
   return (
     <Avatar
@@ -39,7 +41,7 @@ export function ProfileAvatar({
           allowFontScaling: false,
           style: {
             color: colorForeground(backgroundColor),
-            fontFamily: "Manrope_700Bold",
+            fontFamily: "Huninn_400Regular",
           },
         }}
       >

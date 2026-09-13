@@ -1,9 +1,5 @@
 import type { ComponentType } from "react";
-import {
-  Platform,
-  Text as NativeText,
-  type TextProps,
-} from "react-native";
+import { Text as NativeText, Platform, type TextProps } from "react-native";
 
 import { useAppLocalization } from "@/localization/localization-provider";
 

@@ -5,8 +5,8 @@ import { Pressable, View } from "react-native";
 
 import { useLocalData } from "@/data/local-data-provider";
 import {
-  selectRecurrings,
-  selectRecurringSummary,
+    selectRecurrings,
+    selectRecurringSummary,
 } from "@/data/selectors/document-selectors";
 import { useProfiles } from "@/features/profile/profile-provider";
 import { formatCurrency } from "@/shared/lib/currency";
@@ -34,13 +34,12 @@ function SummaryAmounts({
       {totals.map((total) => (
         <Text
           key={total.currencyCode}
-          adjustsFontSizeToFit
-          minimumFontScale={0.72}
-          numberOfLines={1}
-          className="font-manrope-bold text-sm"
+          numberOfLines={2}
+          className="w-full font-manrope-bold text-sm leading-5"
           style={{ color, writingDirection: "ltr" }}
         >
-          {formatCurrency(total.amount, total.currencyCode)} {total.currencyCode}
+          {formatCurrency(total.amount, total.currencyCode)}{" "}
+          {total.currencyCode}
         </Text>
       ))}
     </View>

@@ -1,27 +1,27 @@
-import { Button } from "heroui-native";
-import { useRouter } from "expo-router";
-import type { PropsWithChildren, ReactNode } from "react";
-import { useTranslation } from "react-i18next";
-import {
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  Switch,
-  TextInput,
-  View,
-  type TextInputProps,
-} from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Svg, { Circle, Line, Polyline, Text as SvgText } from "react-native-svg";
 import type { Budget } from "@/data/selectors/budget-selectors";
+import { colorForeground } from "@/shared/icons/colors";
+import { formatCurrency } from "@/shared/lib/currency";
 import { useAppThemeColors } from "@/shared/theme/app-theme";
 import { Text } from "@/shared/ui/app-text";
 import { FilledIcon, type FilledIconName } from "@/shared/ui/filled-icon";
 import { RecordIcon } from "@/shared/ui/record-icon";
-import { colorForeground } from "@/shared/icons/colors";
-import { formatCurrency } from "@/shared/lib/currency";
+import { useRouter } from "expo-router";
+import { Button } from "heroui-native";
+import type { PropsWithChildren, ReactNode } from "react";
+import { useTranslation } from "react-i18next";
+import {
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    Pressable,
+    ScrollView,
+    Switch,
+    TextInput,
+    View,
+    type TextInputProps,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Svg, { Circle, Line, Polyline, Text as SvgText } from "react-native-svg";
 
 export function useBudgetLabels() {
   const { t } = useTranslation();
@@ -104,7 +104,7 @@ export function BudgetField(props: TextInputProps) {
           paddingVertical: 14,
           backgroundColor: c.surface,
           color: c.foreground,
-          fontFamily: "Manrope_400Regular",
+          fontFamily: "Huninn_400Regular",
           fontSize: 17,
           borderWidth: 1,
           borderColor: c.border,

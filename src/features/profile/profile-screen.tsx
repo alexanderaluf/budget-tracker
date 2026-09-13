@@ -8,15 +8,16 @@ import { BackHandler, View } from "react-native";
 import Animated, { Easing, FadeInDown } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { CurrencyConverterPage } from "./components/currency-converter-page";
+import { LanguageSettingsPage } from "./components/language-settings-page";
 import { ProfileAvatar } from "./components/profile-avatar";
 import { ProfileHubActions } from "./components/profile-hub-actions";
-import { LanguageSettingsPage } from "./components/language-settings-page";
 import { ProfileScreenHeader } from "./components/profile-screen-header";
 import { ProfileSettingsPage } from "./components/profile-settings-page";
 import { ThemeSettingsPage } from "./components/theme-settings-page";
 import { useProfiles } from "./profile-provider";
 
-type ProfilePage = "profile" | "settings" | "theme" | "language";
+type ProfilePage = "profile" | "settings" | "theme" | "language" | "converter";
 
 export function ProfileScreen() {
   const { t } = useTranslation();
@@ -33,7 +34,9 @@ export function ProfileScreen() {
       "hardwareBackPress",
       () => {
         setPage((current) =>
-          current === "theme" || current === "language"
+          current === "theme" ||
+          current === "language" ||
+          current === "converter"
             ? "settings"
             : "profile",
         );
@@ -49,9 +52,11 @@ export function ProfileScreen() {
       ? t("settings.items.theme.title")
       : page === "language"
         ? t("language.title")
-        : page === "settings"
-          ? t("settings.title")
-          : t("profile.accountsTitle");
+        : page === "converter"
+          ? t("settings.items.converter.title")
+          : page === "settings"
+            ? t("settings.title")
+            : t("profile.accountsTitle");
 
   return (
     <SafeAreaView
@@ -60,7 +65,7 @@ export function ProfileScreen() {
     >
       <ProfileScreenHeader
         onBack={
-          page === "theme" || page === "language"
+          page === "theme" || page === "language" || page === "converter"
             ? () => setPage("settings")
             : page === "settings"
               ? () => setPage("profile")
@@ -71,6 +76,7 @@ export function ProfileScreen() {
 
       {page === "settings" ? (
         <ProfileSettingsPage
+          onOpenConverter={() => setPage("converter")}
           onOpenLanguage={() => setPage("language")}
           onOpenTheme={() => setPage("theme")}
         />
@@ -78,6 +84,8 @@ export function ProfileScreen() {
         <ThemeSettingsPage />
       ) : page === "language" ? (
         <LanguageSettingsPage />
+      ) : page === "converter" ? (
+        <CurrencyConverterPage />
       ) : (
         <View className="flex-1 px-5 pt-10">
           <Animated.View

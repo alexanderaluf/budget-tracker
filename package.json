@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "license": "PolyForm-Noncommercial-1.0.0",
   "dependencies": {
-    "@expo-google-fonts/manrope": "^0.4.2",
+    "@expo-google-fonts/huninn": "^0.4.2",
     "@expo/ui": "~57.0.18",
     "@gorhom/bottom-sheet": "^5.2.14",
     "@material-symbols-svg/react-native": "^0.14.0",

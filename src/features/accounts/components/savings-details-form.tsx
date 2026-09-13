@@ -107,7 +107,10 @@ export function SavingsDetailsForm({
               {product.description}
             </Text>
           </View>
-          <FilledIcon name={showProducts ? "close" : "chevron-right"} size={20} />
+          <FilledIcon
+            name={showProducts ? "close" : "chevron-right"}
+            size={20}
+          />
         </Pressable>
         {showProducts && (
           <View className="overflow-hidden rounded-2xl border border-border bg-surface">
@@ -628,7 +631,7 @@ function EstimateRow({
 const styles = StyleSheet.create({
   notes: {
     borderRadius: 16,
-    fontFamily: "Manrope_400Regular",
+    fontFamily: "Huninn_400Regular",
     fontSize: 14,
     minHeight: 104,
     padding: 14,

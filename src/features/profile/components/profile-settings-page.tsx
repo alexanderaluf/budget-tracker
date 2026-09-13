@@ -1,13 +1,13 @@
-import { Alert, Pressable, ScrollView, View } from "react-native";
 import { useTranslation } from "react-i18next";
+import { Alert, Pressable, ScrollView, View } from "react-native";
 import Animated, {
     Easing,
     FadeInDown,
     ReduceMotion,
 } from "react-native-reanimated";
 
-import { FilledIcon, type FilledIconName } from "@/shared/ui/filled-icon";
 import { Text } from "@/shared/ui/app-text";
+import { FilledIcon, type FilledIconName } from "@/shared/ui/filled-icon";
 
 type SettingsItem = {
   id: string;
@@ -19,6 +19,7 @@ type SettingsItem = {
 };
 
 type ProfileSettingsPageProps = {
+  onOpenConverter: () => void;
   onOpenLanguage: () => void;
   onOpenTheme: () => void;
 };
@@ -37,10 +38,7 @@ function SettingsRow({
       onPress();
       return;
     }
-    Alert.alert(
-      item.title,
-      t("settings.unavailableMessage"),
-    );
+    Alert.alert(item.title, t("settings.unavailableMessage"));
   }
 
   return (
@@ -81,10 +79,12 @@ function SettingsRow({
 
 function SettingsGroup({
   items,
+  onOpenConverter,
   onOpenLanguage,
   onOpenTheme,
 }: {
   items: SettingsItem[];
+  onOpenConverter?: () => void;
   onOpenLanguage?: () => void;
   onOpenTheme?: () => void;
 }) {
@@ -99,7 +99,9 @@ function SettingsGroup({
               ? onOpenTheme
               : item.id === "language"
                 ? onOpenLanguage
-                : undefined
+                : item.id === "converter"
+                  ? onOpenConverter
+                  : undefined
           }
         />
       ))}
@@ -115,6 +117,7 @@ function createRevealAnimation(delay: number) {
 }
 
 export function ProfileSettingsPage({
+  onOpenConverter,
   onOpenLanguage,
   onOpenTheme,
 }: ProfileSettingsPageProps) {
@@ -179,13 +182,6 @@ export function ProfileSettingsPage({
   ];
   const toolSettings: SettingsItem[] = [
     {
-      id: "exchange-rates",
-      title: t("settings.items.exchangeRates.title"),
-      description: t("settings.items.exchangeRates.description"),
-      icon: "currency-exchange",
-      iconBackground: "#cbbab5",
-    },
-    {
       id: "converter",
       title: t("settings.items.converter.title"),
       description: t("settings.items.converter.description"),
@@ -232,7 +228,7 @@ export function ProfileSettingsPage({
         />
       </Animated.View>
       <Animated.View entering={createRevealAnimation(130)}>
-        <SettingsGroup items={toolSettings} />
+        <SettingsGroup items={toolSettings} onOpenConverter={onOpenConverter} />
       </Animated.View>
     </ScrollView>
   );
