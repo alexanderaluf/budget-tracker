@@ -1,4 +1,7 @@
+import { recurringEn } from "./recurring";
+
 export const en = {
+  recurring: recurringEn,
   common: {
     back: "Go back",
     beta: "Beta",
@@ -51,8 +54,7 @@ export const en = {
       accountsForProfile: "Select accounts in the current profile.",
       unavailable: "This budget is unavailable.",
       transactionAlreadySaved: "This transaction has already been saved.",
-      transactionDetails:
-        "Enter a name, a positive amount, and a valid date.",
+      transactionDetails: "Enter a name, a positive amount, and a valid date.",
       transactionAccount: "Choose an account in this profile.",
       transactionCategory: "Choose a category for this transaction type.",
       budgetAccount: "Choose an account selected by this budget.",
@@ -74,8 +76,7 @@ export const en = {
       type: "Choose expense, income, or transfer.",
       color: "Choose a valid color, such as #70D2EB.",
       icon: "Choose a valid icon.",
-      parent:
-        "Choose a parent of the same transaction type in this profile.",
+      parent: "Choose a parent of the same transaction type in this profile.",
       parentCycle:
         "A category cannot be its own parent or belong to one of its children.",
       typeLocked:
@@ -84,8 +85,7 @@ export const en = {
     },
     savings: {
       invalidNumber: "Enter a valid {{label}}.",
-      outOfRange:
-        "{{label}} must be between {{minimum}} and {{maximum}}.",
+      outOfRange: "{{label}} must be between {{minimum}} and {{maximum}}.",
       invalidDate: "{{label}} must use YYYY-MM-DD.",
       product: "Select a valid savings product.",
       provider: "Enter the savings provider or institution.",
@@ -164,8 +164,7 @@ export const en = {
       oversizedFile: "Backup ZIP contains an oversized file.",
       expandedTooLarge: "Backup ZIP expands beyond the restore limit.",
       missingDocument: "Backup ZIP does not contain backup.json.",
-      unsafeAttachmentPath:
-        "Backup ZIP contains an unsafe attachment path.",
+      unsafeAttachmentPath: "Backup ZIP contains an unsafe attachment path.",
       missingAttachment: "Backup ZIP is missing attachment {{fileName}}.",
     },
     exchangeRates: {
@@ -173,8 +172,7 @@ export const en = {
         "Unable to retrieve exchange rates. Check your connection and try again.",
       invalidCurrency: "Invalid currency code.",
       invalidDate: "The exchange-rate response has an invalid date.",
-      missingBase:
-        "The exchange-rate response is missing its base currency.",
+      missingBase: "The exchange-rate response is missing its base currency.",
       invalidRate: "The exchange-rate response contains an invalid rate.",
       incomplete: "The exchange-rate response is incomplete.",
       invalidConversion: "Cannot convert an invalid amount or exchange rate.",
@@ -464,16 +462,14 @@ export const en = {
       title: "Change account currency?",
       description:
         "{{amount}} {{from}} → {{to}}. Keep the balance number or convert its value. Changes are applied when you save the account.",
-      keptExplanation:
-        "Kept {{amount}} unchanged: {{from}} → {{to}}.",
+      keptExplanation: "Kept {{amount}} unchanged: {{from}} → {{to}}.",
       keepAmount: "Keep {{amount}} {{currency}}",
       noRate: "No exchange rate is available for {{currency}}.",
       refreshError:
         "Could not refresh rates. You can explicitly use the saved rate below, or keep the number unchanged.",
       loadError: "Unable to load exchange rates.",
       conversionError: "Unable to convert this amount.",
-      rateDetails:
-        "1 {{from}} = {{rate}} {{to}} · Rate date: {{date}}",
+      rateDetails: "1 {{from}} = {{rate}} {{to}} · Rate date: {{date}}",
       savedRate: "saved on your device",
       latestRate: "the latest available",
       notToday: ", not today's rate",
@@ -558,8 +554,7 @@ export const en = {
         "Annual management cost at the entered rate: {{amount}}. Actual provider and tax calculations may differ.",
       notesOptional: "Notes (optional)",
       notesAccessibility: "Savings notes",
-      notesPlaceholder:
-        "Access conditions, guarantees, beneficiary notes...",
+      notesPlaceholder: "Access conditions, guarantees, beneficiary notes...",
       detailedTracking: "Detailed savings tracking",
       detailedTrackingHint:
         "Adds product, contribution, access, fee and tax fields.",
@@ -579,8 +574,7 @@ export const en = {
         },
         notice_savings: {
           label: "Notice savings",
-          description:
-            "Cash savings that requires notice before withdrawal.",
+          description: "Cash savings that requires notice before withdrawal.",
         },
         regular_savings: {
           label: "Regular savings",
@@ -603,8 +597,7 @@ export const en = {
         },
         pension: {
           label: "Pension fund",
-          description:
-            "Retirement savings intended to provide future income.",
+          description: "Retirement savings intended to provide future income.",
         },
         employer_retirement: {
           label: "Employer retirement plan",
@@ -613,7 +606,8 @@ export const en = {
         },
         tax_advantaged: {
           label: "Tax-advantaged savings",
-          description: "ISA, TFSA, IRA, Roth, PEA or another local tax wrapper.",
+          description:
+            "ISA, TFSA, IRA, Roth, PEA or another local tax wrapper.",
         },
         government_bond: {
           label: "Government savings bond",
@@ -819,8 +813,7 @@ export const en = {
       noCategories:
         "No {{type}} categories yet. Create one from Profile → Categories.",
       includeSubcategories: "Include subcategories",
-      includeSubcategoriesHelp:
-        "Roll up descendants of selected categories",
+      includeSubcategoriesHelp: "Roll up descendants of selected categories",
       automaticIncludesDescendants:
         "Automatic mode includes descendants of your selected categories.",
       selectAll: "Select all",
@@ -861,10 +854,8 @@ export const en = {
       aboveTarget: "Above target",
       remaining: "Remaining",
       outsideRange: "Outside this budget’s date range",
-      dailyIncome_one:
-        "Aim for {{amount}}/day for {{count}} more day",
-      dailyIncome_other:
-        "Aim for {{amount}}/day for {{count}} more days",
+      dailyIncome_one: "Aim for {{amount}}/day for {{count}} more day",
+      dailyIncome_other: "Aim for {{amount}}/day for {{count}} more days",
       dailyExpense_one:
         "You can {{action}} {{amount}}/day for {{count}} more day",
       dailyExpense_other:
@@ -890,8 +881,7 @@ export const en = {
       showBudgetHelp: "Track this budget on the home screen",
       categoryBreakdown: "Category breakdown",
       noCategoryActivity: "No category activity in this period.",
-      matchingTransactions_one:
-        "{{count}} matching transaction · {{currency}}",
+      matchingTransactions_one: "{{count}} matching transaction · {{currency}}",
       matchingTransactions_other:
         "{{count}} matching transactions · {{currency}}",
       excludedCurrency_one:
@@ -899,8 +889,7 @@ export const en = {
       excludedCurrency_other:
         "{{count}} matching transactions use another currency and are excluded.",
       transactions: "Transactions",
-      noTransactions:
-        "No matching transactions yet. Use + to add one.",
+      noTransactions: "No matching transactions yet. Use + to add one.",
       edit: "Edit",
       deleteTitle: "Delete budget?",
       deleteDescription:
@@ -917,8 +906,7 @@ export const en = {
       date: "Transaction date",
       datePlaceholder: "YYYY-MM-DD",
       category: "Category",
-      noCategories:
-        "Add a matching category in Profile → Categories first.",
+      noCategories: "Add a matching category in Profile → Categories first.",
       account: "Account",
       fromAccount: "From account",
       noAccounts:
@@ -1255,8 +1243,7 @@ export const en = {
       previousPeriod: "Previous period",
       allHistory: "All transaction history",
       nextPeriod: "Next period",
-      directTransactions:
-        "Transactions assigned directly to this category",
+      directTransactions: "Transactions assigned directly to this category",
       includesChildren: "Includes this category and all children",
       unknownDate: "Unknown date",
       emptyTitle: "No transactions found",
@@ -1338,7 +1325,8 @@ export const en = {
       },
       converter: {
         title: "Currency converter",
-        description: "Quickly convert between currencies using your saved rates",
+        description:
+          "Quickly convert between currencies using your saved rates",
       },
       receipts: {
         title: "Receipt gallery",

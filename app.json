@@ -3,7 +3,10 @@
     "name": "Plutus",
     "slug": "plutus",
     "version": "1.0.0",
-    "platforms": ["ios", "android"],
+    "platforms": [
+      "ios",
+      "android"
+    ],
     "orientation": "portrait",
     "backgroundColor": "#DCE7E0",
     "scheme": "plutus",
@@ -50,13 +53,21 @@
         {
           "supportsRTL": true,
           "supportedLocales": {
-            "ios": ["en", "he"],
-            "android": ["en", "he"]
+            "ios": [
+              "en",
+              "he"
+            ],
+            "android": [
+              "en",
+              "he"
+            ]
           }
         }
       ],
       "expo-background-task",
-      "expo-notifications"
+      "expo-notifications",
+      "expo-image",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,

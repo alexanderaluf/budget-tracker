@@ -18,6 +18,13 @@ require.extensions[".ts"] = (module, filename) => {
 const { en } = require("../src/localization/locales/en.ts");
 const { he } = require("../src/localization/locales/he.ts");
 
+test("assembled catalogs include recurring translations", () => {
+  assert.equal(en.recurring.title, "Recurring");
+  assert.equal(en.recurring.monthly, "Monthly average");
+  assert.equal(he.recurring.title, "תשלומים חוזרים");
+  assert.equal(he.recurring.monthly, "ממוצע חודשי");
+});
+
 function flattenCatalog(value, prefix = "", result = new Map()) {
   for (const [key, child] of Object.entries(value)) {
     const keyPath = prefix ? `${prefix}.${key}` : key;
